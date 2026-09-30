@@ -57,6 +57,7 @@
       <div class="toolbar-right">
         <div class="segmented" aria-label="Ansicht">
           <button id="monthViewBtn" class="segment active" type="button">Monat</button>
+          <button id="quarterViewBtn" class="segment" type="button">Quartal</button>
           <button id="yearViewBtn" class="segment" type="button">Jahr</button>
         </div>
         <div class="segmented vacation-mode" aria-label="Urlaubsanzeige">
@@ -181,6 +182,19 @@
       <div class="dialog-actions"><div class="spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">Speichern</button></div>
     </form>
   </dialog>
+
+  <div id="dragActionBar" class="drag-action-bar hidden">
+    <div class="drag-action-info"><strong id="dragActionCount">0 Tage</strong><span id="dragActionEmployee"></span></div>
+    <div class="drag-action-buttons">
+      <button type="button" data-drag-code="U" class="drag-action u">U</button>
+      <button type="button" data-drag-code="X" class="drag-action x">X</button>
+      <button type="button" data-drag-code="XU" class="drag-action xu">XU</button>
+      <button type="button" data-drag-code="S" class="drag-action s">S</button>
+      <button type="button" data-drag-code="G" class="drag-action g">G</button>
+      <button type="button" id="dragDeleteBtn" class="drag-action delete">Löschen</button>
+      <button type="button" id="dragCancelBtn" class="drag-action cancel">×</button>
+    </div>
+  </div>
 
   <div id="toast" class="toast"></div>
   <script src="app.js"></script>
