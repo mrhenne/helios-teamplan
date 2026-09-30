@@ -457,6 +457,119 @@ function applyBulk(clear=false){
 }
 
 
+
+function safeShowDialog(id){
+  const d=document.getElementById(id);if(!d){console.error('Dialog fehlt:',id);showToast('Werkzeug konnte nicht geöffnet werden');return false}
+  try{if(typeof d.showModal==='function'){if(!d.open)d.showModal()}else d.setAttribute('open','');return true}
+  catch(err){console.error(err);d.setAttribute('open','');return true}
+}
+function normalizeImportCode(value){
+  const raw=String(value??'').trim().toUpperCase();if(!raw)return [];
+  const out=[];
+  if(/\bXU\b|WUNSCH.?FREI/.test(raw))out.push('XU');
+  if(/URLAUB|\bU\b/.test(raw))out.push('U');
+  if(/SCHULE|FORTBILDUNG|\bS\b/.test(raw))out.push('S');
+  if(/GEBURTSTAG|\bG\b/.test(raw))out.push('G');
+  if((/FREI|\bX\b/.test(raw))&&!out.includes('XU'))out.push('X');
+  return [...new Set(out)];
+}
+function parseImportedDate(value){
+  if(value instanceof Date&&!isNaN(value))return dateKey(value);
+  if(typeof value==='number'&&value>20000&&window.XLSX?.SSF?.parse_date_code){
+    const p=XLSX.SSF.parse_date_code(value);if(p)return dateKey(new Date(p.y,p.m-1,p.d));
+  }
+  const s=String(value??'').trim();if(!s)return '';
+  let m=s.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})$/);
+  if(m){let y=Number(m[3]);if(y<100)y+=2000;return dateKey(new Date(y,Number(m[2])-1,Number(m[1])))}
+  m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);if(m)return dateKey(new Date(Number(m[1]),Number(m[2])-1,Number(m[3])));
+  const d=new Date(s);return isNaN(d)?'':dateKey(d);
+}
+function cellText(v){return String(v??'').trim()}
+function analyzePlanRows(rows){
+  const clean=(rows||[]).filter(r=>Array.isArray(r)&&r.some(v=>cellText(v)));
+  if(!clean.length)return {format:'',entries:[],names:[],warnings:['Keine Daten gefunden.']};
+  const aliases={name:/^(name|mitarbeiter|mitarbeiterin|personal|person|kollege|kollegin)$/i,date:/^(datum|date|tag)$/i,code:/^(code|kürzel|kuerzel|art|abwesenheit|status|eintrag)$/i};
+  for(let ri=0;ri<Math.min(clean.length,12);ri++){
+    const headers=clean[ri].map(v=>cellText(v).toLowerCase());
+    const nameCol=headers.findIndex(h=>aliases.name.test(h)),dateCol=headers.findIndex(h=>aliases.date.test(h)),codeCol=headers.findIndex(h=>aliases.code.test(h));
+    if(nameCol>=0&&dateCol>=0&&codeCol>=0){
+      const entries=[];for(let r=ri+1;r<clean.length;r++){
+        const name=cellText(clean[r][nameCol]),date=parseImportedDate(clean[r][dateCol]),codes=normalizeImportCode(clean[r][codeCol]);
+        if(name&&date&&codes.length)entries.push({name,date,codes});
+      }
+      return {format:'Liste',entries,names:[...new Set(entries.map(x=>x.name))],warnings:[]};
+    }
+  }
+  let best=null;
+  for(let ri=0;ri<Math.min(clean.length,20);ri++){
+    const parsed=clean[ri].map(parseImportedDate),dateCols=parsed.map((d,ci)=>d?ci:-1).filter(ci=>ci>=0);
+    if(dateCols.length>=3&&(!best||dateCols.length>best.dateCols.length))best={ri,dateCols,parsed};
+  }
+  if(best){
+    const firstDateCol=Math.min(...best.dateCols),nameCol=Math.max(0,firstDateCol-1),entries=[];
+    for(let r=best.ri+1;r<clean.length;r++){
+      const name=cellText(clean[r][nameCol]);if(!name)continue;
+      best.dateCols.forEach(ci=>{const date=best.parsed[ci],codes=normalizeImportCode(clean[r][ci]);if(date&&codes.length)entries.push({name,date,codes})});
+    }
+    return {format:'Kalendermatrix',entries,names:[...new Set(entries.map(x=>x.name))],warnings:entries.length?[]:['Datumsüberschriften erkannt, aber keine Kürzel U/X/XU/S/G gefunden.']};
+  }
+  return {format:'Unbekannt',entries:[],names:[],warnings:['Format nicht erkannt. Nutze eine Liste mit Name, Datum, Kürzel oder eine Matrix mit echten Datumswerten in der Kopfzeile.']};
+}
+let pendingPlanImport=null;
+async function readPlanImportFile(file){
+  if(!file)throw new Error('Keine Datei ausgewählt');
+  const lower=file.name.toLowerCase();
+  if(lower.endsWith('.xlsx')||lower.endsWith('.xls')){
+    if(!window.XLSX)throw new Error('Excel-Bibliothek konnte nicht geladen werden.');
+    const data=await file.arrayBuffer(),wb=XLSX.read(data,{type:'array',cellDates:true});
+    let best={entries:[],names:[],format:'',warnings:[]};
+    wb.SheetNames.forEach(name=>{
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,raw:true,defval:''}),result=analyzePlanRows(rows);
+      if(result.entries.length>best.entries.length)best={...result,sheet:name};
+    });
+    return best;
+  }
+  const text=await file.text(),rows=text.split(/\r?\n/).filter(Boolean).map(line=>line.includes(';')?line.split(';'):line.split(','));
+  return analyzePlanRows(rows);
+}
+function renderPlanImportPreview(result){
+  pendingPlanImport=result;
+  const el=document.getElementById('planImportPreview'),btn=document.getElementById('planImportApplyBtn');
+  if(!result||!result.entries.length){el.innerHTML='<strong>Nichts importierbar</strong><span>'+escapeHtml((result?.warnings||['Keine Daten erkannt.']).join(' '))+'</span>';btn.disabled=true;return}
+  el.innerHTML=`<strong>${result.entries.length} Einträge erkannt</strong><span>${result.names.length} Mitarbeiter · Format: ${escapeHtml(result.format)}${result.sheet?' · Blatt: '+escapeHtml(result.sheet):''}</span><span>Beispiele: ${result.entries.slice(0,6).map(x=>escapeHtml(x.name+' · '+x.date+' · '+x.codes.join('+'))).join(' | ')}</span>`;
+  btn.disabled=false;
+}
+function applyPlanImport(){
+  if(!pendingPlanImport?.entries?.length)return;
+  if(!canManage()){showToast('Keine Rechte für Planimport');return}
+  const create=document.getElementById('planImportCreateEmployees').checked,mode=document.getElementById('planImportMode').value,status=document.getElementById('planImportStatus').value;
+  const map=new Map(state.employees.map(e=>[e.name.trim().toLocaleLowerCase('de-DE'),e]));
+  let created=0,applied=0,skipped=0;
+  trackAction('Urlaubsplan importiert',pendingPlanImport.entries.length+' erkannte Einträge');
+  pendingPlanImport.entries.forEach(row=>{
+    const key=row.name.trim().toLocaleLowerCase('de-DE');let emp=map.get(key);
+    if(!emp&&create){emp={id:uid(),name:row.name.trim(),hours:38.5,percent:100,workdays:5,workweek:[1,2,3,4,5],carry:0,adjustment:0,role:'employee',order:state.employees.length};state.employees.push(emp);map.set(key,emp);created++}
+    if(!emp){skipped++;return}
+    if(!state.entries[emp.id])state.entries[emp.id]={};
+    const old=entryFor(emp.id,row.date);
+    state.entries[emp.id][row.date]=mode==='replace'
+      ?{codes:[...row.codes],priority:old.priority||0,note:old.note||'',status}
+      :{codes:[...new Set([...(old.codes||[]),...row.codes])],priority:old.priority||0,note:old.note||'',status:old.status&&old.status!=='wish'?old.status:status};
+    applied++;
+  });
+  state.employees.forEach((e,i)=>e.order=i);persist();renderRoleControls();render();document.getElementById('planImportDialog').close();showToast(`${applied} Einträge importiert${created?' · '+created+' Mitarbeiter angelegt':''}${skipped?' · '+skipped+' übersprungen':''}`);
+}
+function runToolAction(action){
+  try{
+    if(action==='conflicts'){renderConflicts();safeShowDialog('conflictsDialog');return}
+    if(action==='history'){renderHistory();safeShowDialog('historyDialog');return}
+    if(action==='blackouts'){if(!canManage()){showToast('Sperrzeiten: nur Admin/Planer');return}renderBlackouts();safeShowDialog('blackoutsDialog');return}
+    if(action==='roles'){safeShowDialog('rolesHelpDialog');return}
+    if(action==='plan-import'){if(!canManage()){showToast('Planimport: nur Admin/Planer');return}pendingPlanImport=null;document.getElementById('planImportFile').value='';renderPlanImportPreview(null);safeShowDialog('planImportDialog');return}
+    if(action==='excel'){exportExcel();return}
+    if(action==='pdf'){exportPdf();return}
+  }catch(err){console.error('Werkzeugfehler',action,err);alert('Werkzeug konnte nicht ausgeführt werden: '+err.message)}
+}
 function renderRoleControls(){
   const role=document.getElementById('roleSelect'),emp=document.getElementById('roleEmployeeSelect');
   role.value=sessionRole;
@@ -515,7 +628,7 @@ async function exportExcel(){
   }catch(err){if(err?.name==='AbortError')return;console.warn(err)}
   XLSX.writeFile(wb,filename);showToast('Excel erstellt');
 }
-function exportPdf(){window.print()}
+function exportPdf(){showToast('Druckansicht wird geöffnet');setTimeout(()=>window.print(),80)}
 function openSettings(){const s=state.settings;document.getElementById('settingBaseVacation').value=s.baseVacation;document.getElementById('settingMaxVacation').value=s.maxVacation;document.getElementById('settingMaxAbsence').value=s.maxAbsence;document.getElementById('settingCountSchool').checked=s.countSchool;document.getElementById('settingConfirmConflicts').checked=s.confirmConflicts;document.getElementById('settingsDialog').showModal()}
 
 async function initRemote(){
@@ -549,12 +662,10 @@ document.getElementById('addEmployeeBtn').addEventListener('click',()=>openEmplo
 document.getElementById('bulkEntryBtn').addEventListener('click',openBulkDialog);
 document.getElementById('importNamesBtn').addEventListener('click',()=>{if(!canManage())return;document.getElementById('namesPasteInput').value='';document.getElementById('namesFileInput').value='';updateNamesImportPreview([]);document.getElementById('namesImportDialog').showModal()});
 document.getElementById('settingsBtn').addEventListener('click',()=>{if(canManage())openSettings()});
-document.getElementById('blackoutsBtn').addEventListener('click',()=>{if(!canManage()){showToast('Keine Rechte für Sperrzeiten');return}renderBlackouts();document.getElementById('blackoutsDialog').showModal()});
-document.getElementById('historyBtn').addEventListener('click',()=>{renderHistory();document.getElementById('historyDialog').showModal()});
-document.getElementById('conflictsBtn').addEventListener('click',()=>{renderConflicts();document.getElementById('conflictsDialog').showModal()});
-document.getElementById('excelExportBtn').addEventListener('click',exportExcel);
-document.getElementById('pdfExportBtn').addEventListener('click',exportPdf);
 document.getElementById('undoBtn').addEventListener('click',undoLastAction);
+document.addEventListener('click',e=>{const btn=e.target.closest('[data-tool-action]');if(btn){e.preventDefault();runToolAction(btn.dataset.toolAction)}});
+document.getElementById('planImportFile').addEventListener('change',async e=>{try{renderPlanImportPreview(await readPlanImportFile(e.target.files[0]))}catch(err){console.error(err);renderPlanImportPreview({entries:[],names:[],warnings:[err.message]})}});
+document.getElementById('planImportForm').addEventListener('submit',e=>{e.preventDefault();applyPlanImport()});
 document.querySelectorAll('.close-dialog').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
 document.querySelectorAll('[data-bulk-code]').forEach(b=>b.addEventListener('click',()=>{bulkSelectedCodes.has(b.dataset.bulkCode)?bulkSelectedCodes.delete(b.dataset.bulkCode):bulkSelectedCodes.add(b.dataset.bulkCode);b.classList.toggle('selected');updateBulkPreview()}));
 ['bulkEmployee','bulkStart','bulkEnd','bulkOnlyWorkdays','bulkSkipWeekends','bulkMode','bulkPriority'].forEach(id=>document.getElementById(id).addEventListener('change',updateBulkPreview));
