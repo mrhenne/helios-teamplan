@@ -45,7 +45,6 @@ let authUser = null;
 let authMembership = null;
 let loginMode = 'login';
 let plannerScrollLeft = null;
-let plannerFocusFallback = false;
 function toggleLoginMode(){
   loginMode=loginMode==='login'?'bootstrap':'login';
   const fields=document.getElementById('bootstrapFields');
@@ -252,6 +251,7 @@ function syncViewControls(){
   document.getElementById('vacationActualBtn').classList.toggle('active',!full);
   const ms=document.getElementById('monthSelect');if(ms)ms.value=String(viewDate.getMonth());
   const ys=document.getElementById('yearSelect');if(ys){const year=viewDate.getFullYear();if(!ys.options.length){for(let y=2025;y<=2035;y++){const o=document.createElement('option');o.value=String(y);o.textContent=String(y);ys.appendChild(o)}}ys.value=String(year)}
+  updateFocusPeriod();
 }
 
 function applyAppearance(){
@@ -289,29 +289,18 @@ function toggleTheme(){
   state.settings.theme=state.settings.theme==='dark'?'light':'dark';
   persist();applyAppearance();
 }
-function syncPlannerFocus(){
-  const active=!!(document.fullscreenElement||document.webkitFullscreenElement)||plannerFocusFallback;
-  document.body.classList.toggle('planner-focus',active);
+function updateFocusPeriod(){
+  const m=document.getElementById('focusPeriodMonth'),y=document.getElementById('focusPeriodYear');
+  if(m)m.textContent=MONTHS[viewDate.getMonth()];
+  if(y)y.textContent=String(viewDate.getFullYear());
 }
-async function enterPlannerFullscreen(){
+function enterPlannerFocus(){
   if(currentView!=='month'){currentView='month';plannerScrollLeft=null;render()}
-  plannerFocusFallback=true;document.body.classList.add('planner-focus');
-  try{
-    const el=document.documentElement;
-    if(!document.fullscreenElement&&!document.webkitFullscreenElement){
-      if(el.requestFullscreen){await el.requestFullscreen();plannerFocusFallback=false}
-      else if(el.webkitRequestFullscreen){el.webkitRequestFullscreen();plannerFocusFallback=false}
-    }
-  }catch(err){console.warn('Browser-Vollbild nicht verfügbar, Planungsmodus bleibt aktiv',err);plannerFocusFallback=true}
-  syncPlannerFocus();
+  document.body.classList.add('planner-focus');
+  updateFocusPeriod();
 }
-async function exitPlannerFullscreen(){
-  plannerFocusFallback=false;
-  try{
-    if(document.fullscreenElement&&document.exitFullscreen)await document.exitFullscreen();
-    else if(document.webkitFullscreenElement&&document.webkitExitFullscreen)document.webkitExitFullscreen();
-  }catch(err){console.warn(err)}
-  document.body.classList.remove('planner-focus');syncPlannerFocus();
+function exitPlannerFocus(){
+  document.body.classList.remove('planner-focus');
 }
 function fitAllEmployees(){
   if(currentView!=='month'){currentView='month';render()}
@@ -319,13 +308,19 @@ function fitAllEmployees(){
     const planner=document.getElementById('planner'),table=planner?.querySelector('.plan-table');if(!planner||!table)return;
     const current=Math.max(.10,Math.min(1.40,Number(state.settings.zoom||1)));
     const top=planner.getBoundingClientRect().top;
-    const available=document.body.classList.contains('planner-focus')?Math.max(120,window.innerHeight-8):Math.max(180,window.innerHeight-top-20);
+    const focusOffset=document.body.classList.contains('planner-focus')?50:20;
+    const available=Math.max(180,window.innerHeight-top-focusOffset);
     const measured=Math.max(1,table.scrollHeight);
     let target=current*(available/measured);
-    target=Math.max(.10,Math.min(1.40,Math.floor(target*100)/100));
+    const FIT_MIN=.55;
+    target=Math.max(FIT_MIN,Math.min(1.40,Math.floor(target*100)/100));
     setZoom(target);
     requestAnimationFrame(()=>{planner.scrollTop=0});
-    showToast('Ansicht auf '+Math.round(target*100)+'% eingepasst');
+    if(target===FIT_MIN&&table.scrollHeight>available){
+      showToast('Mindestgröße erreicht · vertikales Scrollen bleibt nötig');
+    }else{
+      showToast('Mitarbeiter auf '+Math.round(target*100)+'% eingepasst');
+    }
   });
 }
 function setupFlowingMonthScroll(){
@@ -349,7 +344,7 @@ function setupFlowingMonthScroll(){
         const center=planner.scrollLeft+planner.clientWidth*.55,headers=[...document.querySelectorAll('.date-head')];
         let nearest=null,best=Infinity;
         headers.forEach((h,idx)=>{const x=h.offsetLeft+h.offsetWidth/2,dist=Math.abs(x-center);if(dist<best){best=dist;nearest={idx}}});
-        if(nearest){const d=flowingMonthDates()[nearest.idx];if(d){viewDate=new Date(d.getFullYear(),d.getMonth(),1);document.getElementById('monthLabel').textContent=MONTHS[d.getMonth()];document.getElementById('yearLabel').textContent=d.getFullYear();const ms=document.getElementById('monthSelect');if(ms)ms.value=String(d.getMonth());const ys=document.getElementById('yearSelect');if(ys)ys.value=String(d.getFullYear());document.querySelectorAll('.month-band').forEach(b=>b.classList.toggle('active',Number(b.dataset.month)===d.getMonth()));}}
+        if(nearest){const d=flowingMonthDates()[nearest.idx];if(d){viewDate=new Date(d.getFullYear(),d.getMonth(),1);document.getElementById('monthLabel').textContent=MONTHS[d.getMonth()];document.getElementById('yearLabel').textContent=d.getFullYear();updateFocusPeriod();const ms=document.getElementById('monthSelect');if(ms)ms.value=String(d.getMonth());const ys=document.getElementById('yearSelect');if(ys)ys.value=String(d.getFullYear());document.querySelectorAll('.month-band').forEach(b=>b.classList.toggle('active',Number(b.dataset.month)===d.getMonth()));}}
       });
     };
   });
@@ -961,10 +956,8 @@ document.getElementById('employeeAutoWeekend').addEventListener('change',e=>docu
 document.getElementById('employeeRangeBtn').addEventListener('click',()=>{const id=document.getElementById('employeeId').value;if(!id)return;document.getElementById('employeeDialog').close();openBulkDialog(id)});
 document.getElementById('fitEmployeesBtn').addEventListener('click',fitAllEmployees);
 document.getElementById('focusFitBtn').addEventListener('click',fitAllEmployees);
-document.getElementById('fullscreenBtn').addEventListener('click',enterPlannerFullscreen);
-document.getElementById('exitFullscreenBtn').addEventListener('click',exitPlannerFullscreen);
-document.addEventListener('fullscreenchange',syncPlannerFocus);
-document.addEventListener('webkitfullscreenchange',syncPlannerFocus);
+document.getElementById('focusModeBtn').addEventListener('click',enterPlannerFocus);
+document.getElementById('exitFocusBtn').addEventListener('click',exitPlannerFocus);
 document.getElementById('employeeForm').addEventListener('submit',e=>{e.preventDefault();if(!canEditEmployees())return;const id=document.getElementById('employeeId').value||uid();const current=state.employees.find(x=>x.id===id);trackAction(current?'Mitarbeiter geändert':'Mitarbeiter angelegt',document.getElementById('employeeName').value.trim());const workweek=[...document.querySelectorAll('.weekday-toggle.active')].map(b=>Number(b.dataset.day));const autoWeekend={enabled:document.getElementById('employeeAutoWeekend').checked,intervalWeeks:Number(document.getElementById('employeeWeekendInterval').value||2),anchorDate:document.getElementById('employeeWeekendAnchor').value};if(autoWeekend.enabled&&!autoWeekend.anchorDate){alert('Bitte einen Referenz-Samstag für die freien Wochenenden auswählen.');return}if(current)clearAutoWeekendX(id);const obj={id,name:document.getElementById('employeeName').value.trim(),hours:Number(document.getElementById('employeeHours').value),percent:Number(document.getElementById('employeePercent').value),workdays:Number(document.getElementById('employeeWorkdays').value),workweek,carry:Number(document.getElementById('employeeCarry').value),adjustment:Number(document.getElementById('employeeAdjustment').value),autoWeekend,role:sessionRole==='admin'?document.getElementById('employeeRole').value:(current?.role||'employee'),order:current?.order??state.employees.length};if(current)Object.assign(current,obj);else state.employees.push(obj);ensureAutoWeekendEntries(viewDate.getFullYear());persist();renderRoleControls();render();document.getElementById('employeeDialog').close();showToast('Mitarbeiter gespeichert')});
 document.getElementById('deleteEmployeeBtn').addEventListener('click',()=>{if(sessionRole!=='admin')return;const id=document.getElementById('employeeId').value;if(!id)return;if(confirm('Mitarbeiter und alle zugehörigen Planeinträge wirklich löschen?')){const name=state.employees.find(e=>e.id===id)?.name||'';trackAction('Mitarbeiter gelöscht',name);state.employees=state.employees.filter(e=>e.id!==id);delete state.entries[id];persist();renderRoleControls();render();document.getElementById('employeeDialog').close();showToast('Mitarbeiter gelöscht')}});
 
