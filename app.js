@@ -43,6 +43,7 @@ let sessionRole = localStorage.getItem('teamplan-session-role') || 'admin';
 let sessionEmployeeId = localStorage.getItem('teamplan-session-employee') || '';
 let authUser = null;
 let authMembership = null;
+let loginMode = 'login';
 
 function loadLocal(){
   try { const raw=localStorage.getItem('helios-teamplan-v1'); return raw ? normalizeState(JSON.parse(raw)) : structuredClone(defaultState); }
@@ -658,11 +659,23 @@ async function exportExcel(){
 function exportPdf(){showToast('Druckansicht wird geöffnet');setTimeout(()=>window.print(),80)}
 function openSettings(){const s=state.settings;document.getElementById('settingBaseVacation').value=s.baseVacation;document.getElementById('settingMaxVacation').value=s.maxVacation;document.getElementById('settingMaxAbsence').value=s.maxAbsence;document.getElementById('settingCountSchool').checked=s.countSchool;document.getElementById('settingConfirmConflicts').checked=s.confirmConflicts;document.getElementById('settingsDialog').showModal()}
 
+async function tryBootstrapAdmin(){
+  const code=localStorage.getItem('teamplan-bootstrap-code')||document.getElementById('bootstrapCode')?.value.trim();
+  if(!code||!supabaseClient||!authUser)return false;
+  const name=localStorage.getItem('teamplan-bootstrap-name')||document.getElementById('bootstrapName')?.value.trim()||'Admin';
+  const {error}=await supabaseClient.rpc('bootstrap_first_admin',{p_team_id:(window.TEAMPLAN_CONFIG||{}).teamId,p_code:code,p_display_name:name});
+  if(error)throw error;
+  localStorage.removeItem('teamplan-bootstrap-code');localStorage.removeItem('teamplan-bootstrap-name');
+  return true;
+}
 async function loadAuthMembership(){
   if(!supabaseClient||!authUser)return false;
   const cfg=window.TEAMPLAN_CONFIG||{};
-  const {data,error}=await supabaseClient.from('team_members').select('role,employee_id,display_name').eq('team_id',cfg.teamId).eq('user_id',authUser.id).maybeSingle();
+  let {data,error}=await supabaseClient.from('team_members').select('role,employee_id,display_name').eq('team_id',cfg.teamId).eq('user_id',authUser.id).maybeSingle();
   if(error)throw error;
+  if(!data){
+    try{if(await tryBootstrapAdmin()){({data,error}=await supabaseClient.from('team_members').select('role,employee_id,display_name').eq('team_id',cfg.teamId).eq('user_id',authUser.id).maybeSingle());if(error)throw error}}catch(err){console.error(err);throw err}
+  }
   if(!data){throw new Error('Dein Konto ist diesem Team noch nicht zugeordnet.')}
   authMembership=data;sessionRole=data.role||'viewer';sessionEmployeeId=data.employee_id||'';
   localStorage.setItem('teamplan-session-role',sessionRole);localStorage.setItem('teamplan-session-employee',sessionEmployeeId);
@@ -788,10 +801,30 @@ document.getElementById('dragApproveBtn').addEventListener('click',()=>applyDrag
 document.getElementById('dragRejectBtn').addEventListener('click',()=>applyDragStatus('rejected'));
 document.getElementById('dragDeleteBtn').addEventListener('click',deleteDragEntries);
 document.getElementById('dragCancelBtn').addEventListener('click',clearDragSelection);
+document.getElementById('loginModeBtn').addEventListener('click',()=>{
+  loginMode=loginMode==='login'?'bootstrap':'login';
+  document.getElementById('bootstrapFields').classList.toggle('hidden',loginMode!=='bootstrap');
+  document.getElementById('loginModeBtn').textContent=loginMode==='bootstrap'?'Zurück zur Anmeldung':'Ersten Admin einrichten';
+  document.getElementById('loginSubmitBtn').textContent=loginMode==='bootstrap'?'Admin-Konto erstellen':'Anmelden';
+});
 document.getElementById('loginForm').addEventListener('submit',async e=>{
   e.preventDefault();if(!supabaseClient)return;
   const errEl=document.getElementById('loginError');errEl.classList.add('hidden');
   const email=document.getElementById('loginEmail').value.trim(),password=document.getElementById('loginPassword').value;
+  if(loginMode==='bootstrap'){
+    const code=document.getElementById('bootstrapCode').value.trim(),name=document.getElementById('bootstrapName').value.trim()||'Admin';
+    if(!code){errEl.textContent='Bitte den Setup-Code eingeben.';errEl.classList.remove('hidden');return}
+    localStorage.setItem('teamplan-bootstrap-code',code);localStorage.setItem('teamplan-bootstrap-name',name);
+    const {data,error}=await supabaseClient.auth.signUp({email,password});
+    if(error){errEl.textContent=error.message;errEl.classList.remove('hidden');return}
+    if(data?.session){
+      authUser=data.user;
+      try{await loadAuthMembership();await loadRemotePlan();hideLogin();setSync('live','● Live synchron')}catch(err){errEl.textContent=err.message;errEl.classList.remove('hidden')}
+    }else{
+      errEl.textContent='Konto angelegt. Bitte bestätige gegebenenfalls die E-Mail und melde dich danach an. Der Setup-Code bleibt lokal gespeichert.';errEl.classList.remove('hidden');
+    }
+    return;
+  }
   const {error}=await supabaseClient.auth.signInWithPassword({email,password});
   if(error){errEl.textContent=error.message;errEl.classList.remove('hidden')}
 });
