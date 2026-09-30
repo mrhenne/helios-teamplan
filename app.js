@@ -25,7 +25,12 @@ const defaultState = {
 };
 
 let state = loadLocal();
-let viewDate = new Date(); viewDate.setDate(1);
+function loadLastViewDate(){
+  try{const raw=localStorage.getItem('teamplan-last-view');if(raw){const d=new Date(raw+'-01T12:00:00');if(!isNaN(d))return new Date(d.getFullYear(),d.getMonth(),1)}}catch{}
+  const d=new Date();return new Date(d.getFullYear(),d.getMonth(),1);
+}
+function saveLastViewDate(){localStorage.setItem('teamplan-last-view',viewDate.getFullYear()+'-'+String(viewDate.getMonth()+1).padStart(2,'0'))}
+let viewDate = loadLastViewDate();
 let selectedCodes = new Set();
 let bulkSelectedCodes = new Set();
 let supabaseClient = null;
@@ -344,7 +349,7 @@ function setupFlowingMonthScroll(){
         const center=planner.scrollLeft+planner.clientWidth*.55,headers=[...document.querySelectorAll('.date-head')];
         let nearest=null,best=Infinity;
         headers.forEach((h,idx)=>{const x=h.offsetLeft+h.offsetWidth/2,dist=Math.abs(x-center);if(dist<best){best=dist;nearest={idx}}});
-        if(nearest){const d=flowingMonthDates()[nearest.idx];if(d){viewDate=new Date(d.getFullYear(),d.getMonth(),1);document.getElementById('monthLabel').textContent=MONTHS[d.getMonth()];document.getElementById('yearLabel').textContent=d.getFullYear();updateFocusPeriod();const ms=document.getElementById('monthSelect');if(ms)ms.value=String(d.getMonth());const ys=document.getElementById('yearSelect');if(ys)ys.value=String(d.getFullYear());document.querySelectorAll('.month-band').forEach(b=>b.classList.toggle('active',Number(b.dataset.month)===d.getMonth()));}}
+        if(nearest){const d=flowingMonthDates()[nearest.idx];if(d){viewDate=new Date(d.getFullYear(),d.getMonth(),1);saveLastViewDate();document.getElementById('monthLabel').textContent=MONTHS[d.getMonth()];document.getElementById('yearLabel').textContent=d.getFullYear();updateFocusPeriod();const ms=document.getElementById('monthSelect');if(ms)ms.value=String(d.getMonth());const ys=document.getElementById('yearSelect');if(ys)ys.value=String(d.getFullYear());document.querySelectorAll('.month-band').forEach(b=>b.classList.toggle('active',Number(b.dataset.month)===d.getMonth()));}}
       });
     };
   });
@@ -468,7 +473,7 @@ function bindPlannerEvents(){
     el.addEventListener('pointerdown',e=>{
       if(e.button!==0)return;
       if(!canPlan(el.dataset.emp)){showToast('Nur-Lese-Modus oder keine Rechte für diesen Mitarbeiter');return}
-      e.preventDefault();const anchorDate=new Date(el.dataset.date+'T12:00:00');viewDate=new Date(anchorDate.getFullYear(),anchorDate.getMonth(),1);clearDragSelection();dragSelecting=true;dragEmployeeId=el.dataset.emp;dragStartKey=el.dataset.date;dragSelectedKeys=new Set([el.dataset.date]);updateDragVisuals();
+      e.preventDefault();const anchorDate=new Date(el.dataset.date+'T12:00:00');viewDate=new Date(anchorDate.getFullYear(),anchorDate.getMonth(),1);saveLastViewDate();clearDragSelection();dragSelecting=true;dragEmployeeId=el.dataset.emp;dragStartKey=el.dataset.date;dragSelectedKeys=new Set([el.dataset.date]);updateDragVisuals();
       try{el.setPointerCapture(e.pointerId)}catch{}
     });
     el.addEventListener('pointerenter',()=>{
@@ -501,7 +506,7 @@ function renderWorkweekToggles(days){document.getElementById('workweekToggles').
 function syncWorkdaysFromToggles(){document.getElementById('employeeWorkdays').value=document.querySelectorAll('.weekday-toggle.active').length||1}
 function updateVacationPreview(){const wd=Number(document.getElementById('employeeWorkdays').value||5),carry=Number(document.getElementById('employeeCarry').value||0),adj=Number(document.getElementById('employeeAdjustment').value||0),base=state.settings.baseVacation,actual=roundHalf(base*wd/5+carry+adj),full=roundHalf(base+carry+adj);document.getElementById('vacationPreview').innerHTML=`<strong>Gesamtplanung: ${full} Tage</strong> · <strong>Anteilig fürs Firmenprogramm: ${actual} Tage</strong><br><span style="color:var(--muted)">Anteilig = ${base} × ${wd}/5 + ${carry} Übertrag ${adj>=0?'+':''}${adj} Korrektur. Der Stellenanteil in % allein reduziert die Urlaubstage nicht.</span>`}
 
-function openCell(empId,key){if(!canPlan(empId)){showToast('Keine Bearbeitungsrechte für diesen Mitarbeiter');return}const clickedDate=new Date(key+'T12:00:00');viewDate=new Date(clickedDate.getFullYear(),clickedDate.getMonth(),1);const e=state.employees.find(x=>x.id===empId),v=entryFor(empId,key);selectedCodes=new Set(v.codes||[]);document.getElementById('cellEmployeeId').value=empId;document.getElementById('cellDateValue').value=key;document.getElementById('cellEmployee').textContent=e.name;const d=new Date(key+'T12:00:00');document.getElementById('cellDate').textContent=`${DOW_LONG[d.getDay()]}, ${d.getDate()}. ${MONTHS[d.getMonth()]}`;document.getElementById('cellStatus').value=v.status||'wish';document.getElementById('cellStatus').disabled=!canApprove();document.getElementById('cellPriority').value=v.priority||0;document.getElementById('cellNote').value=v.note||'';document.querySelectorAll('#cellDialog .code-btn').forEach(b=>b.classList.toggle('selected',selectedCodes.has(b.dataset.code)));updateCellWarning(empId,key);document.getElementById('cellDialog').showModal()}
+function openCell(empId,key){if(!canPlan(empId)){showToast('Keine Bearbeitungsrechte für diesen Mitarbeiter');return}const clickedDate=new Date(key+'T12:00:00');viewDate=new Date(clickedDate.getFullYear(),clickedDate.getMonth(),1);saveLastViewDate();const e=state.employees.find(x=>x.id===empId),v=entryFor(empId,key);selectedCodes=new Set(v.codes||[]);document.getElementById('cellEmployeeId').value=empId;document.getElementById('cellDateValue').value=key;document.getElementById('cellEmployee').textContent=e.name;const d=new Date(key+'T12:00:00');document.getElementById('cellDate').textContent=`${DOW_LONG[d.getDay()]}, ${d.getDate()}. ${MONTHS[d.getMonth()]}`;document.getElementById('cellStatus').value=v.status||'wish';document.getElementById('cellStatus').disabled=!canApprove();document.getElementById('cellPriority').value=v.priority||0;document.getElementById('cellNote').value=v.note||'';document.querySelectorAll('#cellDialog .code-btn').forEach(b=>b.classList.toggle('selected',selectedCodes.has(b.dataset.code)));updateCellWarning(empId,key);document.getElementById('cellDialog').showModal()}
 function updateCellWarning(empId,key){const e=state.employees.find(x=>x.id===empId),d=new Date(key+'T12:00:00'),w=document.getElementById('cellWarning');let msgs=[];const blackout=blackoutForKey(key);if(blackout&&[...selectedCodes].some(c=>['U','XU'].includes(c)))msgs.push((blackout.mode==='block'?'URLAUBSSPERRE: ':'Sperrzeit-Hinweis: ')+blackout.name+'.');if(selectedCodes.has('U')&&!isWorkday(e,d))msgs.push('U liegt auf einem nicht regulären Arbeitstag und zählt deshalb nicht vom Urlaubsanspruch ab.');const c=dailyCounts(key),currentEntry=entryFor(empId,key),current=currentEntry.codes||[],currentActive=entryIsActive(currentEntry);const uAfter=c.U-(currentActive&&current.includes('U')?1:0)+(selectedCodes.has('U')?1:0);const sAfter=c.S-(currentActive&&current.includes('S')?1:0)+(selectedCodes.has('S')?1:0);const xuAfter=c.XU-(currentActive&&current.includes('XU')?1:0)+(selectedCodes.has('XU')?1:0);const total=uAfter+xuAfter+(state.settings.countSchool?sAfter:0);if(uAfter>state.settings.maxVacation)msgs.push(`Urlaubslimit überschritten: ${uAfter} statt maximal ${state.settings.maxVacation}.`);if(total>state.settings.maxAbsence)msgs.push(`Gesamt-Abwesenheitswarnung: ${total} statt maximal ${state.settings.maxAbsence}.`);w.textContent=msgs.join(' ');w.classList.toggle('hidden',!msgs.length)}
 
 function bulkDates(){
@@ -923,13 +928,13 @@ async function pushRemote(){
 function setSync(cls,text){const p=document.getElementById('syncPill');p.className='sync-pill '+cls;p.textContent=text}
 
 // top controls
-document.getElementById('prevMonth').addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()-1);plannerScrollLeft=null;render()});
-document.getElementById('nextMonth').addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()+1);plannerScrollLeft=null;render()});
-document.getElementById('prevYear').addEventListener('click',()=>{viewDate.setFullYear(viewDate.getFullYear()-1);plannerScrollLeft=null;render()});
-document.getElementById('nextYear').addEventListener('click',()=>{viewDate.setFullYear(viewDate.getFullYear()+1);plannerScrollLeft=null;render()});
-document.getElementById('monthSelect').addEventListener('change',e=>{viewDate.setMonth(Number(e.target.value));plannerScrollLeft=null;render()});
-document.getElementById('yearSelect').addEventListener('change',e=>{viewDate.setFullYear(Number(e.target.value));plannerScrollLeft=null;render()});
-document.getElementById('todayBtn').addEventListener('click',()=>{viewDate=new Date();viewDate.setDate(1);plannerScrollLeft=null;render()});
+document.getElementById('prevMonth').addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()-1);saveLastViewDate();plannerScrollLeft=null;render()});
+document.getElementById('nextMonth').addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()+1);saveLastViewDate();plannerScrollLeft=null;render()});
+document.getElementById('prevYear').addEventListener('click',()=>{viewDate.setFullYear(viewDate.getFullYear()-1);saveLastViewDate();plannerScrollLeft=null;render()});
+document.getElementById('nextYear').addEventListener('click',()=>{viewDate.setFullYear(viewDate.getFullYear()+1);saveLastViewDate();plannerScrollLeft=null;render()});
+document.getElementById('monthSelect').addEventListener('change',e=>{viewDate.setMonth(Number(e.target.value));saveLastViewDate();plannerScrollLeft=null;render()});
+document.getElementById('yearSelect').addEventListener('change',e=>{viewDate.setFullYear(Number(e.target.value));saveLastViewDate();plannerScrollLeft=null;render()});
+document.getElementById('todayBtn').addEventListener('click',()=>{viewDate=new Date();viewDate.setDate(1);saveLastViewDate();plannerScrollLeft=null;render()});
 document.getElementById('zoomOutBtn').addEventListener('click',()=>changeZoom(-.05));
 document.getElementById('zoomInBtn').addEventListener('click',()=>changeZoom(.05));
 document.getElementById('zoomRange').addEventListener('input',e=>setZoom(Number(e.target.value)/100));
