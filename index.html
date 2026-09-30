@@ -34,12 +34,14 @@
           <option value="viewer">Nur Lesen</option>
         </select>
         <select id="roleEmployeeSelect" class="role-select hidden" title="Mitarbeiter auswählen"></select>
+        <button id="roleHelpBtn" class="btn ghost compact-btn" data-tool-action="roles">Rollen?</button>
         <button id="todayBtn" class="btn ghost compact-btn">Heute</button>
-        <button id="conflictsBtn" class="btn ghost compact-btn">Konflikte</button>
-        <button id="historyBtn" class="btn ghost compact-btn">Verlauf</button>
-        <button id="blackoutsBtn" class="btn ghost compact-btn">Sperrzeiten</button>
-        <button id="excelExportBtn" class="btn ghost compact-btn">Excel</button>
-        <button id="pdfExportBtn" class="btn ghost compact-btn">PDF</button>
+        <button id="conflictsBtn" class="btn ghost compact-btn" data-tool-action="conflicts">Konflikte</button>
+        <button id="historyBtn" class="btn ghost compact-btn" data-tool-action="history">Verlauf</button>
+        <button id="blackoutsBtn" class="btn ghost compact-btn" data-tool-action="blackouts">Sperrzeiten</button>
+        <button id="planImportBtn" class="btn ghost compact-btn" data-tool-action="plan-import">Plan importieren</button>
+        <button id="excelExportBtn" class="btn ghost compact-btn" data-tool-action="excel">Excel</button>
+        <button id="pdfExportBtn" class="btn ghost compact-btn" data-tool-action="pdf">PDF</button>
         <button id="exportBtn" class="btn ghost compact-btn" title="JSON-Sicherung">Backup</button>
         <label class="btn ghost file-btn compact-btn">Import<input id="importInput" type="file" accept="application/json" hidden></label>
         <button id="settingsBtn" class="btn primary compact-btn" title="Einstellungen">⚙</button>
@@ -228,6 +230,34 @@
       <div id="conflictsSummary" class="conflict-summary"></div>
       <div id="conflictsList" class="management-list conflict-list"></div>
     </div>
+  </dialog>
+
+  <dialog id="rolesHelpDialog" class="dialog glass-solid wide-dialog">
+    <div class="dialog-panel">
+      <div class="dialog-head"><div><span class="eyebrow">ROLLEN & RECHTE</span><h2>Wer darf was?</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <div class="role-help-grid">
+        <article><strong>Admin</strong><p>Voller Zugriff: Mitarbeiter, Rollen, Urlaub, Genehmigungen, Sperrzeiten, Einstellungen, Importe, Exporte und Löschungen.</p></article>
+        <article><strong>Planer</strong><p>Darf planen, Wünsche genehmigen oder ablehnen, Mitarbeiter-Stammdaten bearbeiten, Sperrzeiten verwalten und Exporte erstellen. Rollen und endgültige Löschungen bleiben beim Admin.</p></article>
+        <article><strong>Mitarbeiter</strong><p>Darf ausschließlich die eigene Planung bearbeiten und Urlaubswünsche eintragen. Neue Einträge erhalten automatisch den Status „Wunsch“. Keine Genehmigung fremder Wünsche.</p></article>
+        <article><strong>Nur Lesen</strong><p>Kann den Plan, Konflikte, Jahresübersicht und Exporte ansehen, aber keine Planung oder Stammdaten verändern.</p></article>
+      </div>
+      <div class="role-security-note"><strong>Wichtig:</strong> Diese Rollen sind aktuell Bedienrechte in der Web-App. Für echte Zugriffssicherheit mit persönlichen Benutzerkonten brauchen wir später Login + serverseitige Rechte über Supabase Auth/RLS.</div>
+    </div>
+  </dialog>
+
+  <dialog id="planImportDialog" class="dialog glass-solid wide-dialog">
+    <form id="planImportForm">
+      <div class="dialog-head"><div><span class="eyebrow">BESTEHENDEN PLAN IMPORTIEREN</span><h2>Urlaubsplan aus Excel / CSV übernehmen</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <p class="dialog-copy">Unterstützt werden zwei typische Formate: <strong>Liste</strong> mit Spalten wie Name, Datum, Kürzel/Status sowie <strong>Kalendermatrix</strong> mit Namen links und Datums-Spalten oben. Erkannte U, X, XU, S und G werden übernommen.</p>
+      <label>Datei auswählen<input id="planImportFile" type="file" accept=".xlsx,.xls,.csv,.txt"></label>
+      <div class="form-grid two">
+        <label>Importstatus<select id="planImportStatus"><option value="approved">Genehmigt</option><option value="preliminary">Vorläufig</option><option value="wish">Wunsch</option></select></label>
+        <label>Bestehende Einträge<select id="planImportMode"><option value="merge">Ergänzen / zusammenführen</option><option value="replace">An erkannten Tagen ersetzen</option></select></label>
+      </div>
+      <label class="toggle-line"><input id="planImportCreateEmployees" type="checkbox" checked> Fehlende Mitarbeiter automatisch anlegen</label>
+      <div id="planImportPreview" class="plan-import-preview">Noch keine Datei analysiert.</div>
+      <div class="dialog-actions"><div class="spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button id="planImportApplyBtn" type="submit" class="btn primary" disabled>Erkannte Daten übernehmen</button></div>
+    </form>
   </dialog>
 
   <dialog id="settingsDialog" class="dialog glass-solid">
