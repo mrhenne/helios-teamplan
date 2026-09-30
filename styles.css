@@ -352,3 +352,15 @@ body.planner-focus .plan-table{min-height:100%}
   .view-tool-btn{padding:0 7px!important}
   .planner-focus-controls{right:5px;top:5px}
 }
+
+.employee-cell{padding:var(--employee-pad-y,8px) var(--employee-pad-x,10px)!important}
+.employee-card{grid-template-columns:22px 1fr auto;gap:var(--employee-gap,8px)}
+.drag-handle{font-size:var(--drag-font,16px)}
+.employee-name{font-size:var(--employee-name-font,12px)}
+.employee-meta{font-size:var(--employee-meta-font,9px)}
+.employee-stats strong{font-size:var(--employee-stat-font,12px)}
+.employee-stats small{font-size:var(--employee-small-font,8px)}
+.date-head{font-size:var(--date-font,10px)}
+.date-head strong{font-size:var(--date-strong-font,15px)}
+.month-mini,.holiday-label,.school-label{font-size:var(--mini-font,7px)}
+.cell-code,.summary-row td{font-size:var(--code-font,9px)}
