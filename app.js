@@ -171,17 +171,27 @@ function syncViewControls(){
 }
 
 function applyAppearance(){
-  document.documentElement.dataset.theme=state.settings.theme||'light';
-  const z=Math.max(.65,Math.min(1.35,Number(state.settings.zoom||1)));
-  document.documentElement.style.setProperty('--zoom',z);
-  const zl=document.getElementById('zoomLabel');if(zl)zl.textContent=Math.round(z*100)+'%';
-  const tb=document.getElementById('themeBtn');if(tb)tb.textContent=(state.settings.theme==='dark'?'☀':'◐');
+  const theme=state.settings.theme==='dark'?'dark':'light';
+  document.documentElement.dataset.theme=theme;
+  document.body.classList.toggle('dark-mode',theme==='dark');
+  const z=Math.max(.70,Math.min(1.40,Number(state.settings.zoom||1)));
+  const dayWidth=Math.round(52*z),dayHeight=Math.round(62*z),employeeWidth=Math.round(265*Math.max(.82,z));
+  document.documentElement.style.setProperty('--day-width',dayWidth+'px');
+  document.documentElement.style.setProperty('--day-height',dayHeight+'px');
+  document.documentElement.style.setProperty('--employee-width',employeeWidth+'px');
+  const label=document.getElementById('zoomLabel');if(label)label.textContent=Math.round(z*100)+'%';
+  const range=document.getElementById('zoomRange');if(range)range.value=String(Math.round(z*100));
+  const themeLabel=document.getElementById('themeLabel');if(themeLabel)themeLabel.textContent=theme==='dark'?'Dunkel':'Hell';
 }
-function changeZoom(delta){
-  state.settings.zoom=Math.max(.65,Math.min(1.35,Math.round((Number(state.settings.zoom||1)+delta)*20)/20));
+function setZoom(value){
+  state.settings.zoom=Math.max(.70,Math.min(1.40,Number(value)));
   persist();applyAppearance();
 }
-function toggleTheme(){state.settings.theme=state.settings.theme==='dark'?'light':'dark';persist();applyAppearance();}
+function changeZoom(delta){setZoom(Math.round((Number(state.settings.zoom||1)+delta)*20)/20);}
+function toggleTheme(){
+  state.settings.theme=state.settings.theme==='dark'?'light':'dark';
+  persist();applyAppearance();
+}
 function setupFlowingMonthScroll(){
   const planner=document.getElementById('planner');if(!planner)return;
   requestAnimationFrame(()=>{
@@ -195,11 +205,39 @@ function setupFlowingMonthScroll(){
         ticking=false;
         const center=planner.scrollLeft+planner.clientWidth*.55,headers=[...document.querySelectorAll('.date-head')];
         let nearest=null,best=Infinity;
-        headers.forEach((h,idx)=>{const x=h.offsetLeft+h.offsetWidth/2,dist=Math.abs(x-center);if(dist<best){best=dist;nearest={h,idx}}});
+        headers.forEach((h,idx)=>{const x=h.offsetLeft+h.offsetWidth/2,dist=Math.abs(x-center);if(dist<best){best=dist;nearest={idx}}});
         if(nearest){const d=flowingMonthDates()[nearest.idx];if(d){document.getElementById('monthLabel').textContent=MONTHS[d.getMonth()];document.getElementById('yearLabel').textContent=d.getFullYear();}}
       });
     };
   });
+}
+
+function parseNamesText(text){
+  return String(text||'').split(/\r?\n|;/).map(x=>x.trim()).filter(Boolean).map(line=>line.split(',')[0].trim()).filter(Boolean);
+}
+function uniqueNames(names){const seen=new Set();return names.filter(n=>{const k=n.toLocaleLowerCase('de-DE');if(seen.has(k))return false;seen.add(k);return true;});}
+function updateNamesImportPreview(names){
+  const list=uniqueNames(names||[]),el=document.getElementById('namesImportPreview');
+  el.innerHTML=list.length?'<strong>'+list.length+' Namen erkannt</strong><span>'+list.slice(0,8).map(escapeHtml).join(' · ')+(list.length>8?' …':'')+'</span>':'Noch keine Namen erkannt.';
+  el.dataset.names=JSON.stringify(list);
+}
+async function readNamesFile(file){
+  if(!file)return [];
+  const lower=file.name.toLowerCase();
+  if(lower.endsWith('.xlsx')||lower.endsWith('.xls')){
+    if(!window.XLSX)throw new Error('Excel-Bibliothek nicht geladen');
+    const data=await file.arrayBuffer(),wb=XLSX.read(data,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false});
+    return rows.map(r=>String((r||[])[0]||'').trim()).filter(Boolean);
+  }
+  return parseNamesText(await file.text());
+}
+function importNames(names,replace){
+  const clean=uniqueNames(names);if(!clean.length)return 0;
+  if(replace){state.employees=[];state.entries={};}
+  const existing=new Set(state.employees.map(e=>e.name.toLocaleLowerCase('de-DE')));
+  let added=0;
+  clean.forEach(name=>{const k=name.toLocaleLowerCase('de-DE');if(existing.has(k))return;state.employees.push({id:uid(),name,hours:38.5,percent:100,workdays:5,workweek:[1,2,3,4,5],carry:0,adjustment:0,order:state.employees.length});existing.add(k);added++;});
+  state.employees.forEach((e,i)=>e.order=i);persist();render();return added;
 }
 function renderYearOverview(){
   const year=viewDate.getFullYear(), holidays=holidaysNRW(year);
@@ -391,13 +429,14 @@ document.getElementById('nextMonth').addEventListener('click',()=>{viewDate.setM
 document.getElementById('todayBtn').addEventListener('click',()=>{viewDate=new Date();viewDate.setDate(1);render()});
 document.getElementById('zoomOutBtn').addEventListener('click',()=>changeZoom(-.05));
 document.getElementById('zoomInBtn').addEventListener('click',()=>changeZoom(.05));
+document.getElementById('zoomRange').addEventListener('input',e=>setZoom(Number(e.target.value)/100));
 document.getElementById('themeBtn').addEventListener('click',toggleTheme);
 document.getElementById('monthViewBtn').addEventListener('click',()=>{currentView='month';clearDragSelection();render()});
 document.getElementById('quarterViewBtn').addEventListener('click',()=>{currentView='quarter';viewDate.setMonth(Math.floor(viewDate.getMonth()/3)*3);clearDragSelection();render()});
 document.getElementById('yearViewBtn').addEventListener('click',()=>{currentView='year';clearDragSelection();render()});
 document.getElementById('vacationFullBtn').addEventListener('click',()=>{state.settings.vacationDisplayMode='full';persist();render();showToast('Urlaubsanzeige: Gesamtplanung')});
 document.getElementById('vacationActualBtn').addEventListener('click',()=>{state.settings.vacationDisplayMode='actual';persist();render();showToast('Urlaubsanzeige: anteilig fürs Firmenprogramm')});
-document.getElementById('searchInput').addEventListener('input',render);document.getElementById('addEmployeeBtn').addEventListener('click',()=>openEmployee());document.getElementById('bulkEntryBtn').addEventListener('click',openBulkDialog);document.getElementById('settingsBtn').addEventListener('click',openSettings);document.querySelectorAll('.close-dialog').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
+document.getElementById('searchInput').addEventListener('input',render);document.getElementById('addEmployeeBtn').addEventListener('click',()=>openEmployee());document.getElementById('bulkEntryBtn').addEventListener('click',openBulkDialog);document.getElementById('importNamesBtn').addEventListener('click',()=>{document.getElementById('namesPasteInput').value='';document.getElementById('namesFileInput').value='';updateNamesImportPreview([]);document.getElementById('namesImportDialog').showModal()});document.getElementById('settingsBtn').addEventListener('click',openSettings);document.querySelectorAll('.close-dialog').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
 document.querySelectorAll('[data-bulk-code]').forEach(b=>b.addEventListener('click',()=>{bulkSelectedCodes.has(b.dataset.bulkCode)?bulkSelectedCodes.delete(b.dataset.bulkCode):bulkSelectedCodes.add(b.dataset.bulkCode);b.classList.toggle('selected');updateBulkPreview()}));
 ['bulkEmployee','bulkStart','bulkEnd','bulkOnlyWorkdays','bulkSkipWeekends','bulkMode','bulkPriority'].forEach(id=>document.getElementById(id).addEventListener('change',updateBulkPreview));
 document.getElementById('bulkForm').addEventListener('submit',e=>{e.preventDefault();applyBulk(false)});
@@ -417,6 +456,19 @@ document.getElementById('settingsForm').addEventListener('submit',e=>{e.preventD
 document.getElementById('exportBtn').addEventListener('click',()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`teamplan-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(a.href)});
 document.getElementById('importInput').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const incoming=normalizeState(JSON.parse(await f.text()));if(!confirm('Aktuelle Planung durch diese Sicherung ersetzen?'))return;state=incoming;persist();render();showToast('Sicherung importiert')}catch{alert('Die Datei konnte nicht gelesen werden.')}});
 
+document.getElementById('namesPasteInput').addEventListener('input',e=>updateNamesImportPreview(parseNamesText(e.target.value)));
+document.getElementById('namesFileInput').addEventListener('change',async e=>{
+  try{const names=await readNamesFile(e.target.files[0]);document.getElementById('namesPasteInput').value=names.join('\n');updateNamesImportPreview(names)}
+  catch(err){alert('Die Namensliste konnte nicht gelesen werden: '+err.message)}
+});
+document.getElementById('namesImportForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const names=JSON.parse(document.getElementById('namesImportPreview').dataset.names||'[]');
+  if(!names.length){alert('Keine Namen erkannt.');return}
+  const replace=document.getElementById('replaceExistingNames').checked;
+  if(replace&&!confirm('Vorhandene Mitarbeiter und deren Planeinträge wirklich ersetzen?'))return;
+  const added=importNames(names,replace);document.getElementById('namesImportDialog').close();showToast(added+' Mitarbeiter übernommen');
+});
 document.querySelectorAll('[data-drag-code]').forEach(b=>b.addEventListener('click',()=>applyDragCode(b.dataset.dragCode)));
 document.getElementById('dragDeleteBtn').addEventListener('click',deleteDragEntries);
 document.getElementById('dragCancelBtn').addEventListener('click',clearDragSelection);
