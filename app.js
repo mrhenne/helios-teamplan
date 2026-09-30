@@ -312,7 +312,7 @@ function fitAllEmployees(){
     const available=Math.max(180,window.innerHeight-top-focusOffset);
     const measured=Math.max(1,table.scrollHeight);
     let target=current*(available/measured);
-    const FIT_MIN=.55;
+    const FIT_MIN=.62;
     target=Math.max(FIT_MIN,Math.min(1.40,Math.floor(target*100)/100));
     setZoom(target);
     requestAnimationFrame(()=>{planner.scrollTop=0});
