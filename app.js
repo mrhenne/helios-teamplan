@@ -419,11 +419,12 @@ function updateBulkPreview(){
   preview.innerHTML=`<strong>${dates.length} Tage betroffen</strong><span>${existing} mit bestehendem Eintrag</span><span>${conflicts} mögliche Urlaubskonflikte</span>${bulkSelectedCodes.has('U')?`<span>${actualVacation} Urlaubstage fürs Firmenprogramm</span>`:''}`;
 }
 function openBulkDialog(){
-  const employees=[...state.employees].sort((a,b)=>a.order-b.order);
+  const employees=[...state.employees].sort((a,b)=>a.order-b.order).filter(e=>sessionRole!=='employee'||e.id===sessionEmployeeId);
+  if(!employees.length){showToast('Kein Mitarbeiter für diesen Modus ausgewählt');return}
   document.getElementById('bulkEmployee').innerHTML=employees.map(e=>`<option value="${e.id}">${escapeHtml(e.name)}</option>`).join('');
   const today=new Date(),start=new Date(viewDate.getFullYear(),viewDate.getMonth(),Math.min(today.getMonth()===viewDate.getMonth()&&today.getFullYear()===viewDate.getFullYear()?today.getDate():1,new Date(viewDate.getFullYear(),viewDate.getMonth()+1,0).getDate()));
   document.getElementById('bulkStart').value=dateKey(start);document.getElementById('bulkEnd').value=dateKey(start);
-  document.getElementById('bulkPriority').value='0';document.getElementById('bulkMode').value='merge';document.getElementById('bulkNote').value='';
+  document.getElementById('bulkStatus').value='wish';document.getElementById('bulkStatus').disabled=!canApprove();document.getElementById('bulkPriority').value='0';document.getElementById('bulkMode').value='merge';document.getElementById('bulkNote').value='';
   document.getElementById('bulkOnlyWorkdays').checked=false;document.getElementById('bulkSkipWeekends').checked=false;
   bulkSelectedCodes=new Set();document.querySelectorAll('[data-bulk-code]').forEach(b=>b.classList.remove('selected'));
   updateBulkPreview();document.getElementById('bulkDialog').showModal();
@@ -431,19 +432,23 @@ function openBulkDialog(){
 function applyBulk(clear=false){
   const empId=document.getElementById('bulkEmployee').value,dates=bulkDates(),mode=document.getElementById('bulkMode').value;
   if(!empId||!dates.length){alert('Bitte einen gültigen Zeitraum auswählen.');return false}
+  if(!canPlan(empId)){showToast('Keine Bearbeitungsrechte');return false}
   if(!clear&&!bulkSelectedCodes.size){alert('Bitte mindestens ein Kürzel auswählen.');return false}
+  const blocked=dates.map(dateKey).filter(key=>[...bulkSelectedCodes].some(c=>['U','XU'].includes(c))&&blackoutBlocks(key));
+  if(blocked.length&&!clear){alert('Der Zeitraum enthält eine Urlaubssperre: '+blackoutBlocks(blocked[0]).name);return false}
+  trackAction(clear?'Zeitraum gelöscht':'Zeitraum geplant',(state.employees.find(e=>e.id===empId)?.name||'')+' · '+dates.length+' Tage');
   if(!state.entries[empId]) state.entries[empId]={};
-  const priority=Number(document.getElementById('bulkPriority').value),note=document.getElementById('bulkNote').value.trim();
+  const priority=Number(document.getElementById('bulkPriority').value),note=document.getElementById('bulkNote').value.trim(),status=canApprove()?document.getElementById('bulkStatus').value:'wish';
   let overwritten=0;
   dates.forEach(d=>{
     const key=dateKey(d),old=entryFor(empId,key);
     if(clear){if(state.entries[empId][key]){delete state.entries[empId][key];overwritten++}return}
     if(mode==='replace'){
       if((old.codes||[]).length||old.note||old.priority) overwritten++;
-      state.entries[empId][key]={codes:[...bulkSelectedCodes],priority,note};
+      state.entries[empId][key]={codes:[...bulkSelectedCodes],priority,note,status};
     } else {
       const codes=[...new Set([...(old.codes||[]),...bulkSelectedCodes])];
-      state.entries[empId][key]={codes,priority:Math.max(Number(old.priority||0),priority),note:note||old.note||''};
+      state.entries[empId][key]={codes,priority:Math.max(Number(old.priority||0),priority),note:note||old.note||'',status:canApprove()?status:(old.status||'wish')};
     }
   });
   persist();render();document.getElementById('bulkDialog').close();
@@ -451,6 +456,60 @@ function applyBulk(clear=false){
   return true;
 }
 
+
+function renderRoleControls(){
+  const role=document.getElementById('roleSelect'),emp=document.getElementById('roleEmployeeSelect');
+  role.value=sessionRole;
+  emp.innerHTML=[...state.employees].sort((a,b)=>a.order-b.order).map(e=>`<option value="${e.id}">${escapeHtml(e.name)}</option>`).join('');
+  if(!sessionEmployeeId&&state.employees.length)sessionEmployeeId=state.employees[0].id;
+  emp.value=sessionEmployeeId;
+  emp.classList.toggle('hidden',sessionRole!=='employee');
+  ['blackoutsBtn','settingsBtn','addEmployeeBtn','importNamesBtn'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=!canManage()});
+  document.getElementById('bulkEntryBtn').disabled=sessionRole==='viewer';
+}
+function renderBlackouts(){
+  const list=document.getElementById('blackoutsList');
+  const items=[...(state.blackouts||[])].sort((a,b)=>a.start.localeCompare(b.start));
+  list.innerHTML=items.length?items.map(b=>`<div class="management-item"><div><strong>${escapeHtml(b.name)}</strong><span>${b.start} – ${b.end} · ${b.mode==='block'?'blockiert':'Warnung'}</span></div><button type="button" class="btn danger blackout-delete" data-id="${b.id}">Löschen</button></div>`).join(''):'<div class="empty-state">Keine Sperrzeiten angelegt.</div>';
+  list.querySelectorAll('.blackout-delete').forEach(btn=>btn.addEventListener('click',()=>{if(!canManage())return;trackAction('Sperrzeit gelöscht');state.blackouts=state.blackouts.filter(x=>x.id!==btn.dataset.id);persist();renderBlackouts();render()}));
+}
+function renderHistory(){
+  const list=document.getElementById('historyList');
+  const items=state.audit||[];
+  list.innerHTML=items.length?items.map(a=>`<div class="management-item history-item"><div><strong>${escapeHtml(a.label)}</strong><span>${escapeHtml(a.detail||'')} · ${escapeHtml(a.actor||'')} · ${new Date(a.time).toLocaleString('de-DE')}</span></div></div>`).join(''):'<div class="empty-state">Noch keine protokollierten Änderungen.</div>';
+  document.getElementById('undoBtn').disabled=!undoStack.length;
+}
+function conflictItems(year=viewDate.getFullYear()){
+  const out=[];
+  for(let d=new Date(year,0,1);d<=new Date(year,11,31);d=addDays(d,1)){
+    const key=dateKey(d),c=dailyCounts(key),b=blackoutForKey(key),conf=conflictLevel(key);
+    if(conf.vacation||conf.total)out.push({key,type:'Besetzung',text:`${c.U} Urlaub · ${c.total} relevante Abwesenheiten`});
+    if(b){
+      const names=state.employees.filter(e=>{const v=entryFor(e.id,key);return entryIsActive(v)&&v.codes?.some(x=>['U','XU'].includes(x))}).map(e=>e.name);
+      if(names.length)out.push({key,type:'Sperrzeit',text:`${b.name}: ${names.join(', ')}`});
+    }
+    state.employees.forEach(e=>{const v=entryFor(e.id,key);if((v.status||'wish')==='wish'&&v.codes?.some(x=>['U','XU'].includes(x)))out.push({key,type:'Offener Wunsch',text:e.name+' · '+v.codes.join('+')})});
+  }
+  return out;
+}
+function renderConflicts(){
+  const items=conflictItems(),summary=document.getElementById('conflictsSummary'),list=document.getElementById('conflictsList');
+  const counts=items.reduce((a,x)=>(a[x.type]=(a[x.type]||0)+1,a),{});
+  summary.innerHTML=`<div><strong>${items.length}</strong><span>gesamt</span></div><div><strong>${counts['Besetzung']||0}</strong><span>Besetzung</span></div><div><strong>${counts['Sperrzeit']||0}</strong><span>Sperrzeiten</span></div><div><strong>${counts['Offener Wunsch']||0}</strong><span>offene Wünsche</span></div>`;
+  list.innerHTML=items.length?items.slice(0,500).map(x=>`<button type="button" class="management-item conflict-item" data-date="${x.key}"><div><strong>${x.key} · ${escapeHtml(x.type)}</strong><span>${escapeHtml(x.text)}</span></div></button>`).join(''):'<div class="empty-state success-state">Keine Konflikte gefunden.</div>';
+  list.querySelectorAll('.conflict-item').forEach(btn=>btn.addEventListener('click',()=>{const d=new Date(btn.dataset.date+'T12:00:00');viewDate=new Date(d.getFullYear(),d.getMonth(),1);currentView='month';document.getElementById('conflictsDialog').close();render()}));
+}
+function exportExcel(){
+  if(!window.XLSX){alert('Excel-Export ist nicht verfügbar.');return}
+  const year=viewDate.getFullYear(),rows=[['Mitarbeiter','Anspruch anteilig','Geplant anteilig','Rest','XU']];
+  [...state.employees].sort((a,b)=>a.order-b.order).forEach(e=>rows.push([e.name,actualVacationEntitlement(e),usedVacationActual(e,year),actualVacationEntitlement(e)-usedVacationActual(e,year),countCode(e,'XU',year)]));
+  const detail=[['Datum','Mitarbeiter','Codes','Status','Priorität','Notiz']];
+  state.employees.forEach(e=>Object.entries(state.entries[e.id]||{}).filter(([k])=>k.startsWith(year+'-')).forEach(([k,v])=>detail.push([k,e.name,(v.codes||[]).join('+'),v.status||'wish',v.priority||0,v.note||''])));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Urlaubskonten');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(detail),'Planung');
+  XLSX.writeFile(wb,`TeamPlan-${year}.xlsx`);
+  showToast('Excel erstellt');
+}
+function exportPdf(){window.print()}
 function openSettings(){const s=state.settings;document.getElementById('settingBaseVacation').value=s.baseVacation;document.getElementById('settingMaxVacation').value=s.maxVacation;document.getElementById('settingMaxAbsence').value=s.maxAbsence;document.getElementById('settingCountSchool').checked=s.countSchool;document.getElementById('settingConfirmConflicts').checked=s.confirmConflicts;document.getElementById('settingsDialog').showModal()}
 
 async function initRemote(){
