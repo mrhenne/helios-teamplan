@@ -379,6 +379,17 @@
     </div>
   </div>
 
+  <dialog id="invitePasswordDialog" class="dialog glass-solid login-dialog">
+    <form id="invitePasswordForm">
+      <div class="dialog-head"><div><span class="eyebrow">TEAMPLAN EINRICHTEN</span><h2>Eigenes Passwort festlegen</h2></div></div>
+      <p class="dialog-copy">Deine Einladung wurde bestätigt. Lege jetzt dein persönliches Passwort für zukünftige Anmeldungen fest.</p>
+      <label>Neues Passwort<input id="invitePassword" type="password" minlength="8" autocomplete="new-password" required></label>
+      <label>Passwort wiederholen<input id="invitePasswordConfirm" type="password" minlength="8" autocomplete="new-password" required></label>
+      <div id="invitePasswordError" class="inline-warning hidden"></div>
+      <div class="dialog-actions"><div class="spacer"></div><button type="submit" class="btn primary">Passwort speichern</button></div>
+    </form>
+  </dialog>
+
   <dialog id="loginDialog" class="dialog glass-solid login-dialog">
     <form id="loginForm">
       <div class="dialog-head"><div><span class="eyebrow">TEAMPLAN LOGIN</span><h2>Anmelden</h2></div></div>
@@ -399,6 +410,6 @@
   </dialog>
 
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20260930-9"></script>
+  <script src="app.js?v=20260930-10"></script>
 </body>
 </html>
