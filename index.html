@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
-  <script src="config.js?v=20260930-2"></script>
+  <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
@@ -37,6 +37,7 @@
         </select>
         <select id="roleEmployeeSelect" class="role-select hidden" title="Mitarbeiter auswählen"></select>
         <button id="roleHelpBtn" class="btn ghost compact-btn" data-tool-action="roles">Rollen?</button>
+        <button id="usersBtn" class="btn ghost compact-btn hidden">Benutzer</button>
         <button id="todayBtn" class="btn ghost compact-btn">Heute</button>
         <button id="conflictsBtn" class="btn ghost compact-btn" data-tool-action="conflicts">Konflikte</button>
         <button id="historyBtn" class="btn ghost compact-btn" data-tool-action="history">Verlauf</button>
@@ -59,10 +60,22 @@
 
     <section class="toolbar glass planner-controls">
   <div class="controls-row controls-primary">
-    <div class="month-nav">
-      <button id="prevMonth" class="icon-btn" aria-label="Zurück">‹</button>
-      <div class="month-title"><strong id="monthLabel"></strong><span id="yearLabel"></span></div>
-      <button id="nextMonth" class="icon-btn" aria-label="Weiter">›</button>
+    <div class="calendar-heading"><strong id="monthLabel"></strong><span id="yearLabel"></span></div>
+    <div class="date-nav-block">
+      <span class="control-caption">Monat</span>
+      <button id="prevMonth" class="icon-btn" aria-label="Vorheriger Monat">‹</button>
+      <select id="monthSelect" class="date-select">
+        <option value="0">Januar</option><option value="1">Februar</option><option value="2">März</option><option value="3">April</option>
+        <option value="4">Mai</option><option value="5">Juni</option><option value="6">Juli</option><option value="7">August</option>
+        <option value="8">September</option><option value="9">Oktober</option><option value="10">November</option><option value="11">Dezember</option>
+      </select>
+      <button id="nextMonth" class="icon-btn" aria-label="Nächster Monat">›</button>
+    </div>
+    <div class="date-nav-block">
+      <span class="control-caption">Jahr</span>
+      <button id="prevYear" class="icon-btn" aria-label="Vorheriges Jahr">‹</button>
+      <select id="yearSelect" class="date-select"></select>
+      <button id="nextYear" class="icon-btn" aria-label="Nächstes Jahr">›</button>
     </div>
     <div class="segmented view-switch" aria-label="Ansicht">
       <button id="monthViewBtn" class="segment active" type="button">Monat</button>
@@ -247,6 +260,22 @@
     </div>
   </dialog>
 
+  <dialog id="usersDialog" class="dialog glass-solid wide-dialog">
+    <div class="dialog-panel">
+      <div class="dialog-head"><div><span class="eyebrow">ADMIN · BENUTZER</span><h2>Benutzerverwaltung</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <form id="userInviteForm" class="user-invite-box">
+        <div class="form-grid two">
+          <label>E-Mail<input id="inviteEmail" type="email" required placeholder="name@beispiel.de"></label>
+          <label>Anzeigename<input id="inviteName" placeholder="Vorname Nachname"></label>
+          <label>Rolle<select id="inviteRole"><option value="employee">Mitarbeiter</option><option value="planner">Planer</option><option value="viewer">Nur Lesen</option><option value="admin">Admin</option></select></label>
+          <label>Mitarbeiter verknüpfen<select id="inviteEmployee"><option value="">Keine Verknüpfung</option></select></label>
+        </div>
+        <button type="submit" class="btn primary">Einladung senden</button>
+      </form>
+      <div id="usersList" class="management-list users-list"></div>
+    </div>
+  </dialog>
+
   <dialog id="planImportDialog" class="dialog glass-solid wide-dialog">
     <form id="planImportForm">
       <div class="dialog-head"><div><span class="eyebrow">BESTEHENDEN PLAN IMPORTIEREN</span><h2>Urlaubsplan aus Excel / CSV übernehmen</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
@@ -262,9 +291,21 @@
     </form>
   </dialog>
 
-  <dialog id="settingsDialog" class="dialog glass-solid">
+  <dialog id="settingsDialog" class="dialog glass-solid wide-dialog">
     <form id="settingsForm" method="dialog">
-      <div class="dialog-head"><div><span class="eyebrow">PLANUNGSREGELN</span><h2>Einstellungen</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <div class="dialog-head"><div><span class="eyebrow">KONTO & PLANUNG</span><h2>Einstellungen</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <section class="settings-section">
+        <div class="settings-section-head"><strong>Mein Konto</strong><span>Eigene Zugangsdaten verwalten</span></div>
+        <div class="form-grid two">
+          <label>Name<input id="accountName" autocomplete="name"></label>
+          <label>E-Mail<input id="accountEmail" type="email" autocomplete="email"></label>
+          <label>Neues Passwort<input id="accountPassword" type="password" minlength="8" autocomplete="new-password" placeholder="Leer lassen, wenn unverändert"></label>
+        </div>
+        <button id="accountSaveBtn" type="button" class="btn ghost">Kontodaten speichern</button>
+        <div id="accountInfo" class="dialog-copy"></div>
+      </section>
+      <section id="planningSettingsSection" class="settings-section">
+        <div class="settings-section-head"><strong>Planungsregeln</strong><span>Nur für Admin und Planer</span></div>
       <div class="form-grid two">
         <label>Vollzeit-Urlaub bei 5-Tage-Woche<input id="settingBaseVacation" type="number" min="20" max="60" step="0.5" /></label>
         <label>Max. gleichzeitig im Urlaub (U)<input id="settingMaxVacation" type="number" min="1" max="99" step="1" /></label>
@@ -273,7 +314,8 @@
       </div>
       <label class="toggle-line"><input id="settingCountSchool" type="checkbox" /> Schule in Gesamt-Abwesenheitsalarm einbeziehen</label>
       <label class="toggle-line"><input id="settingConfirmConflicts" type="checkbox" /> Konflikte beim Speichern ausdrücklich anzeigen</label>
-      <div class="dialog-actions"><div class="spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">Speichern</button></div>
+      </section>
+      <div class="dialog-actions"><div class="spacer"></div><button type="button" class="btn ghost close-dialog">Schließen</button><button id="planningSettingsSaveBtn" type="submit" class="btn primary">Planungsregeln speichern</button></div>
     </form>
   </dialog>
 
@@ -312,6 +354,6 @@
   </dialog>
 
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20260930-2"></script>
+  <script src="app.js?v=20260930-3"></script>
 </body>
 </html>
