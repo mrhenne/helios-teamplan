@@ -27,9 +27,20 @@
       </div>
       <div class="top-actions">
         <div id="syncPill" class="sync-pill local">● Lokal</div>
-        <button id="themeBtn" class="btn ghost compact-btn" title="Hell/Dunkel">◐</button>
+        <select id="roleSelect" class="role-select" title="Arbeitsmodus">
+          <option value="admin">Admin</option>
+          <option value="planner">Planer</option>
+          <option value="employee">Mitarbeiter</option>
+          <option value="viewer">Nur Lesen</option>
+        </select>
+        <select id="roleEmployeeSelect" class="role-select hidden" title="Mitarbeiter auswählen"></select>
         <button id="todayBtn" class="btn ghost compact-btn">Heute</button>
-        <button id="exportBtn" class="btn ghost compact-btn">Export</button>
+        <button id="conflictsBtn" class="btn ghost compact-btn">Konflikte</button>
+        <button id="historyBtn" class="btn ghost compact-btn">Verlauf</button>
+        <button id="blackoutsBtn" class="btn ghost compact-btn">Sperrzeiten</button>
+        <button id="excelExportBtn" class="btn ghost compact-btn">Excel</button>
+        <button id="pdfExportBtn" class="btn ghost compact-btn">PDF</button>
+        <button id="exportBtn" class="btn ghost compact-btn" title="JSON-Sicherung">Backup</button>
         <label class="btn ghost file-btn compact-btn">Import<input id="importInput" type="file" accept="application/json" hidden></label>
         <button id="settingsBtn" class="btn primary compact-btn" title="Einstellungen">⚙</button>
       </div>
@@ -108,6 +119,7 @@
         <label>Arbeitstage / Woche<input id="employeeWorkdays" type="number" min="1" max="5" step="1" value="5" required /></label>
         <label>Urlaub Vorjahr / Übertrag<input id="employeeCarry" type="number" min="0" max="99" step="0.5" value="0" /></label>
         <label>Individuelle Urlaubskorrektur<input id="employeeAdjustment" type="number" min="-99" max="99" step="0.5" value="0" /></label>
+        <label>Rolle<select id="employeeRole"><option value="employee">Mitarbeiter</option><option value="planner">Planer</option><option value="admin">Admin</option><option value="viewer">Nur Lesen</option></select></label>
       </div>
       <div class="workweek-box">
         <span>Regelmäßige Arbeitstage</span>
@@ -130,7 +142,10 @@
         <button type="button" data-code="S" class="code-btn s">S <small>Schule</small></button>
         <button type="button" data-code="G" class="code-btn g">G <small>Geburtstag</small></button>
       </div>
-      <label>Priorität<select id="cellPriority"><option value="0">Normal</option><option value="1">Wichtig</option><option value="2">Hohe Priorität</option></select></label>
+      <div class="form-grid two">
+        <label>Status<select id="cellStatus"><option value="wish">Wunsch</option><option value="preliminary">Vorläufig</option><option value="approved">Genehmigt</option><option value="rejected">Abgelehnt</option></select></label>
+        <label>Priorität<select id="cellPriority"><option value="0">Normal</option><option value="1">Wichtig</option><option value="2">Hohe Priorität</option></select></label>
+      </div>
       <label>Notiz<textarea id="cellNote" rows="3" placeholder="Optional, z. B. bereits gebuchte Reise"></textarea></label>
       <div id="cellWarning" class="inline-warning hidden"></div>
       <div class="dialog-actions"><button type="button" id="clearCellBtn" class="btn danger">Eintrag löschen</button><div class="spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">Übernehmen</button></div>
@@ -159,6 +174,9 @@
         <button type="button" data-bulk-code="G" class="code-btn g">G <small>Geburtstag</small></button>
       </div>
       <div class="form-grid two">
+        <label>Status
+          <select id="bulkStatus"><option value="wish">Wunsch</option><option value="preliminary">Vorläufig</option><option value="approved">Genehmigt</option><option value="rejected">Abgelehnt</option></select>
+        </label>
         <label>Priorität
           <select id="bulkPriority"><option value="0">Normal</option><option value="1">Wichtig</option><option value="2">Hohe Priorität</option></select>
         </label>
@@ -179,6 +197,37 @@
         <button type="submit" class="btn primary">Zeitraum übernehmen</button>
       </div>
     </form>
+  </dialog>
+
+  <dialog id="blackoutsDialog" class="dialog glass-solid">
+    <form id="blackoutsForm" method="dialog">
+      <div class="dialog-head"><div><span class="eyebrow">URLAUBSSPERREN</span><h2>Sperrzeiten verwalten</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <div class="form-grid two">
+        <label>Bezeichnung<input id="blackoutName" placeholder="z. B. Weihnachten / Inventur" required></label>
+        <label>Regel<select id="blackoutMode"><option value="warn">Warnung</option><option value="block">Urlaub blockieren</option></select></label>
+        <label>Von<input id="blackoutStart" type="date" required></label>
+        <label>Bis<input id="blackoutEnd" type="date" required></label>
+      </div>
+      <button type="submit" class="btn primary blackout-add">+ Sperrzeit hinzufügen</button>
+      <div id="blackoutsList" class="management-list"></div>
+      <div class="dialog-actions"><div class="spacer"></div><button type="button" class="btn ghost close-dialog">Schließen</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="historyDialog" class="dialog glass-solid wide-dialog">
+    <div class="dialog-panel">
+      <div class="dialog-head"><div><span class="eyebrow">ÄNDERUNGSVERLAUF</span><h2>Letzte Änderungen</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <div class="history-actions"><button id="undoBtn" type="button" class="btn ghost">↶ Letzte Aktion rückgängig</button></div>
+      <div id="historyList" class="management-list history-list"></div>
+    </div>
+  </dialog>
+
+  <dialog id="conflictsDialog" class="dialog glass-solid wide-dialog">
+    <div class="dialog-panel">
+      <div class="dialog-head"><div><span class="eyebrow">PLANUNGSPRÜFUNG</span><h2>Konflikte & offene Punkte</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <div id="conflictsSummary" class="conflict-summary"></div>
+      <div id="conflictsList" class="management-list conflict-list"></div>
+    </div>
   </dialog>
 
   <dialog id="settingsDialog" class="dialog glass-solid">
