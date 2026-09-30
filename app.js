@@ -683,6 +683,7 @@ async function renderUsersList(){
         <select class="user-employee">${employeeOptions(m.employee_id||'')}</select>
         <button type="button" class="btn ghost user-save">Speichern</button>
         <button type="button" class="btn ${m.active?'danger':'ghost'} user-toggle">${m.active?'Deaktivieren':'Reaktivieren'}</button>
+        <button type="button" class="btn danger user-delete">Löschen</button>
       </div>`).join(''):'<div class="empty-state">Noch keine Benutzer gefunden.</div>';
     list.querySelectorAll('.user-row').forEach(row=>{
       row.querySelector('.user-save').addEventListener('click',async()=>{
@@ -691,6 +692,11 @@ async function renderUsersList(){
       row.querySelector('.user-toggle').addEventListener('click',async()=>{
         const active=row.querySelector('.user-toggle').textContent.includes('Reaktivieren');
         try{await invokeUserAdmin({action:'update',userId:row.dataset.user,role:row.querySelector('.user-role').value,employeeId:row.querySelector('.user-employee').value||null,displayName:row.querySelector('.user-main strong').textContent,active});showToast(active?'Benutzer reaktiviert':'Benutzer deaktiviert');await renderUsersList()}catch(err){alert(err.message)}
+      });
+      row.querySelector('.user-delete').addEventListener('click',async()=>{
+        const label=row.querySelector('.user-main strong').textContent||row.querySelector('.user-main span').textContent||'diesen Benutzer';
+        if(!confirm(label+' wirklich vollständig als Login-Benutzer löschen? Der Mitarbeiter im Urlaubsplan bleibt bestehen.'))return;
+        try{await invokeUserAdmin({action:'delete',userId:row.dataset.user});showToast('Benutzer gelöscht');await renderUsersList()}catch(err){alert(err.message)}
       });
     });
   }catch(err){console.error(err);list.innerHTML='<div class="empty-state">Fehler: '+escapeHtml(err.message)+'</div>'}
