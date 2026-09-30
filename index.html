@@ -103,7 +103,7 @@
   <div class="controls-row controls-secondary">
     <div class="control-block zoom-block"><span class="control-caption">Zoom</span><button id="zoomOutBtn" class="zoom-btn" type="button">−</button><input id="zoomRange" type="range" min="10" max="140" step="5" value="100"><button id="zoomInBtn" class="zoom-btn" type="button">+</button><strong id="zoomLabel">100%</strong></div>
     <button id="fitEmployeesBtn" class="btn ghost view-tool-btn" type="button" title="Alle Mitarbeiter in die Höhe einpassen">↕ Alle einpassen</button>
-    <button id="fullscreenBtn" class="btn ghost view-tool-btn" type="button" title="Nur die Planung im Vollbild anzeigen">⛶ Vollbild</button>
+    <button id="focusModeBtn" class="btn ghost view-tool-btn" type="button" title="Nur Zeitraum und Planung anzeigen">◫ Fokusmodus</button>
     <div class="control-block"><span class="control-caption">Urlaub</span><div class="segmented vacation-mode"><button id="vacationFullBtn" class="segment" type="button">Gesamt</button><button id="vacationActualBtn" class="segment active" type="button">Anteilig</button></div></div>
     <div class="controls-spacer"></div>
     <input id="searchInput" class="search control-search compact-employee-search" placeholder="Mitarbeiter suchen…" />
@@ -118,8 +118,11 @@
       <div id="planner" class="planner"></div>
     </section>
     <div id="plannerFocusControls" class="planner-focus-controls">
-      <button id="focusFitBtn" type="button" title="Alle Mitarbeiter einpassen">↕</button>
-      <button id="exitFullscreenBtn" type="button" title="Vollbild verlassen">✕</button>
+      <div class="focus-period"><strong id="focusPeriodMonth"></strong><span id="focusPeriodYear"></span></div>
+      <div class="focus-actions">
+        <button id="focusFitBtn" type="button" title="Alle Mitarbeiter einpassen">↕</button>
+        <button id="exitFocusBtn" type="button" title="Fokusmodus verlassen">✕</button>
+      </div>
     </div>
 
     <section id="yearView" class="year-view hidden">
@@ -396,6 +399,6 @@
   </dialog>
 
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20260930-8"></script>
+  <script src="app.js?v=20260930-9"></script>
 </body>
 </html>
