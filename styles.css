@@ -49,3 +49,17 @@ button,input,select,textarea{font:inherit;color:inherit}.aurora{position:fixed;b
 .year-staff th:first-child,.year-staff td:first-child{text-align:left}
 @media(max-width:1100px){.year-month-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:700px){.year-month-grid{grid-template-columns:1fr}.year-head{align-items:flex-start;flex-direction:column;gap:8px}.vacation-mode{order:2}.segmented{max-width:100%}}
+
+.absence-names-row td{height:72px!important;vertical-align:top;background:#faf5f1!important}
+.absence-names-row .employee-col{color:#8b5b43!important;padding-top:8px!important}
+.absent-list{display:flex;flex-direction:column;gap:2px;padding:4px 2px;align-items:stretch}
+.absent-name{display:block;max-width:50px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:7px;line-height:1.15;color:#684a3c;background:rgba(244,225,213,.72);border-radius:4px;padding:2px}
+.absent-name small{display:block;font-size:6px;color:#a05c3a;margin-top:1px}
+.absent-list .none{font-size:9px;color:#aab8b3;margin-top:8px}
+.bulk-dates{margin-top:12px}
+.bulk-code-label{font-size:11px;font-weight:800;color:#45625b;margin:14px 0 7px}
+.bulk-options{margin-top:5px;padding:8px 10px;border-radius:12px;background:#f3f7f5;border:1px solid var(--line)}
+.bulk-preview{margin-top:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px;border-radius:12px;background:#eaf3f0;border:1px solid rgba(0,107,91,.1)}
+.bulk-preview strong,.bulk-preview span{font-size:9px;padding:6px 7px;border-radius:8px;background:rgba(255,255,255,.7)}
+.bulk-preview strong{color:var(--green)}
+@media(max-width:700px){.bulk-preview{grid-template-columns:1fr 1fr}.absence-names-row td{height:62px!important}.absent-name{font-size:6px}}
