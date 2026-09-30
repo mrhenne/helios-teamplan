@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b5f52" />
+  <title>TeamPlan | Urlaubsplanung</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="aurora aurora-a"></div>
+  <div class="aurora aurora-b"></div>
+  <main class="app-shell">
+    <header class="topbar glass">
+      <div class="brand">
+        <div class="brand-mark">H</div>
+        <div>
+          <div class="eyebrow">HELIOS INSPIRED · TEAMPLAN</div>
+          <h1>Gemeinsame Urlaubsplanung</h1>
+        </div>
+      </div>
+      <div class="top-actions">
+        <div id="syncPill" class="sync-pill local">● Lokal</div>
+        <button id="todayBtn" class="btn ghost">Heute</button>
+        <button id="exportBtn" class="btn ghost">Export</button>
+        <label class="btn ghost file-btn">Import<input id="importInput" type="file" accept="application/json" hidden></label>
+        <button id="settingsBtn" class="btn primary">Einstellungen</button>
+      </div>
+    </header>
+
+    <section class="summary-grid">
+      <article class="metric glass"><span>Team</span><strong id="metricEmployees">0</strong><small>Mitarbeitende</small></article>
+      <article class="metric glass"><span>Urlaub geplant</span><strong id="metricVacation">0</strong><small>Tage gesamt</small></article>
+      <article class="metric glass"><span>XU geplant</span><strong id="metricXU">0</strong><small>Wunsch-Wochenenden</small></article>
+      <article class="metric glass"><span>Konflikte</span><strong id="metricConflicts">0</strong><small>aktuelle Ansicht</small></article>
+    </section>
+
+    <section class="toolbar glass">
+      <div class="month-nav">
+        <button id="prevMonth" class="icon-btn" aria-label="Vorheriger Monat">‹</button>
+        <div class="month-title"><strong id="monthLabel"></strong><span id="yearLabel"></span></div>
+        <button id="nextMonth" class="icon-btn" aria-label="Nächster Monat">›</button>
+      </div>
+      <div class="legend">
+        <span><b class="chip u">U</b> Urlaub</span>
+        <span><b class="chip x">X</b> Frei-WE</span>
+        <span><b class="chip xu">XU</b> Wunsch-WE</span>
+        <span><b class="chip s">S</b> Schule</span>
+        <span><b class="chip g">G</b> Geburtstag</span>
+        <span><b class="priority-dot high"></b> hohe Priorität</span>
+      </div>
+      <div class="toolbar-right">
+        <input id="searchInput" class="search" placeholder="Mitarbeiter suchen…" />
+        <button id="addEmployeeBtn" class="btn primary">+ Mitarbeiter</button>
+      </div>
+    </section>
+
+    <section class="planner-wrap glass">
+      <div id="planner" class="planner"></div>
+    </section>
+
+    <section class="hint glass">
+      <strong>Bedienung:</strong> Zelle anklicken, mehrere Kürzel wählen und optional Priorität/Notiz setzen. Mitarbeitende links per Drag & Drop sortieren. Wochenenden und NRW-Feiertage werden automatisch hervorgehoben.
+    </section>
+  </main>
+
+  <dialog id="employeeDialog" class="dialog glass-solid">
+    <form id="employeeForm" method="dialog">
+      <div class="dialog-head"><div><span class="eyebrow">MITARBEITER</span><h2 id="employeeDialogTitle">Mitarbeiter anlegen</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <input id="employeeId" type="hidden" />
+      <div class="form-grid two">
+        <label>Name<input id="employeeName" required placeholder="Vorname Nachname" /></label>
+        <label>Wochenstunden<input id="employeeHours" type="number" min="1" max="60" step="0.25" value="38.5" required /></label>
+        <label>Stellenanteil %<input id="employeePercent" type="number" min="1" max="100" step="1" value="100" required /></label>
+        <label>Arbeitstage / Woche<input id="employeeWorkdays" type="number" min="1" max="5" step="1" value="5" required /></label>
+        <label>Urlaub Vorjahr / Übertrag<input id="employeeCarry" type="number" min="0" max="99" step="0.5" value="0" /></label>
+        <label>Individuelle Urlaubskorrektur<input id="employeeAdjustment" type="number" min="-99" max="99" step="0.5" value="0" /></label>
+      </div>
+      <div class="workweek-box">
+        <span>Regelmäßige Arbeitstage</span>
+        <div id="workweekToggles" class="weekday-toggles"></div>
+        <small>Damit zählt Urlaub nur an tatsächlichen Arbeitstagen korrekt.</small>
+      </div>
+      <div id="vacationPreview" class="calc-preview"></div>
+      <div class="dialog-actions"><button type="button" id="deleteEmployeeBtn" class="btn danger hidden">Löschen</button><div class="spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">Speichern</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="cellDialog" class="dialog glass-solid compact">
+    <form id="cellForm" method="dialog">
+      <div class="dialog-head"><div><span id="cellEmployee" class="eyebrow"></span><h2 id="cellDate"></h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <input id="cellEmployeeId" type="hidden"><input id="cellDateValue" type="hidden">
+      <div class="code-selector">
+        <button type="button" data-code="U" class="code-btn u">U <small>Urlaub</small></button>
+        <button type="button" data-code="X" class="code-btn x">X <small>Frei-WE</small></button>
+        <button type="button" data-code="XU" class="code-btn xu">XU <small>Wunsch-WE</small></button>
+        <button type="button" data-code="S" class="code-btn s">S <small>Schule</small></button>
+        <button type="button" data-code="G" class="code-btn g">G <small>Geburtstag</small></button>
+      </div>
+      <label>Priorität<select id="cellPriority"><option value="0">Normal</option><option value="1">Wichtig</option><option value="2">Hohe Priorität</option></select></label>
+      <label>Notiz<textarea id="cellNote" rows="3" placeholder="Optional, z. B. bereits gebuchte Reise"></textarea></label>
+      <div id="cellWarning" class="inline-warning hidden"></div>
+      <div class="dialog-actions"><button type="button" id="clearCellBtn" class="btn danger">Eintrag löschen</button><div class="spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">Übernehmen</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="settingsDialog" class="dialog glass-solid">
+    <form id="settingsForm" method="dialog">
+      <div class="dialog-head"><div><span class="eyebrow">PLANUNGSREGELN</span><h2>Einstellungen</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <div class="form-grid two">
+        <label>Vollzeit-Urlaub bei 5-Tage-Woche<input id="settingBaseVacation" type="number" min="20" max="60" step="0.5" /></label>
+        <label>Max. gleichzeitig im Urlaub (U)<input id="settingMaxVacation" type="number" min="1" max="99" step="1" /></label>
+        <label>Warnung Gesamt-Abwesenheiten U + XU + S<input id="settingMaxAbsence" type="number" min="1" max="99" step="1" /></label>
+        <label>Bundesland<select id="settingState"><option value="NW">Nordrhein-Westfalen</option></select></label>
+      </div>
+      <label class="toggle-line"><input id="settingCountSchool" type="checkbox" /> Schule in Gesamt-Abwesenheitsalarm einbeziehen</label>
+      <label class="toggle-line"><input id="settingConfirmConflicts" type="checkbox" /> Konflikte beim Speichern ausdrücklich anzeigen</label>
+      <div class="dialog-actions"><div class="spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">Speichern</button></div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>
