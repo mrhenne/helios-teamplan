@@ -171,3 +171,19 @@ body.dark-mode .employee-meta{color:#94aaa4!important}
 .names-import-preview strong{color:var(--green)}
 body.dark-mode .names-import-preview{background:#14241f}
 @media(max-width:900px){.controls-row{flex-wrap:wrap}.controls-spacer{display:none}.control-search{flex:1}.controls-secondary{align-items:flex-start}.planner-controls{gap:8px!important}}
+
+.month-band-row th{position:sticky!important;top:0!important;z-index:9!important;height:28px!important}
+.plan-table thead tr:nth-child(2) th{top:28px!important}
+.month-band{font-size:10px!important;font-weight:900!important;letter-spacing:.04em;text-transform:uppercase;background:#e7efec!important;color:#58716a!important;border-bottom:2px solid rgba(0,107,91,.12)!important}
+.month-band.active{background:#d5ebe4!important;color:#006b5b!important;box-shadow:inset 0 -3px 0 #0f8b78}
+.month-band-label{font-size:9px!important;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)!important}
+.date-head.month-even{background-color:rgba(245,249,247,.98)}
+.date-head.month-odd{background-color:rgba(236,244,241,.98)}
+.day-cell.month-even{background-color:rgba(255,255,255,.52)}
+.day-cell.month-odd{background-color:rgba(244,249,247,.72)}
+body.dark-mode .month-band{background:#1a2c27!important;color:#9bb1aa!important}
+body.dark-mode .month-band.active{background:#214238!important;color:#75d0b6!important}
+body.dark-mode .date-head.month-even{background-color:#14231f!important}
+body.dark-mode .date-head.month-odd{background-color:#192a25!important}
+body.dark-mode .day-cell.month-even{background-color:#172723!important}
+body.dark-mode .day-cell.month-odd{background-color:#1b2d28!important}
