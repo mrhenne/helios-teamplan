@@ -45,6 +45,7 @@ let authUser = null;
 let authMembership = null;
 let loginMode = 'login';
 let plannerScrollLeft = null;
+let plannerFocusFallback = false;
 function toggleLoginMode(){
   loginMode=loginMode==='login'?'bootstrap':'login';
   const fields=document.getElementById('bootstrapFields');
@@ -263,6 +264,18 @@ function applyAppearance(){
   document.documentElement.style.setProperty('--day-width',dayWidth+'px');
   document.documentElement.style.setProperty('--day-height',dayHeight+'px');
   document.documentElement.style.setProperty('--employee-width',employeeWidth+'px');
+  document.documentElement.style.setProperty('--employee-pad-y',Math.max(1,Math.round(8*z))+'px');
+  document.documentElement.style.setProperty('--employee-pad-x',Math.max(1,Math.round(10*z))+'px');
+  document.documentElement.style.setProperty('--employee-gap',Math.max(1,Math.round(8*z))+'px');
+  document.documentElement.style.setProperty('--drag-font',Math.max(5,Math.round(16*z))+'px');
+  document.documentElement.style.setProperty('--employee-name-font',Math.max(5,Math.round(12*z))+'px');
+  document.documentElement.style.setProperty('--employee-meta-font',Math.max(4,Math.round(9*z))+'px');
+  document.documentElement.style.setProperty('--employee-stat-font',Math.max(5,Math.round(12*z))+'px');
+  document.documentElement.style.setProperty('--employee-small-font',Math.max(4,Math.round(8*z))+'px');
+  document.documentElement.style.setProperty('--date-font',Math.max(4,Math.round(10*z))+'px');
+  document.documentElement.style.setProperty('--date-strong-font',Math.max(5,Math.round(15*z))+'px');
+  document.documentElement.style.setProperty('--mini-font',Math.max(3,Math.round(7*z))+'px');
+  document.documentElement.style.setProperty('--code-font',Math.max(4,Math.round(9*z))+'px');
   const label=document.getElementById('zoomLabel');if(label)label.textContent=Math.round(z*100)+'%';
   const range=document.getElementById('zoomRange');if(range)range.value=String(Math.round(z*100));
   const themeLabel=document.getElementById('themeLabel');if(themeLabel)themeLabel.textContent=theme==='dark'?'Dunkel':'Hell';
@@ -277,18 +290,28 @@ function toggleTheme(){
   persist();applyAppearance();
 }
 function syncPlannerFocus(){
-  const active=!!document.fullscreenElement||document.body.classList.contains('planner-focus');
+  const active=!!(document.fullscreenElement||document.webkitFullscreenElement)||plannerFocusFallback;
   document.body.classList.toggle('planner-focus',active);
 }
 async function enterPlannerFullscreen(){
-  document.body.classList.add('planner-focus');
-  try{if(!document.fullscreenElement&&document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen()}catch(err){console.warn('Fullscreen API nicht verfügbar',err)}
+  if(currentView!=='month'){currentView='month';plannerScrollLeft=null;render()}
+  plannerFocusFallback=true;document.body.classList.add('planner-focus');
+  try{
+    const el=document.documentElement;
+    if(!document.fullscreenElement&&!document.webkitFullscreenElement){
+      if(el.requestFullscreen){await el.requestFullscreen();plannerFocusFallback=false}
+      else if(el.webkitRequestFullscreen){el.webkitRequestFullscreen();plannerFocusFallback=false}
+    }
+  }catch(err){console.warn('Browser-Vollbild nicht verfügbar, Planungsmodus bleibt aktiv',err);plannerFocusFallback=true}
   syncPlannerFocus();
 }
 async function exitPlannerFullscreen(){
-  document.body.classList.remove('planner-focus');
-  try{if(document.fullscreenElement&&document.exitFullscreen)await document.exitFullscreen()}catch(err){console.warn(err)}
-  syncPlannerFocus();
+  plannerFocusFallback=false;
+  try{
+    if(document.fullscreenElement&&document.exitFullscreen)await document.exitFullscreen();
+    else if(document.webkitFullscreenElement&&document.webkitExitFullscreen)document.webkitExitFullscreen();
+  }catch(err){console.warn(err)}
+  document.body.classList.remove('planner-focus');syncPlannerFocus();
 }
 function fitAllEmployees(){
   if(currentView!=='month'){currentView='month';render()}
@@ -941,6 +964,7 @@ document.getElementById('focusFitBtn').addEventListener('click',fitAllEmployees)
 document.getElementById('fullscreenBtn').addEventListener('click',enterPlannerFullscreen);
 document.getElementById('exitFullscreenBtn').addEventListener('click',exitPlannerFullscreen);
 document.addEventListener('fullscreenchange',syncPlannerFocus);
+document.addEventListener('webkitfullscreenchange',syncPlannerFocus);
 document.getElementById('employeeForm').addEventListener('submit',e=>{e.preventDefault();if(!canEditEmployees())return;const id=document.getElementById('employeeId').value||uid();const current=state.employees.find(x=>x.id===id);trackAction(current?'Mitarbeiter geändert':'Mitarbeiter angelegt',document.getElementById('employeeName').value.trim());const workweek=[...document.querySelectorAll('.weekday-toggle.active')].map(b=>Number(b.dataset.day));const autoWeekend={enabled:document.getElementById('employeeAutoWeekend').checked,intervalWeeks:Number(document.getElementById('employeeWeekendInterval').value||2),anchorDate:document.getElementById('employeeWeekendAnchor').value};if(autoWeekend.enabled&&!autoWeekend.anchorDate){alert('Bitte einen Referenz-Samstag für die freien Wochenenden auswählen.');return}if(current)clearAutoWeekendX(id);const obj={id,name:document.getElementById('employeeName').value.trim(),hours:Number(document.getElementById('employeeHours').value),percent:Number(document.getElementById('employeePercent').value),workdays:Number(document.getElementById('employeeWorkdays').value),workweek,carry:Number(document.getElementById('employeeCarry').value),adjustment:Number(document.getElementById('employeeAdjustment').value),autoWeekend,role:sessionRole==='admin'?document.getElementById('employeeRole').value:(current?.role||'employee'),order:current?.order??state.employees.length};if(current)Object.assign(current,obj);else state.employees.push(obj);ensureAutoWeekendEntries(viewDate.getFullYear());persist();renderRoleControls();render();document.getElementById('employeeDialog').close();showToast('Mitarbeiter gespeichert')});
 document.getElementById('deleteEmployeeBtn').addEventListener('click',()=>{if(sessionRole!=='admin')return;const id=document.getElementById('employeeId').value;if(!id)return;if(confirm('Mitarbeiter und alle zugehörigen Planeinträge wirklich löschen?')){const name=state.employees.find(e=>e.id===id)?.name||'';trackAction('Mitarbeiter gelöscht',name);state.employees=state.employees.filter(e=>e.id!==id);delete state.entries[id];persist();renderRoleControls();render();document.getElementById('employeeDialog').close();showToast('Mitarbeiter gelöscht')}});
 
