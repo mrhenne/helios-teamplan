@@ -27,6 +27,8 @@
       </div>
       <div class="top-actions">
         <div id="syncPill" class="sync-pill local">● Lokal</div>
+        <div id="authUserPill" class="sync-pill hidden"></div>
+        <button id="logoutBtn" class="btn ghost compact-btn hidden">Abmelden</button>
         <select id="roleSelect" class="role-select" title="Arbeitsmodus">
           <option value="admin">Admin</option>
           <option value="planner">Planer</option>
@@ -283,10 +285,23 @@
       <button type="button" data-drag-code="XU" class="drag-action xu">XU</button>
       <button type="button" data-drag-code="S" class="drag-action s">S</button>
       <button type="button" data-drag-code="G" class="drag-action g">G</button>
+      <button type="button" id="dragApproveBtn" class="drag-action approve hidden">Genehmigen</button>
+      <button type="button" id="dragRejectBtn" class="drag-action reject hidden">Ablehnen</button>
       <button type="button" id="dragDeleteBtn" class="drag-action delete">Löschen</button>
       <button type="button" id="dragCancelBtn" class="drag-action cancel">×</button>
     </div>
   </div>
+
+  <dialog id="loginDialog" class="dialog glass-solid login-dialog">
+    <form id="loginForm">
+      <div class="dialog-head"><div><span class="eyebrow">TEAMPLAN LOGIN</span><h2>Anmelden</h2></div></div>
+      <p class="dialog-copy">Melde dich mit deinem TeamPlan-Konto an. Die Rolle wird anschließend aus der Datenbank geladen.</p>
+      <label>E-Mail<input id="loginEmail" type="email" autocomplete="username" required></label>
+      <label>Passwort<input id="loginPassword" type="password" autocomplete="current-password" required></label>
+      <div id="loginError" class="inline-warning hidden"></div>
+      <div class="dialog-actions"><div class="spacer"></div><button type="submit" class="btn primary">Anmelden</button></div>
+    </form>
+  </dialog>
 
   <div id="toast" class="toast"></div>
   <script src="app.js"></script>
