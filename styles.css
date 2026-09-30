@@ -264,3 +264,9 @@ body.dark-mode .drag-action.reject{background:#51262d;color:#ffadb5}
 .user-row select{font-size:9px;padding:7px}
 body.dark-mode .date-nav-block,body.dark-mode .user-invite-box,body.dark-mode .user-row{background:#172723;border-color:rgba(200,235,226,.12)}
 @media(max-width:900px){.user-row{grid-template-columns:1fr 1fr}.user-main{grid-column:1/-1}.date-nav-block{flex-wrap:wrap}}
+
+.invite-result{margin:12px 0;padding:12px;border:1px solid var(--line);border-radius:14px;background:#eef5f2;display:grid;gap:6px}
+.invite-result strong{font-size:11px;color:var(--green)}.invite-result span{font-size:9px;color:var(--muted);line-height:1.45}
+.invite-link-row{display:flex;gap:8px;align-items:center}.invite-link-row input{flex:1;min-width:0;font-size:9px}
+body.dark-mode .invite-result{background:#14241f}
+@media(max-width:700px){.invite-link-row{flex-direction:column;align-items:stretch}}
