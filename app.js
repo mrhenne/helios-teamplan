@@ -25,6 +25,7 @@ const defaultState = {
 let state = loadLocal();
 let viewDate = new Date(); viewDate.setDate(1);
 let selectedCodes = new Set();
+let bulkSelectedCodes = new Set();
 let supabaseClient = null;
 let syncTimer = null;
 let isApplyingRemote = false;
@@ -55,6 +56,13 @@ function countCode(e,code,year=viewDate.getFullYear()){return Object.entries(sta
 function remainingVacation(e,year=viewDate.getFullYear()){return vacationEntitlement(e)-usedVacation(e,year);}
 function absentCount(key){return state.employees.filter(e=>{const c=entryFor(e.id,key).codes||[];return c.some(code=>['U','X','XU','S'].includes(code));}).length;}
 function presentCount(key){return Math.max(0,state.employees.length-absentCount(key));}
+function absentEmployees(key){
+  return [...state.employees].sort((a,b)=>a.order-b.order).filter(e=>{
+    const c=entryFor(e.id,key).codes||[];
+    return c.some(code=>['U','X','XU','S'].includes(code));
+  }).map(e=>({employee:e,codes:(entryFor(e.id,key).codes||[]).filter(code=>['U','X','XU','S'].includes(code))}));
+}
+function firstName(name){return String(name||'').trim().split(/\s+/)[0]||name;}
 
 function getEaster(year){
   const f=Math.floor,a=year%19,b=Math.floor(year/100),c=year%100,d=Math.floor(b/4),e=b%4,g=Math.floor((8*b+13)/25),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+19*l)/433),month=Math.floor((h+l-7*m+90)/25),day=(h+l-7*m+33*month+19)%32; return new Date(year,month-1,day);
@@ -80,12 +88,22 @@ function render(){
     dates.forEach(d=>{const key=dateKey(d),v=entryFor(e.id,key),we=[0,6].includes(d.getDay()),nonwork=!isWorkday(e,d),conf=conflictLevel(key);const codes=(v.codes||[]).map(c=>`<span class="cell-code ${CODE_CLASS[c]}">${c}</span>`).join('');const warn=(conf.vacation&&v.codes?.includes('U'))||(conf.total&&v.codes?.some(c=>['U','XU','S'].includes(c)));html+=`<td class="day-cell ${we?'weekend':''} ${nonwork?'nonwork':''}" data-emp="${e.id}" data-date="${key}" title="${v.note?escapeHtml(v.note):''}"><div class="cell-codes">${codes}</div>${v.priority?`<span class="cell-priority p${v.priority}"></span>`:''}${v.note?'<span class="cell-note"></span>':''}${warn?'<span class="cell-warning-mark">!</span>':''}</td>`});
     html+='</tr>';
   });
-  html+=summaryRow('Urlaub U','U',dates);html+=summaryRow('Wunschfrei XU','XU',dates);html+=summaryRow('Schule S','S',dates);html+=presenceRow(dates);html+='</tbody></table>';
+  html+=summaryRow('Urlaub U','U',dates);html+=summaryRow('Wunschfrei XU','XU',dates);html+=summaryRow('Schule S','S',dates);html+=presenceRow(dates);html+=absenceNamesRow(dates);html+='</tbody></table>';
   document.getElementById('planner').innerHTML=html; bindPlannerEvents(); renderMetrics(); syncViewControls();
   if(currentView==='year') renderYearOverview();
 }
 function summaryRow(label,code,dates){let s=`<tr class="summary-row ${code==='U'?'alarm':''}"><td class="employee-col">Σ ${label}</td>`;dates.forEach(d=>{const c=dailyCounts(dateKey(d)),n=c[code],hot=code==='U'&&n>state.settings.maxVacation,warn=code==='U'&&n===state.settings.maxVacation;s+=`<td class="${hot?'count-hot':warn?'count-warn':''}">${n||''}</td>`});return s+'</tr>'}
 function presenceRow(dates){let s='<tr class="summary-row presence-row"><td class="employee-col">✓ Anwesend</td>';dates.forEach(d=>{const n=presentCount(dateKey(d));s+=`<td>${n}</td>`});return s+'</tr>'}
+function absenceNamesRow(dates){
+  let s='<tr class="summary-row absence-names-row"><td class="employee-col">↗ Abwesend</td>';
+  dates.forEach(d=>{
+    const list=absentEmployees(dateKey(d));
+    const title=list.map(x=>`${x.employee.name} (${x.codes.join('+')})`).join('\n');
+    const visible=list.map(x=>`<span class="absent-name" title="${escapeHtml(x.employee.name)}">${escapeHtml(firstName(x.employee.name))}<small>${x.codes.join('+')}</small></span>`).join('');
+    s+=`<td title="${escapeHtml(title)}"><div class="absent-list">${visible||'<span class="none">–</span>'}</div></td>`;
+  });
+  return s+'</tr>';
+}
 function renderMetrics(){
   document.getElementById('metricEmployees').textContent=state.employees.length; document.getElementById('metricVacation').textContent=state.employees.reduce((a,e)=>a+usedVacation(e),0); document.getElementById('metricXU').textContent=state.employees.reduce((a,e)=>a+countCode(e,'XU'),0); document.getElementById('metricConflicts').textContent=monthDates().filter(d=>{const c=conflictLevel(dateKey(d));return c.vacation||c.total}).length;
 }
@@ -111,7 +129,8 @@ function renderYearOverview(){
     for(let day=1;day<=days;day++){
       const d=new Date(year,month,day), key=dateKey(d), counts=dailyCounts(key), conf=conflictLevel(key), weekend=[0,6].includes(d.getDay()), hol=holidays[key];
       const total=counts.U+counts.XU+counts.S;
-      html+=`<button type="button" class="mini-day ${weekend?'weekend':''} ${hol?'holiday':''} ${conf.vacation||conf.total?'conflict':''}" data-date="${key}" title="${hol||''}"><span class="mini-date">${day}</span><span class="mini-counts">${counts.U?'<b class="u">'+counts.U+'</b>':''}${counts.XU?'<b class="xu">'+counts.XU+'</b>':''}${counts.S?'<b class="s">'+counts.S+'</b>':''}</span>${!total?'<span class="mini-present">'+presentCount(key)+'</span>':''}</button>`;
+      const absent=absentEmployees(key).map(x=>`${x.employee.name} (${x.codes.join('+')})`).join(', ');
+      html+=`<button type="button" class="mini-day ${weekend?'weekend':''} ${hol?'holiday':''} ${conf.vacation||conf.total?'conflict':''}" data-date="${key}" title="${escapeHtml([hol,absent].filter(Boolean).join(' · '))}"><span class="mini-date">${day}</span><span class="mini-counts">${counts.U?'<b class="u">'+counts.U+'</b>':''}${counts.XU?'<b class="xu">'+counts.XU+'</b>':''}${counts.S?'<b class="s">'+counts.S+'</b>':''}</span>${!total?'<span class="mini-present">'+presentCount(key)+'</span>':''}</button>`;
     }
     html+='</div></article>';
   }
@@ -145,6 +164,67 @@ function updateVacationPreview(){const wd=Number(document.getElementById('employ
 function openCell(empId,key){const e=state.employees.find(x=>x.id===empId),v=entryFor(empId,key);selectedCodes=new Set(v.codes||[]);document.getElementById('cellEmployeeId').value=empId;document.getElementById('cellDateValue').value=key;document.getElementById('cellEmployee').textContent=e.name;const d=new Date(key+'T12:00:00');document.getElementById('cellDate').textContent=`${DOW_LONG[d.getDay()]}, ${d.getDate()}. ${MONTHS[d.getMonth()]}`;document.getElementById('cellPriority').value=v.priority||0;document.getElementById('cellNote').value=v.note||'';document.querySelectorAll('.code-btn').forEach(b=>b.classList.toggle('selected',selectedCodes.has(b.dataset.code)));updateCellWarning(empId,key);document.getElementById('cellDialog').showModal()}
 function updateCellWarning(empId,key){const e=state.employees.find(x=>x.id===empId),d=new Date(key+'T12:00:00'),w=document.getElementById('cellWarning');let msgs=[];if(selectedCodes.has('U')&&!isWorkday(e,d))msgs.push('U liegt auf einem nicht regulären Arbeitstag und zählt deshalb nicht vom Urlaubsanspruch ab.');const c=dailyCounts(key),current=entryFor(empId,key).codes||[];const uAfter=c.U-(current.includes('U')?1:0)+(selectedCodes.has('U')?1:0);const sAfter=c.S-(current.includes('S')?1:0)+(selectedCodes.has('S')?1:0);const xuAfter=c.XU-(current.includes('XU')?1:0)+(selectedCodes.has('XU')?1:0);const total=uAfter+xuAfter+(state.settings.countSchool?sAfter:0);if(uAfter>state.settings.maxVacation)msgs.push(`Urlaubslimit überschritten: ${uAfter} statt maximal ${state.settings.maxVacation}.`);if(total>state.settings.maxAbsence)msgs.push(`Gesamt-Abwesenheitswarnung: ${total} statt maximal ${state.settings.maxAbsence}.`);w.textContent=msgs.join(' ');w.classList.toggle('hidden',!msgs.length)}
 
+function bulkDates(){
+  const startVal=document.getElementById('bulkStart').value,endVal=document.getElementById('bulkEnd').value;
+  if(!startVal||!endVal) return [];
+  const start=new Date(startVal+'T12:00:00'),end=new Date(endVal+'T12:00:00');
+  if(end<start) return [];
+  const emp=state.employees.find(e=>e.id===document.getElementById('bulkEmployee').value);
+  const onlyWork=document.getElementById('bulkOnlyWorkdays').checked,skipWeekends=document.getElementById('bulkSkipWeekends').checked;
+  const out=[]; for(let d=new Date(start);d<=end;d=addDays(d,1)){
+    if(skipWeekends&&[0,6].includes(d.getDay())) continue;
+    if(onlyWork&&emp&&!isWorkday(emp,d)) continue;
+    out.push(new Date(d));
+  }
+  return out;
+}
+function updateBulkPreview(){
+  const preview=document.getElementById('bulkPreview'); if(!preview) return;
+  const emp=state.employees.find(e=>e.id===document.getElementById('bulkEmployee').value),dates=bulkDates();
+  if(!emp||!dates.length){preview.innerHTML='<span>Zeitraum auswählen.</span>';return}
+  let existing=0,conflicts=0,actualVacation=0;
+  dates.forEach(d=>{
+    const key=dateKey(d),entry=entryFor(emp.id,key);
+    if((entry.codes||[]).length||entry.note||entry.priority) existing++;
+    if(bulkSelectedCodes.has('U')&&isWorkday(emp,d)) actualVacation++;
+    const currentU=dailyCounts(key).U-(entry.codes?.includes('U')?1:0)+(bulkSelectedCodes.has('U')?1:0);
+    if(currentU>state.settings.maxVacation) conflicts++;
+  });
+  preview.innerHTML=`<strong>${dates.length} Tage betroffen</strong><span>${existing} mit bestehendem Eintrag</span><span>${conflicts} mögliche Urlaubskonflikte</span>${bulkSelectedCodes.has('U')?`<span>${actualVacation} Urlaubstage fürs Firmenprogramm</span>`:''}`;
+}
+function openBulkDialog(){
+  const employees=[...state.employees].sort((a,b)=>a.order-b.order);
+  document.getElementById('bulkEmployee').innerHTML=employees.map(e=>`<option value="${e.id}">${escapeHtml(e.name)}</option>`).join('');
+  const today=new Date(),start=new Date(viewDate.getFullYear(),viewDate.getMonth(),Math.min(today.getMonth()===viewDate.getMonth()&&today.getFullYear()===viewDate.getFullYear()?today.getDate():1,new Date(viewDate.getFullYear(),viewDate.getMonth()+1,0).getDate()));
+  document.getElementById('bulkStart').value=dateKey(start);document.getElementById('bulkEnd').value=dateKey(start);
+  document.getElementById('bulkPriority').value='0';document.getElementById('bulkMode').value='merge';document.getElementById('bulkNote').value='';
+  document.getElementById('bulkOnlyWorkdays').checked=false;document.getElementById('bulkSkipWeekends').checked=false;
+  bulkSelectedCodes=new Set();document.querySelectorAll('[data-bulk-code]').forEach(b=>b.classList.remove('selected'));
+  updateBulkPreview();document.getElementById('bulkDialog').showModal();
+}
+function applyBulk(clear=false){
+  const empId=document.getElementById('bulkEmployee').value,dates=bulkDates(),mode=document.getElementById('bulkMode').value;
+  if(!empId||!dates.length){alert('Bitte einen gültigen Zeitraum auswählen.');return false}
+  if(!clear&&!bulkSelectedCodes.size){alert('Bitte mindestens ein Kürzel auswählen.');return false}
+  if(!state.entries[empId]) state.entries[empId]={};
+  const priority=Number(document.getElementById('bulkPriority').value),note=document.getElementById('bulkNote').value.trim();
+  let overwritten=0;
+  dates.forEach(d=>{
+    const key=dateKey(d),old=entryFor(empId,key);
+    if(clear){if(state.entries[empId][key]){delete state.entries[empId][key];overwritten++}return}
+    if(mode==='replace'){
+      if((old.codes||[]).length||old.note||old.priority) overwritten++;
+      state.entries[empId][key]={codes:[...bulkSelectedCodes],priority,note};
+    } else {
+      const codes=[...new Set([...(old.codes||[]),...bulkSelectedCodes])];
+      state.entries[empId][key]={codes,priority:Math.max(Number(old.priority||0),priority),note:note||old.note||''};
+    }
+  });
+  persist();render();document.getElementById('bulkDialog').close();
+  showToast(clear?`${overwritten} Einträge aus Zeitraum gelöscht`:`${dates.length} Tage eingetragen`);
+  return true;
+}
+
 function openSettings(){const s=state.settings;document.getElementById('settingBaseVacation').value=s.baseVacation;document.getElementById('settingMaxVacation').value=s.maxVacation;document.getElementById('settingMaxAbsence').value=s.maxAbsence;document.getElementById('settingCountSchool').checked=s.countSchool;document.getElementById('settingConfirmConflicts').checked=s.confirmConflicts;document.getElementById('settingsDialog').showModal()}
 
 async function initRemote(){
@@ -166,9 +246,13 @@ document.getElementById('monthViewBtn').addEventListener('click',()=>{currentVie
 document.getElementById('yearViewBtn').addEventListener('click',()=>{currentView='year';render()});
 document.getElementById('vacationFullBtn').addEventListener('click',()=>{state.settings.vacationDisplayMode='full';persist();render();showToast('Urlaubsanzeige: Gesamtplanung')});
 document.getElementById('vacationActualBtn').addEventListener('click',()=>{state.settings.vacationDisplayMode='actual';persist();render();showToast('Urlaubsanzeige: anteilig fürs Firmenprogramm')});
-document.getElementById('searchInput').addEventListener('input',render);document.getElementById('addEmployeeBtn').addEventListener('click',()=>openEmployee());document.getElementById('settingsBtn').addEventListener('click',openSettings);document.querySelectorAll('.close-dialog').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
+document.getElementById('searchInput').addEventListener('input',render);document.getElementById('addEmployeeBtn').addEventListener('click',()=>openEmployee());document.getElementById('bulkEntryBtn').addEventListener('click',openBulkDialog);document.getElementById('settingsBtn').addEventListener('click',openSettings);document.querySelectorAll('.close-dialog').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
+document.querySelectorAll('[data-bulk-code]').forEach(b=>b.addEventListener('click',()=>{bulkSelectedCodes.has(b.dataset.bulkCode)?bulkSelectedCodes.delete(b.dataset.bulkCode):bulkSelectedCodes.add(b.dataset.bulkCode);b.classList.toggle('selected');updateBulkPreview()}));
+['bulkEmployee','bulkStart','bulkEnd','bulkOnlyWorkdays','bulkSkipWeekends','bulkMode','bulkPriority'].forEach(id=>document.getElementById(id).addEventListener('change',updateBulkPreview));
+document.getElementById('bulkForm').addEventListener('submit',e=>{e.preventDefault();applyBulk(false)});
+document.getElementById('bulkClearBtn').addEventListener('click',()=>{const dates=bulkDates();if(!dates.length)return;if(confirm(`Alle Einträge dieses Mitarbeiters an ${dates.length} betroffenen Tagen löschen?`))applyBulk(true)});
 
-document.querySelectorAll('.code-btn').forEach(b=>b.addEventListener('click',()=>{selectedCodes.has(b.dataset.code)?selectedCodes.delete(b.dataset.code):selectedCodes.add(b.dataset.code);b.classList.toggle('selected');updateCellWarning(document.getElementById('cellEmployeeId').value,document.getElementById('cellDateValue').value)}));
+document.querySelectorAll('#cellDialog .code-btn').forEach(b=>b.addEventListener('click',()=>{selectedCodes.has(b.dataset.code)?selectedCodes.delete(b.dataset.code):selectedCodes.add(b.dataset.code);b.classList.toggle('selected');updateCellWarning(document.getElementById('cellEmployeeId').value,document.getElementById('cellDateValue').value)}));
 
 document.getElementById('employeeWorkdays').addEventListener('input',updateVacationPreview);document.getElementById('employeeCarry').addEventListener('input',updateVacationPreview);document.getElementById('employeeAdjustment').addEventListener('input',updateVacationPreview);
 document.getElementById('employeeForm').addEventListener('submit',e=>{e.preventDefault();const id=document.getElementById('employeeId').value||uid();const current=state.employees.find(x=>x.id===id);const workweek=[...document.querySelectorAll('.weekday-toggle.active')].map(b=>Number(b.dataset.day));const obj={id,name:document.getElementById('employeeName').value.trim(),hours:Number(document.getElementById('employeeHours').value),percent:Number(document.getElementById('employeePercent').value),workdays:Number(document.getElementById('employeeWorkdays').value),workweek,carry:Number(document.getElementById('employeeCarry').value),adjustment:Number(document.getElementById('employeeAdjustment').value),order:current?.order??state.employees.length};if(current)Object.assign(current,obj);else state.employees.push(obj);persist();render();document.getElementById('employeeDialog').close();showToast('Mitarbeiter gespeichert')});
