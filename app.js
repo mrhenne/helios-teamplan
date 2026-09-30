@@ -41,6 +41,8 @@ let suppressNextCellClick = false;
 let undoStack = [];
 let sessionRole = localStorage.getItem('teamplan-session-role') || 'admin';
 let sessionEmployeeId = localStorage.getItem('teamplan-session-employee') || '';
+let authUser = null;
+let authMembership = null;
 
 function loadLocal(){
   try { const raw=localStorage.getItem('helios-teamplan-v1'); return raw ? normalizeState(JSON.parse(raw)) : structuredClone(defaultState); }
@@ -52,9 +54,10 @@ function normalizeState(s){
   Object.values(s.entries).forEach(empEntries=>Object.values(empEntries||{}).forEach(v=>{v.status=v.status||'wish'}));
   return s;
 }
+function authConfigured(){const c=window.TEAMPLAN_CONFIG||{};return !!(c.supabaseUrl&&c.supabaseAnonKey&&window.supabase)}
 function persist(){
   state.updatedAt=new Date().toISOString(); localStorage.setItem('helios-teamplan-v1',JSON.stringify(state));
-  if(!isApplyingRemote && supabaseClient){clearTimeout(syncTimer);syncTimer=setTimeout(pushRemote,350)}
+  if(!isApplyingRemote && supabaseClient && sessionRole!=='employee' && sessionRole!=='viewer'){clearTimeout(syncTimer);syncTimer=setTimeout(pushRemote,350)}
 }
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
 function actorName(){
@@ -78,12 +81,21 @@ function undoLastAction(){
 function entryIsActive(v){return (v?.status||'wish')!=='rejected'}
 function blackoutForKey(key){return (state.blackouts||[]).find(b=>key>=b.start&&key<=b.end)||null}
 function blackoutBlocks(key){const b=blackoutForKey(key);return b?.mode==='block'?b:null}
+async function saveRemoteEntry(empId,key,entry){
+  if(!supabaseClient||!authUser)return;
+  if(sessionRole==='employee'){
+    try{
+      const {error}=await supabaseClient.rpc('set_my_plan_entry',{p_team_id:(window.TEAMPLAN_CONFIG||{}).teamId,p_date_key:key,p_entry:entry??null});
+      if(error)throw error;
+    }catch(err){console.error(err);showToast('Speichern fehlgeschlagen');}
+  }
+}
 function actualVacationEntitlement(e){return roundHalf(state.settings.baseVacation*(Number(e.workdays)||5)/5 + Number(e.carry||0) + Number(e.adjustment||0));}
 function fullVacationEntitlement(e){return roundHalf(state.settings.baseVacation + Number(e.carry||0) + Number(e.adjustment||0));}
 function vacationEntitlement(e){return state.settings.vacationDisplayMode==='full' ? fullVacationEntitlement(e) : actualVacationEntitlement(e);}
 function entryFor(empId,key){return state.entries?.[empId]?.[key] || {codes:[],priority:0,note:'',status:'wish'};}
 function isWorkday(e,d){return (e.workweek||[]).includes(d.getDay());}
-function usedVacationActual(e,year=viewDate.getFullYear()){let n=0;Object.entries(state.entries[e.id]||{}).forEach(([k,v])=>{if(k.startsWith(year+'-')&&v.codes?.includes('U')){const d=new Date(k+'T12:00:00');if(isWorkday(e,d)) n++;}});return n;}
+function usedVacationActual(e,year=viewDate.getFullYear()){let n=0;Object.entries(state.entries[e.id]||{}).forEach(([k,v])=>{if(k.startsWith(year+'-')&&entryIsActive(v)&&v.codes?.includes('U')){const d=new Date(k+'T12:00:00');if(isWorkday(e,d)) n++;}});return n;}
 function usedVacationFull(e,year=viewDate.getFullYear()){return Object.entries(state.entries[e.id]||{}).filter(([k,v])=>k.startsWith(year+'-')&&entryIsActive(v)&&v.codes?.includes('U')).length;}
 function usedVacation(e,year=viewDate.getFullYear()){return state.settings.vacationDisplayMode==='full' ? usedVacationFull(e,year) : usedVacationActual(e,year);}
 function countCode(e,code,year=viewDate.getFullYear()){return Object.entries(state.entries[e.id]||{}).filter(([k,v])=>k.startsWith(year+'-')&&entryIsActive(v)&&v.codes?.includes(code)).length;}
@@ -316,6 +328,8 @@ function updateDragActionBar(){
   const emp=state.employees.find(e=>e.id===dragEmployeeId);
   document.getElementById('dragActionCount').textContent=`${dragSelectedKeys.size} ${dragSelectedKeys.size===1?'Tag':'Tage'}`;
   document.getElementById('dragActionEmployee').textContent=emp?.name||'';
+  document.getElementById('dragApproveBtn').classList.toggle('hidden',!canApprove());
+  document.getElementById('dragRejectBtn').classList.toggle('hidden',!canApprove());
   document.getElementById('dragActionBar').classList.remove('hidden');
 }
 function setDragRange(endKey){
@@ -340,14 +354,23 @@ function applyDragCode(code){
     const old=entryFor(dragEmployeeId,key),codes=[...new Set([...(old.codes||[]),code])];
     state.entries[dragEmployeeId][key]={codes,priority:old.priority||0,note:old.note||'',status:sessionRole==='employee'?'wish':(old.status||'wish')};
   });
-  const count=dragSelectedKeys.size;persist();clearDragSelection();render();showToast(`${code} für ${count} Tage eingetragen`);
+  const changed=[...dragSelectedKeys];const count=changed.length;persist();changed.forEach(key=>saveRemoteEntry(dragEmployeeId,key,state.entries[dragEmployeeId][key]));clearDragSelection();render();showToast(`${code} für ${count} Tage eingetragen`);
+}
+function applyDragStatus(status){
+  if(!canApprove()||!dragEmployeeId||!dragSelectedKeys.size)return;
+  const entries=state.entries[dragEmployeeId]||{};
+  const keys=[...dragSelectedKeys].filter(key=>entries[key]?.codes?.some(c=>['U','XU'].includes(c)));
+  if(!keys.length){showToast('Keine Urlaubswünsche in der Auswahl');return}
+  trackAction(status==='approved'?'Urlaub genehmigt':'Urlaub abgelehnt',keys.length+' Tage');
+  keys.forEach(key=>{entries[key]={...entries[key],status}});
+  const count=keys.length;persist();clearDragSelection();render();showToast((status==='approved'?'Genehmigt: ':'Abgelehnt: ')+count+' Tage');
 }
 function deleteDragEntries(){
   if(!dragEmployeeId||!dragSelectedKeys.size||!canPlan(dragEmployeeId)){showToast('Keine Bearbeitungsrechte');return}
   if(!state.entries[dragEmployeeId])return clearDragSelection();
   trackAction('Einträge gelöscht',dragSelectedKeys.size+' Tage');
-  const count=dragSelectedKeys.size;dragSelectedKeys.forEach(key=>delete state.entries[dragEmployeeId][key]);
-  persist();clearDragSelection();render();showToast(`${count} Tage gelöscht`);
+  const changed=[...dragSelectedKeys],count=changed.length;changed.forEach(key=>delete state.entries[dragEmployeeId][key]);
+  persist();changed.forEach(key=>saveRemoteEntry(dragEmployeeId,key,null));clearDragSelection();render();showToast(`${count} Tage gelöscht`);
 }
 function bindPlannerEvents(){
   document.querySelectorAll('.day-cell').forEach(el=>{
@@ -451,7 +474,7 @@ function applyBulk(clear=false){
       state.entries[empId][key]={codes,priority:Math.max(Number(old.priority||0),priority),note:note||old.note||'',status:canApprove()?status:(old.status||'wish')};
     }
   });
-  persist();render();document.getElementById('bulkDialog').close();
+  persist();if(sessionRole==='employee')dates.forEach(d=>{const key=dateKey(d);saveRemoteEntry(empId,key,state.entries[empId]?.[key]??null)});render();document.getElementById('bulkDialog').close();
   showToast(clear?`${overwritten} Einträge aus Zeitraum gelöscht`:`${dates.length} Tage eingetragen`);
   return true;
 }
@@ -571,13 +594,17 @@ function runToolAction(action){
   }catch(err){console.error('Werkzeugfehler',action,err);alert('Werkzeug konnte nicht ausgeführt werden: '+err.message)}
 }
 function renderRoleControls(){
-  const role=document.getElementById('roleSelect'),emp=document.getElementById('roleEmployeeSelect');
+  const role=document.getElementById('roleSelect'),emp=document.getElementById('roleEmployeeSelect'),authMode=!!authUser;
   role.value=sessionRole;
   emp.innerHTML=[...state.employees].sort((a,b)=>a.order-b.order).map(e=>`<option value="${e.id}">${escapeHtml(e.name)}</option>`).join('');
   if(!sessionEmployeeId&&state.employees.length)sessionEmployeeId=state.employees[0].id;
   emp.value=sessionEmployeeId;
-  emp.classList.toggle('hidden',sessionRole!=='employee');
-  ['blackoutsBtn','settingsBtn','addEmployeeBtn','importNamesBtn'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=!canManage()});
+  role.classList.toggle('hidden',authMode);
+  emp.classList.toggle('hidden',authMode||sessionRole!=='employee');
+  const pill=document.getElementById('authUserPill'),logout=document.getElementById('logoutBtn');
+  pill.classList.toggle('hidden',!authMode);logout.classList.toggle('hidden',!authMode);
+  if(authMode)pill.textContent=(authUser.email||'Angemeldet')+' · '+sessionRole;
+  ['blackoutsBtn','settingsBtn','addEmployeeBtn','importNamesBtn','planImportBtn'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=!canManage()});
   document.getElementById('bulkEntryBtn').disabled=sessionRole==='viewer';
 }
 function renderBlackouts(){
@@ -678,8 +705,8 @@ document.getElementById('employeeWorkdays').addEventListener('input',updateVacat
 document.getElementById('employeeForm').addEventListener('submit',e=>{e.preventDefault();if(!canEditEmployees())return;const id=document.getElementById('employeeId').value||uid();const current=state.employees.find(x=>x.id===id);trackAction(current?'Mitarbeiter geändert':'Mitarbeiter angelegt',document.getElementById('employeeName').value.trim());const workweek=[...document.querySelectorAll('.weekday-toggle.active')].map(b=>Number(b.dataset.day));const obj={id,name:document.getElementById('employeeName').value.trim(),hours:Number(document.getElementById('employeeHours').value),percent:Number(document.getElementById('employeePercent').value),workdays:Number(document.getElementById('employeeWorkdays').value),workweek,carry:Number(document.getElementById('employeeCarry').value),adjustment:Number(document.getElementById('employeeAdjustment').value),role:sessionRole==='admin'?document.getElementById('employeeRole').value:(current?.role||'employee'),order:current?.order??state.employees.length};if(current)Object.assign(current,obj);else state.employees.push(obj);persist();renderRoleControls();render();document.getElementById('employeeDialog').close();showToast('Mitarbeiter gespeichert')});
 document.getElementById('deleteEmployeeBtn').addEventListener('click',()=>{if(sessionRole!=='admin')return;const id=document.getElementById('employeeId').value;if(!id)return;if(confirm('Mitarbeiter und alle zugehörigen Planeinträge wirklich löschen?')){const name=state.employees.find(e=>e.id===id)?.name||'';trackAction('Mitarbeiter gelöscht',name);state.employees=state.employees.filter(e=>e.id!==id);delete state.entries[id];persist();renderRoleControls();render();document.getElementById('employeeDialog').close();showToast('Mitarbeiter gelöscht')}});
 
-document.getElementById('cellForm').addEventListener('submit',e=>{e.preventDefault();const empId=document.getElementById('cellEmployeeId').value,key=document.getElementById('cellDateValue').value;if(!canPlan(empId))return;const blocked=blackoutBlocks(key);if(blocked&&[...selectedCodes].some(c=>['U','XU'].includes(c))){alert('Urlaub ist in dieser Sperrzeit blockiert: '+blocked.name);return}if(!state.entries[empId])state.entries[empId]={};const candidate={codes:[...selectedCodes],priority:Number(document.getElementById('cellPriority').value),note:document.getElementById('cellNote').value.trim(),status:canApprove()?document.getElementById('cellStatus').value:'wish'};const warn=document.getElementById('cellWarning').textContent;if(warn&&state.settings.confirmConflicts&&!confirm(warn+' Trotzdem speichern?'))return;trackAction('Planung geändert',(state.employees.find(e=>e.id===empId)?.name||'')+' · '+key+' · '+candidate.codes.join('+'));if(candidate.codes.length||candidate.priority||candidate.note)state.entries[empId][key]=candidate;else delete state.entries[empId][key];persist();render();document.getElementById('cellDialog').close();showToast('Planung aktualisiert')});
-document.getElementById('clearCellBtn').addEventListener('click',()=>{const emp=document.getElementById('cellEmployeeId').value,key=document.getElementById('cellDateValue').value;if(!canPlan(emp))return;if(state.entries[emp]){trackAction('Eintrag gelöscht',(state.employees.find(e=>e.id===emp)?.name||'')+' · '+key);delete state.entries[emp][key]}persist();render();document.getElementById('cellDialog').close();showToast('Eintrag gelöscht')});
+document.getElementById('cellForm').addEventListener('submit',e=>{e.preventDefault();const empId=document.getElementById('cellEmployeeId').value,key=document.getElementById('cellDateValue').value;if(!canPlan(empId))return;const blocked=blackoutBlocks(key);if(blocked&&[...selectedCodes].some(c=>['U','XU'].includes(c))){alert('Urlaub ist in dieser Sperrzeit blockiert: '+blocked.name);return}if(!state.entries[empId])state.entries[empId]={};const candidate={codes:[...selectedCodes],priority:Number(document.getElementById('cellPriority').value),note:document.getElementById('cellNote').value.trim(),status:canApprove()?document.getElementById('cellStatus').value:'wish'};const warn=document.getElementById('cellWarning').textContent;if(warn&&state.settings.confirmConflicts&&!confirm(warn+' Trotzdem speichern?'))return;trackAction('Planung geändert',(state.employees.find(e=>e.id===empId)?.name||'')+' · '+key+' · '+candidate.codes.join('+'));if(candidate.codes.length||candidate.priority||candidate.note)state.entries[empId][key]=candidate;else delete state.entries[empId][key];persist();saveRemoteEntry(empId,key,state.entries[empId]?.[key]??null);render();document.getElementById('cellDialog').close();showToast('Planung aktualisiert')});
+document.getElementById('clearCellBtn').addEventListener('click',()=>{const emp=document.getElementById('cellEmployeeId').value,key=document.getElementById('cellDateValue').value;if(!canPlan(emp))return;if(state.entries[emp]){trackAction('Eintrag gelöscht',(state.employees.find(e=>e.id===emp)?.name||'')+' · '+key);delete state.entries[emp][key]}persist();saveRemoteEntry(emp,key,null);render();document.getElementById('cellDialog').close();showToast('Eintrag gelöscht')});
 
 document.getElementById('settingsForm').addEventListener('submit',e=>{e.preventDefault();if(!canManage())return;trackAction('Planungsregeln geändert');state.settings.baseVacation=Number(document.getElementById('settingBaseVacation').value);state.settings.maxVacation=Number(document.getElementById('settingMaxVacation').value);state.settings.maxAbsence=Number(document.getElementById('settingMaxAbsence').value);state.settings.countSchool=document.getElementById('settingCountSchool').checked;state.settings.confirmConflicts=document.getElementById('settingConfirmConflicts').checked;persist();render();document.getElementById('settingsDialog').close();showToast('Planungsregeln gespeichert')});
 
