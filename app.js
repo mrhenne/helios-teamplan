@@ -778,6 +778,14 @@ async function initRemote(){
   if(!authConfigured()){setSync('local','● Lokal');return}
   try{
     supabaseClient=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey);
+    const inviteParams=new URLSearchParams(window.location.search);
+    const inviteToken=inviteParams.get('token_hash'),inviteType=inviteParams.get('type');
+    if(inviteToken&&inviteType){
+      const {error:verifyError}=await supabaseClient.auth.verifyOtp({token_hash:inviteToken,type:inviteType});
+      if(verifyError)throw verifyError;
+      history.replaceState({},document.title,window.location.pathname);
+      showToast('Einladung bestätigt');
+    }
     const {data:{session}}=await supabaseClient.auth.getSession();
     if(!session){setSync('local','● Login erforderlich');showLogin()}
     else{
@@ -836,7 +844,7 @@ document.getElementById('userInviteForm').addEventListener('submit',async e=>{
     const data=await invokeUserAdmin({action:'invite',email:document.getElementById('inviteEmail').value.trim(),displayName:document.getElementById('inviteName').value.trim(),role:document.getElementById('inviteRole').value,employeeId:document.getElementById('inviteEmployee').value||null});
     e.target.reset();document.getElementById('inviteEmployee').innerHTML=employeeOptions('');
     if(data.delivery==='link'&&data.inviteLink){
-      resultBox.innerHTML='<strong>Mail-Limit erreicht</strong><span>Supabase konnte keine Einladungsmail versenden. Der Account ist vorbereitet. Schicke stattdessen diesen Link:</span><div class="invite-link-row"><input id="generatedInviteLink" readonly value="'+escapeHtml(data.inviteLink)+'"><button type="button" id="copyInviteLink" class="btn primary">Link kopieren</button></div>';
+      resultBox.innerHTML='<strong>Einladungslink erstellt</strong><span>Schicke diesen einmaligen TeamPlan-Link an den Kollegen. Beim Öffnen wird der Account bestätigt und direkt bei TeamPlan angemeldet.</span><div class="invite-link-row"><input id="generatedInviteLink" readonly value="'+escapeHtml(data.inviteLink)+'"><button type="button" id="copyInviteLink" class="btn primary">Link kopieren</button></div>';
       resultBox.classList.remove('hidden');
       document.getElementById('copyInviteLink').addEventListener('click',async()=>{await navigator.clipboard.writeText(data.inviteLink);showToast('Einladungslink kopiert')});
       showToast('Einladungslink erstellt');
