@@ -12,7 +12,7 @@ const roundHalf = n => Math.round(n*2)/2;
 
 const defaultState = {
   version: 1,
-  settings: {baseVacation:30,maxVacation:4,maxAbsence:7,countSchool:true,confirmConflicts:true,state:'NW',vacationDisplayMode:'actual',theme:'light',zoom:1},
+  settings: {baseVacation:30,maxVacation:4,maxAbsence:7,countSchool:true,confirmConflicts:true,state:'NW',vacationDisplayMode:'actual',theme:'light',zoom:1,customCodes:[]},
   employees: [
     {id:uid(),name:'Anna Beispiel',hours:38.5,percent:100,workdays:5,workweek:[1,2,3,4,5],carry:0,adjustment:0,role:'employee',autoWeekend:{enabled:false,intervalWeeks:2,anchorDate:''},order:0},
     {id:uid(),name:'Ben Beispiel',hours:30,percent:78,workdays:4,workweek:[1,2,3,4],carry:2,adjustment:0,role:'employee',autoWeekend:{enabled:false,intervalWeeks:2,anchorDate:''},order:1},
@@ -65,7 +65,7 @@ function loadLocal(){
   catch { return structuredClone(defaultState); }
 }
 function normalizeState(s){
-  s.settings={...defaultState.settings,...(s.settings||{})}; s.employees=s.employees||[]; s.entries=s.entries||{}; s.blackouts=s.blackouts||[]; s.audit=s.audit||[];
+  s.settings={...defaultState.settings,...(s.settings||{})}; s.settings.customCodes=Array.isArray(s.settings.customCodes)?s.settings.customCodes:[]; s.employees=s.employees||[]; s.entries=s.entries||{}; s.blackouts=s.blackouts||[]; s.audit=s.audit||[];
   s.employees.forEach((e,i)=>{e.order=e.order??i;e.workweek=e.workweek||[1,2,3,4,5];e.carry=Number(e.carry||0);e.adjustment=Number(e.adjustment||0);e.role=e.role||'employee';e.autoWeekend=e.autoWeekend||{enabled:false,intervalWeeks:2,anchorDate:''}});
   Object.values(s.entries).forEach(empEntries=>Object.values(empEntries||{}).forEach(v=>{v.status=v.status||'wish'}));
   return s;
@@ -97,6 +97,40 @@ function undoLastAction(){
 function entryIsActive(v){return (v?.status||'wish')!=='rejected'}
 function blackoutForKey(key){return (state.blackouts||[]).find(b=>key>=b.start&&key<=b.end)||null}
 function blackoutBlocks(key){const b=blackoutForKey(key);return b?.mode==='block'?b:null}
+function allCodeDefs(){
+  const base=[
+    {key:'U',label:'Urlaub',className:'u',absence:true},
+    {key:'X',label:'Frei-WE',className:'x',absence:true},
+    {key:'XU',label:'Wunsch-WE',className:'xu',absence:true},
+    {key:'S',label:'Schule',className:'s',absence:true},
+    {key:'G',label:'Geburtstag',className:'g',absence:false}
+  ];
+  return [...base,...(state.settings.customCodes||[])];
+}
+function codeDef(key){return allCodeDefs().find(c=>c.key===key)||{key,label:key,className:'custom-code',absence:false,color:'#6f7f8f'}}
+function codeClassName(key){return codeDef(key).className||'custom-code'}
+function isAbsenceCode(key){return !!codeDef(key).absence}
+function renderCustomCodesSettings(){
+  const list=document.getElementById('customCodesList');if(!list)return;
+  const custom=state.settings.customCodes||[];
+  list.innerHTML=custom.length?custom.map(c=>'<div class="custom-code-row" data-key="'+escapeHtml(c.key)+'"><span class="custom-code-swatch" style="--code-color:'+escapeHtml(c.color||'#6f7f8f')+'">'+escapeHtml(c.key)+'</span><div><strong>'+escapeHtml(c.label)+'</strong><small>'+(c.absence?'zählt als Abwesenheit':'nur Kennzeichnung')+'</small></div><button type="button" class="btn danger custom-code-delete">Löschen</button></div>').join(''):'<div class="empty-state">Keine zusätzlichen Kürzel angelegt.</div>';
+  list.querySelectorAll('.custom-code-delete').forEach(btn=>btn.addEventListener('click',()=>{const key=btn.closest('.custom-code-row').dataset.key;if(!confirm('Kürzel '+key+' wirklich löschen? Bereits eingetragene Werte bleiben im Plan sichtbar.'))return;trackAction('Kürzel gelöscht',key);state.settings.customCodes=state.settings.customCodes.filter(c=>c.key!==key);persist();renderCustomCodesSettings();render()}));
+}
+function renderDynamicCodes(){
+  const custom=state.settings.customCodes||[];
+  document.querySelectorAll('[data-custom-code]').forEach(n=>n.remove());
+  const cell=document.getElementById('cellCodeSelector'),bulk=document.getElementById('bulkCodeSelector'),drag=document.getElementById('customDragCodes'),legend=document.getElementById('customLegend');
+  custom.forEach(c=>{
+    if(cell){const b=document.createElement('button');b.type='button';b.dataset.code=c.key;b.dataset.customCode='1';b.className='code-btn custom-code';b.style.setProperty('--code-color',c.color);b.innerHTML=escapeHtml(c.key)+' <small>'+escapeHtml(c.label)+'</small>';cell.appendChild(b)}
+    if(bulk){const b=document.createElement('button');b.type='button';b.dataset.bulkCode=c.key;b.dataset.customCode='1';b.className='code-btn custom-code';b.style.setProperty('--code-color',c.color);b.innerHTML=escapeHtml(c.key)+' <small>'+escapeHtml(c.label)+'</small>';bulk.appendChild(b)}
+  });
+  if(drag)drag.innerHTML=custom.map(c=>'<button type="button" data-custom-drag-code="'+escapeHtml(c.key)+'" class="drag-action custom-code" style="--code-color:'+escapeHtml(c.color)+'">'+escapeHtml(c.key)+'</button>').join('');
+  if(legend)legend.innerHTML=custom.map(c=>'<span class="custom-legend-item"><b class="chip custom-code" style="--code-color:'+escapeHtml(c.color)+'">'+escapeHtml(c.key)+'</b> '+escapeHtml(c.label)+'</span>').join('');
+  document.querySelectorAll('#cellCodeSelector [data-custom-code]').forEach(b=>b.addEventListener('click',()=>{selectedCodes.has(b.dataset.code)?selectedCodes.delete(b.dataset.code):selectedCodes.add(b.dataset.code);b.classList.toggle('selected');updateCellWarning(document.getElementById('cellEmployeeId').value,document.getElementById('cellDateValue').value)}));
+  document.querySelectorAll('#bulkCodeSelector [data-custom-code]').forEach(b=>b.addEventListener('click',()=>{bulkSelectedCodes.has(b.dataset.bulkCode)?bulkSelectedCodes.delete(b.dataset.bulkCode):bulkSelectedCodes.add(b.dataset.bulkCode);b.classList.toggle('selected');updateBulkPreview()}));
+  document.querySelectorAll('[data-custom-drag-code]').forEach(b=>b.addEventListener('click',()=>applyDragCode(b.dataset.customDragCode)));
+}
+
 function clearAutoWeekendX(empId){
   const entries=state.entries[empId]||{};
   Object.entries(entries).forEach(([key,v])=>{
