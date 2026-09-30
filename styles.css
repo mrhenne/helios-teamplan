@@ -364,3 +364,54 @@ body.planner-focus .plan-table{min-height:100%}
 .date-head strong{font-size:var(--date-strong-font,15px)}
 .month-mini,.holiday-label,.school-label{font-size:var(--mini-font,7px)}
 .cell-code,.summary-row td{font-size:var(--code-font,9px)}
+
+/* Fokusmodus: kein Browser-Vollbild, nur Zeitraum + Planung */
+.planner-focus-controls{
+  display:none;
+  position:fixed;
+  left:0;right:0;top:0;
+  height:44px;
+  z-index:300;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 10px 0 14px;
+  background:rgba(16,39,34,.92);
+  color:#fff;
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(255,255,255,.12)
+}
+.focus-period{display:flex;align-items:baseline;gap:8px}
+.focus-period strong{font-size:15px}.focus-period span{font-size:10px;opacity:.72}
+.focus-actions{display:flex;gap:5px}
+.focus-actions button{width:32px;height:32px;border:1px solid rgba(255,255,255,.22);border-radius:9px;background:rgba(255,255,255,.08);color:#fff;cursor:pointer;font-size:14px}
+
+body.planner-focus{overflow:hidden;background:var(--bg)!important}
+body.planner-focus .aurora,
+body.planner-focus .topbar,
+body.planner-focus .summary-grid,
+body.planner-focus .planner-controls,
+body.planner-focus .year-view,
+body.planner-focus .hint{display:none!important}
+body.planner-focus .app-shell{padding:0!important;margin:0!important;max-width:none!important;width:100vw!important;height:100vh!important}
+body.planner-focus #monthView{
+  display:block!important;
+  position:fixed;
+  left:0;right:0;top:44px;bottom:0;
+  z-index:200;
+  border-radius:0!important;
+  border:0!important;
+  margin:0!important;
+  background:var(--white)
+}
+body.planner-focus #planner{
+  height:calc(100vh - 44px)!important;
+  max-height:calc(100vh - 44px)!important;
+  width:100vw!important;
+  overflow:auto!important
+}
+body.planner-focus .planner-focus-controls{display:flex}
+
+/* Lesbarkeitsgrenzen für Auto-Fit */
+body.fit-readable .date-head,
+body.fit-readable .day-cell{min-width:29px!important;width:29px!important;min-height:34px!important;height:34px!important}
+body.fit-readable .plan-table .employee-col{min-width:160px!important;width:160px!important}
