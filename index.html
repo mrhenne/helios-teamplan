@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260930-14" />
+  <link rel="stylesheet" href="styles.css?v=20260930-15" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -380,11 +380,11 @@
         <button id="accountSaveBtn" type="button" class="btn ghost">Kontodaten speichern</button>
         <div id="accountInfo" class="dialog-copy"></div>
       </section>
-      <section class="settings-section">
+      <section id="managerDataSection" class="settings-section manager-only">
         <div class="settings-section-head"><strong>Daten & Mitarbeiter</strong><span>Importfunktionen</span></div>
         <button id="importNamesBtn" type="button" class="btn ghost small-settings-action">⇧ Namensliste importieren</button>
       </section>
-      <section class="settings-section">
+      <section id="customCodesSection" class="settings-section manager-only">
         <div class="settings-section-head"><strong>Eigene Kürzel</strong><span>Zusätzliche interne Kennzeichnungen</span></div>
         <div class="form-grid four custom-code-form">
           <label>Kürzel<input id="customCodeKey" maxlength="4" placeholder="z. B. F"></label>
@@ -395,11 +395,11 @@
         <button id="addCustomCodeBtn" type="button" class="btn ghost small-settings-action">+ Kürzel hinzufügen</button>
         <div id="customCodesList" class="custom-codes-list"></div>
       </section>
-      <section class="settings-section">
+      <section id="cleanupSettingsSection" class="settings-section manager-only">
         <div class="settings-section-head"><strong>Planungsdaten</strong><span>Gezielt bereinigen</span></div>
         <button id="openCleanupBtn" type="button" class="btn ghost small-settings-action">⌫ Planungsdaten löschen…</button>
       </section>
-      <section id="planningSettingsSection" class="settings-section">
+      <section id="planningSettingsSection" class="settings-section manager-only">
         <div class="settings-section-head"><strong>Planungsregeln</strong><span>Nur für Admin und Planer</span></div>
       <div class="form-grid two">
         <label>Vollzeit-Urlaub bei 5-Tage-Woche<input id="settingBaseVacation" type="number" min="20" max="60" step="0.5" /></label>
@@ -463,6 +463,6 @@
 
   <div id="cellContextMenu" class="cell-context-menu hidden" role="menu" aria-label="Schnellaktionen"></div>
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20260930-14"></script>
+  <script src="app.js?v=20260930-15"></script>
 </body>
 </html>
