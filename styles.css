@@ -532,3 +532,23 @@ body.dark-mode .cell-context-menu{background:rgba(18,31,28,.98);border-color:rgb
 body.dark-mode .context-code:hover,body.dark-mode .context-action:hover{background:#20372f}
 body.dark-mode .context-code b,body.dark-mode .context-action b{background:#263b35;color:#cfe0db}
 body.dark-mode .context-code.active{background:rgba(77,179,150,.1)}
+
+/* Mitarbeitermodus klarer hervorheben */
+.employee-row.employee-muted-row{opacity:.38!important;filter:saturate(.72);transition:opacity .16s ease,filter .16s ease}
+.employee-row.employee-muted-row:hover{opacity:.62!important;filter:saturate(.9)}
+.employee-row.employee-own-row{opacity:1!important;position:relative}
+.employee-row.employee-own-row .employee-cell{
+  background:rgba(15,139,120,.11)!important;
+  box-shadow:inset 4px 0 0 rgba(15,139,120,.72),inset 0 1px 0 rgba(15,139,120,.12),inset 0 -1px 0 rgba(15,139,120,.12)
+}
+.employee-row.employee-own-row .day-cell{
+  background-image:linear-gradient(rgba(15,139,120,.055),rgba(15,139,120,.055))!important
+}
+.employee-row.employee-own-row .employee-name{color:var(--green);font-weight:850}
+.employee-row.employee-own-row .employee-name::after{
+  content:"DEINE ZEILE";display:inline-flex;margin-left:7px;padding:2px 5px;border-radius:999px;
+  background:rgba(15,139,120,.12);color:var(--green);font-size:6px;font-weight:900;letter-spacing:.06em;vertical-align:2px
+}
+body.dark-mode .employee-row.employee-muted-row{opacity:.34!important;filter:saturate(.7)}
+body.dark-mode .employee-row.employee-own-row .employee-cell{background:rgba(77,179,150,.14)!important}
+body.dark-mode .employee-row.employee-own-row .day-cell{background-image:linear-gradient(rgba(77,179,150,.07),rgba(77,179,150,.07))!important}
