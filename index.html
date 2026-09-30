@@ -101,7 +101,9 @@
     <div class="theme-switch-wrap"><span>Darstellung</span><button id="themeBtn" class="theme-switch" type="button"><span class="theme-switch-knob"></span><b id="themeLabel">Hell</b></button></div>
   </div>
   <div class="controls-row controls-secondary">
-    <div class="control-block zoom-block"><span class="control-caption">Zoom</span><button id="zoomOutBtn" class="zoom-btn" type="button">−</button><input id="zoomRange" type="range" min="70" max="140" step="5" value="100"><button id="zoomInBtn" class="zoom-btn" type="button">+</button><strong id="zoomLabel">100%</strong></div>
+    <div class="control-block zoom-block"><span class="control-caption">Zoom</span><button id="zoomOutBtn" class="zoom-btn" type="button">−</button><input id="zoomRange" type="range" min="10" max="140" step="5" value="100"><button id="zoomInBtn" class="zoom-btn" type="button">+</button><strong id="zoomLabel">100%</strong></div>
+    <button id="fitEmployeesBtn" class="btn ghost view-tool-btn" type="button" title="Alle Mitarbeiter in die Höhe einpassen">↕ Alle einpassen</button>
+    <button id="fullscreenBtn" class="btn ghost view-tool-btn" type="button" title="Nur die Planung im Vollbild anzeigen">⛶ Vollbild</button>
     <div class="control-block"><span class="control-caption">Urlaub</span><div class="segmented vacation-mode"><button id="vacationFullBtn" class="segment" type="button">Gesamt</button><button id="vacationActualBtn" class="segment active" type="button">Anteilig</button></div></div>
     <div class="controls-spacer"></div>
     <input id="searchInput" class="search control-search compact-employee-search" placeholder="Mitarbeiter suchen…" />
@@ -115,6 +117,10 @@
     <section id="monthView" class="planner-wrap glass">
       <div id="planner" class="planner"></div>
     </section>
+    <div id="plannerFocusControls" class="planner-focus-controls">
+      <button id="focusFitBtn" type="button" title="Alle Mitarbeiter einpassen">↕</button>
+      <button id="exitFullscreenBtn" type="button" title="Vollbild verlassen">✕</button>
+    </div>
 
     <section id="yearView" class="year-view hidden">
       <div id="yearOverview" class="year-overview"></div>
@@ -172,6 +178,9 @@
         <small>Vom Referenz-Samstag aus werden Samstag und Sonntag im gewählten Rhythmus automatisch mit X markiert.</small>
       </div>
       <div id="vacationPreview" class="calc-preview"></div>
+      <div class="employee-dialog-tools">
+        <button type="button" id="employeeRangeBtn" class="btn ghost hidden">▦ Zeitraum planen</button>
+      </div>
       <div class="dialog-actions"><button type="button" id="deleteEmployeeBtn" class="btn danger hidden">Löschen</button><div class="spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">Speichern</button></div>
     </form>
   </dialog>
@@ -387,6 +396,6 @@
   </dialog>
 
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20260930-7"></script>
+  <script src="app.js?v=20260930-8"></script>
 </body>
 </html>
