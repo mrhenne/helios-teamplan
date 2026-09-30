@@ -30,6 +30,12 @@ let supabaseClient = null;
 let syncTimer = null;
 let isApplyingRemote = false;
 let currentView = 'month';
+let dragSelecting = false;
+let dragMoved = false;
+let dragEmployeeId = null;
+let dragStartKey = null;
+let dragSelectedKeys = new Set();
+let suppressNextCellClick = false;
 
 function loadLocal(){
   try { const raw=localStorage.getItem('helios-teamplan-v1'); return raw ? normalizeState(JSON.parse(raw)) : structuredClone(defaultState); }
@@ -70,22 +76,61 @@ function getEaster(year){
 function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
 function holidaysNRW(year){const e=getEaster(year); const fixed=[[0,1,'Neujahr'],[4,1,'Tag der Arbeit'],[9,3,'Tag der Einheit'],[10,1,'Allerheiligen'],[11,25,'1. Weihnachtstag'],[11,26,'2. Weihnachtstag']]; const map={}; fixed.forEach(([m,d,n])=>map[dateKey(new Date(year,m,d))]=n); [[-2,'Karfreitag'],[1,'Ostermontag'],[39,'Christi Himmelfahrt'],[50,'Pfingstmontag'],[60,'Fronleichnam']].forEach(([o,n])=>map[dateKey(addDays(e,o))]=n); return map;}
 
+const NRW_SCHOOL_BREAKS = [
+  ['2025-12-22','2026-01-06','Weihnachtsferien'],
+  ['2026-03-30','2026-04-11','Osterferien'],
+  ['2026-05-26','2026-05-26','Pfingstferien'],
+  ['2026-07-20','2026-09-01','Sommerferien'],
+  ['2026-10-17','2026-10-31','Herbstferien'],
+  ['2026-12-23','2027-01-06','Weihnachtsferien'],
+  ['2027-03-22','2027-04-03','Osterferien'],
+  ['2027-05-18','2027-05-18','Pfingstferien'],
+  ['2027-07-19','2027-08-31','Sommerferien'],
+  ['2027-10-23','2027-11-06','Herbstferien'],
+  ['2027-12-24','2028-01-08','Weihnachtsferien'],
+  ['2028-04-10','2028-04-22','Osterferien'],
+  ['2028-07-10','2028-08-22','Sommerferien'],
+  ['2028-10-23','2028-11-04','Herbstferien'],
+  ['2028-12-21','2029-01-05','Weihnachtsferien'],
+  ['2029-03-26','2029-04-07','Osterferien'],
+  ['2029-05-22','2029-05-22','Pfingstferien'],
+  ['2029-07-02','2029-08-14','Sommerferien'],
+  ['2029-10-15','2029-10-27','Herbstferien'],
+  ['2029-12-20','2030-01-04','Weihnachtsferien'],
+  ['2030-04-15','2030-04-27','Osterferien']
+];
+function schoolBreakForDate(d){
+  const k=dateKey(d);
+  const found=NRW_SCHOOL_BREAKS.find(([start,end])=>k>=start&&k<=end);
+  return found?found[2]:'';
+}
+
 function monthDates(){const y=viewDate.getFullYear(),m=viewDate.getMonth(),last=new Date(y,m+1,0).getDate();return Array.from({length:last},(_,i)=>new Date(y,m,i+1));}
+function quarterDates(){
+  const y=viewDate.getFullYear(),qStart=Math.floor(viewDate.getMonth()/3)*3,out=[];
+  for(let m=qStart;m<qStart+3;m++){const last=new Date(y,m+1,0).getDate();for(let i=1;i<=last;i++)out.push(new Date(y,m,i));}
+  return out;
+}
+function activePlannerDates(){return currentView==='quarter'?quarterDates():monthDates();}
 function dailyCounts(key){let U=0,XU=0,S=0;state.employees.forEach(e=>{const c=entryFor(e.id,key).codes||[];if(c.includes('U'))U++;if(c.includes('XU'))XU++;if(c.includes('S'))S++});return {U,XU,S,total:U+XU+(state.settings.countSchool?S:0)};}
 function conflictLevel(key){const c=dailyCounts(key);return {vacation:c.U>state.settings.maxVacation,total:c.total>state.settings.maxAbsence};}
 
 function render(){
-  const dates=monthDates(), holidays=holidaysNRW(viewDate.getFullYear());
-  document.getElementById('monthLabel').textContent=MONTHS[viewDate.getMonth()]; document.getElementById('yearLabel').textContent=viewDate.getFullYear();
+  const dates=activePlannerDates(), holidays=holidaysNRW(viewDate.getFullYear());
+  if(currentView==='quarter'){
+    const q=Math.floor(viewDate.getMonth()/3)+1,start=(q-1)*3;
+    document.getElementById('monthLabel').textContent=`Q${q} · ${MONTHS[start].slice(0,3)}–${MONTHS[start+2].slice(0,3)}`;
+  } else document.getElementById('monthLabel').textContent=MONTHS[viewDate.getMonth()];
+  document.getElementById('yearLabel').textContent=viewDate.getFullYear();
   const filter=document.getElementById('searchInput').value.trim().toLowerCase();
   const employees=[...state.employees].sort((a,b)=>a.order-b.order).filter(e=>!filter||e.name.toLowerCase().includes(filter));
   let html='<table class="plan-table"><thead><tr><th class="employee-col">Mitarbeiter · Urlaub</th>';
-  dates.forEach(d=>{const key=dateKey(d),we=[0,6].includes(d.getDay()),hol=holidays[key];html+=`<th class="date-head ${we?'weekend':''} ${hol?'holiday':''}" title="${hol||''}">${DOW[d.getDay()]}<strong>${d.getDate()}</strong>${hol?`<span class="holiday-label">${escapeHtml(hol)}</span>`:''}</th>`});
+  dates.forEach(d=>{const key=dateKey(d),we=[0,6].includes(d.getDay()),hol=holidays[key],school=schoolBreakForDate(d),monthBoundary=d.getDate()===1;html+=`<th class="date-head ${we?'weekend':''} ${hol?'holiday':''} ${school?'school-holiday':''} ${monthBoundary&&currentView==='quarter'?'month-boundary':''}" title="${escapeHtml([hol,school&&('NRW '+school)].filter(Boolean).join(' · '))}">${currentView==='quarter'&&monthBoundary?`<span class="month-mini">${MONTHS[d.getMonth()].slice(0,3)}</span>`:''}${DOW[d.getDay()]}<strong>${d.getDate()}</strong>${hol?`<span class="holiday-label">${escapeHtml(hol)}</span>`:school?`<span class="school-label">${escapeHtml(school.replace('ferien',''))}</span>`:''}</th>`});
   html+='</tr></thead><tbody>';
   employees.forEach(e=>{
     const used=usedVacation(e),total=vacationEntitlement(e),remain=remainingVacation(e),xu=countCode(e,'XU'); const status=remain<0?'status-bad':remain<=3?'status-low':'status-good';
     html+=`<tr class="employee-row" draggable="true" data-id="${e.id}"><td class="employee-col employee-cell"><div class="employee-card"><span class="drag-handle">⠿</span><div class="employee-edit" data-id="${e.id}"><div class="employee-name">${escapeHtml(e.name)}</div><div class="employee-meta">${e.hours} h · ${e.percent}% · ${e.workdays} Tage/Woche · XU ${xu}</div></div><div class="employee-stats ${status}"><strong>${used}/${total}</strong><small>${remain} übrig</small></div></div></td>`;
-    dates.forEach(d=>{const key=dateKey(d),v=entryFor(e.id,key),we=[0,6].includes(d.getDay()),nonwork=!isWorkday(e,d),conf=conflictLevel(key);const codes=(v.codes||[]).map(c=>`<span class="cell-code ${CODE_CLASS[c]}">${c}</span>`).join('');const warn=(conf.vacation&&v.codes?.includes('U'))||(conf.total&&v.codes?.some(c=>['U','XU','S'].includes(c)));html+=`<td class="day-cell ${we?'weekend':''} ${nonwork?'nonwork':''}" data-emp="${e.id}" data-date="${key}" title="${v.note?escapeHtml(v.note):''}"><div class="cell-codes">${codes}</div>${v.priority?`<span class="cell-priority p${v.priority}"></span>`:''}${v.note?'<span class="cell-note"></span>':''}${warn?'<span class="cell-warning-mark">!</span>':''}</td>`});
+    dates.forEach(d=>{const key=dateKey(d),v=entryFor(e.id,key),we=[0,6].includes(d.getDay()),nonwork=!isWorkday(e,d),conf=conflictLevel(key),school=schoolBreakForDate(d);const codes=(v.codes||[]).map(c=>`<span class="cell-code ${CODE_CLASS[c]}">${c}</span>`).join('');const warn=(conf.vacation&&v.codes?.includes('U'))||(conf.total&&v.codes?.some(c=>['U','XU','S'].includes(c)));html+=`<td class="day-cell ${we?'weekend':''} ${nonwork?'nonwork':''} ${school?'school-holiday-cell':''}" data-emp="${e.id}" data-date="${key}" title="${escapeHtml([v.note,school&&('NRW '+school)].filter(Boolean).join(' · '))}"><div class="cell-codes">${codes}</div>${v.priority?`<span class="cell-priority p${v.priority}"></span>`:''}${v.note?'<span class="cell-note"></span>':''}${warn?'<span class="cell-warning-mark">!</span>':''}</td>`});
     html+='</tr>';
   });
   html+=summaryRow('Urlaub U','U',dates);html+=summaryRow('Wunschfrei XU','XU',dates);html+=summaryRow('Schule S','S',dates);html+=presenceRow(dates);html+=absenceNamesRow(dates);html+='</tbody></table>';
@@ -105,13 +150,14 @@ function absenceNamesRow(dates){
   return s+'</tr>';
 }
 function renderMetrics(){
-  document.getElementById('metricEmployees').textContent=state.employees.length; document.getElementById('metricVacation').textContent=state.employees.reduce((a,e)=>a+usedVacation(e),0); document.getElementById('metricXU').textContent=state.employees.reduce((a,e)=>a+countCode(e,'XU'),0); document.getElementById('metricConflicts').textContent=monthDates().filter(d=>{const c=conflictLevel(dateKey(d));return c.vacation||c.total}).length;
+  document.getElementById('metricEmployees').textContent=state.employees.length; document.getElementById('metricVacation').textContent=state.employees.reduce((a,e)=>a+usedVacation(e),0); document.getElementById('metricXU').textContent=state.employees.reduce((a,e)=>a+countCode(e,'XU'),0); document.getElementById('metricConflicts').textContent=activePlannerDates().filter(d=>{const c=conflictLevel(dateKey(d));return c.vacation||c.total}).length;
 }
 
 function syncViewControls(){
-  document.getElementById('monthView').classList.toggle('hidden',currentView!=='month');
+  document.getElementById('monthView').classList.toggle('hidden',currentView==='year');
   document.getElementById('yearView').classList.toggle('hidden',currentView!=='year');
   document.getElementById('monthViewBtn').classList.toggle('active',currentView==='month');
+  document.getElementById('quarterViewBtn').classList.toggle('active',currentView==='quarter');
   document.getElementById('yearViewBtn').classList.toggle('active',currentView==='year');
   const full=state.settings.vacationDisplayMode==='full';
   document.getElementById('vacationFullBtn').classList.toggle('active',full);
@@ -127,10 +173,10 @@ function renderYearOverview(){
     html+=`<article class="year-month glass" data-month="${month}"><button type="button" class="year-month-title" data-month="${month}">${MONTHS[month]}</button><div class="mini-weekdays"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div><div class="mini-calendar">`;
     for(let i=0;i<offset;i++) html+='<span class="mini-day empty"></span>';
     for(let day=1;day<=days;day++){
-      const d=new Date(year,month,day), key=dateKey(d), counts=dailyCounts(key), conf=conflictLevel(key), weekend=[0,6].includes(d.getDay()), hol=holidays[key];
+      const d=new Date(year,month,day), key=dateKey(d), counts=dailyCounts(key), conf=conflictLevel(key), weekend=[0,6].includes(d.getDay()), hol=holidays[key],school=schoolBreakForDate(d);
       const total=counts.U+counts.XU+counts.S;
       const absent=absentEmployees(key).map(x=>`${x.employee.name} (${x.codes.join('+')})`).join(', ');
-      html+=`<button type="button" class="mini-day ${weekend?'weekend':''} ${hol?'holiday':''} ${conf.vacation||conf.total?'conflict':''}" data-date="${key}" title="${escapeHtml([hol,absent].filter(Boolean).join(' · '))}"><span class="mini-date">${day}</span><span class="mini-counts">${counts.U?'<b class="u">'+counts.U+'</b>':''}${counts.XU?'<b class="xu">'+counts.XU+'</b>':''}${counts.S?'<b class="s">'+counts.S+'</b>':''}</span>${!total?'<span class="mini-present">'+presentCount(key)+'</span>':''}</button>`;
+      html+=`<button type="button" class="mini-day ${weekend?'weekend':''} ${hol?'holiday':''} ${school?'school-holiday':''} ${conf.vacation||conf.total?'conflict':''}" data-date="${key}" title="${escapeHtml([hol,school&&('NRW '+school),absent].filter(Boolean).join(' · '))}"><span class="mini-date">${day}</span><span class="mini-counts">${counts.U?'<b class="u">'+counts.U+'</b>':''}${counts.XU?'<b class="xu">'+counts.XU+'</b>':''}${counts.S?'<b class="s">'+counts.S+'</b>':''}</span>${!total?'<span class="mini-present">'+presentCount(key)+'</span>':''}</button>`;
     }
     html+='</div></article>';
   }
@@ -147,8 +193,72 @@ function renderYearOverview(){
   document.querySelectorAll('.mini-day[data-date]').forEach(b=>b.addEventListener('click',()=>{const d=new Date(b.dataset.date+'T12:00:00');viewDate=new Date(d.getFullYear(),d.getMonth(),1);currentView='month';render()}));
 }
 
+function clearDragSelection(){
+  dragSelectedKeys.clear();dragSelecting=false;dragMoved=false;dragEmployeeId=null;dragStartKey=null;
+  document.querySelectorAll('.day-cell.drag-selected').forEach(el=>el.classList.remove('drag-selected'));
+  document.getElementById('dragActionBar').classList.add('hidden');
+}
+function updateDragVisuals(){
+  document.querySelectorAll('.day-cell').forEach(el=>el.classList.toggle('drag-selected',el.dataset.emp===dragEmployeeId&&dragSelectedKeys.has(el.dataset.date)));
+}
+function updateDragActionBar(){
+  if(!dragEmployeeId||!dragSelectedKeys.size){document.getElementById('dragActionBar').classList.add('hidden');return}
+  const emp=state.employees.find(e=>e.id===dragEmployeeId);
+  document.getElementById('dragActionCount').textContent=`${dragSelectedKeys.size} ${dragSelectedKeys.size===1?'Tag':'Tage'}`;
+  document.getElementById('dragActionEmployee').textContent=emp?.name||'';
+  document.getElementById('dragActionBar').classList.remove('hidden');
+}
+function setDragRange(endKey){
+  if(!dragStartKey||!dragEmployeeId)return;
+  const start=new Date(dragStartKey+'T12:00:00'),end=new Date(endKey+'T12:00:00'),min=start<end?start:end,max=start<end?end:start;
+  dragSelectedKeys=new Set();
+  for(let d=new Date(min);d<=max;d=addDays(d,1)){
+    const key=dateKey(d);
+    const cell=document.querySelector(`.day-cell[data-emp="${dragEmployeeId}"][data-date="${key}"]`);
+    if(cell)dragSelectedKeys.add(key);
+  }
+  dragMoved=dragSelectedKeys.size>1;
+  updateDragVisuals();
+}
+function applyDragCode(code){
+  if(!dragEmployeeId||!dragSelectedKeys.size)return;
+  if(!state.entries[dragEmployeeId])state.entries[dragEmployeeId]={};
+  dragSelectedKeys.forEach(key=>{
+    const old=entryFor(dragEmployeeId,key),codes=[...new Set([...(old.codes||[]),code])];
+    state.entries[dragEmployeeId][key]={codes,priority:old.priority||0,note:old.note||''};
+  });
+  const count=dragSelectedKeys.size;persist();clearDragSelection();render();showToast(`${code} für ${count} Tage eingetragen`);
+}
+function deleteDragEntries(){
+  if(!dragEmployeeId||!dragSelectedKeys.size)return;
+  if(!state.entries[dragEmployeeId])return clearDragSelection();
+  const count=dragSelectedKeys.size;dragSelectedKeys.forEach(key=>delete state.entries[dragEmployeeId][key]);
+  persist();clearDragSelection();render();showToast(`${count} Tage gelöscht`);
+}
 function bindPlannerEvents(){
-  document.querySelectorAll('.day-cell').forEach(el=>el.addEventListener('click',()=>openCell(el.dataset.emp,el.dataset.date)));
+  document.querySelectorAll('.day-cell').forEach(el=>{
+    el.addEventListener('pointerdown',e=>{
+      if(e.button!==0)return;
+      e.preventDefault();clearDragSelection();dragSelecting=true;dragEmployeeId=el.dataset.emp;dragStartKey=el.dataset.date;dragSelectedKeys=new Set([el.dataset.date]);updateDragVisuals();
+      try{el.setPointerCapture(e.pointerId)}catch{}
+    });
+    el.addEventListener('pointerenter',()=>{
+      if(!dragSelecting||el.dataset.emp!==dragEmployeeId)return;
+      setDragRange(el.dataset.date);
+    });
+    el.addEventListener('pointermove',e=>{
+      if(!dragSelecting)return;
+      const target=document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.day-cell');
+      if(target&&target.dataset.emp===dragEmployeeId)setDragRange(target.dataset.date);
+    });
+    el.addEventListener('pointerup',()=>{
+      if(!dragSelecting)return;
+      dragSelecting=false;
+      if(dragMoved||dragSelectedKeys.size>1){suppressNextCellClick=true;updateDragActionBar()}
+      else {const emp=dragEmployeeId,key=dragStartKey;clearDragSelection();openCell(emp,key)}
+    });
+    el.addEventListener('click',e=>{if(suppressNextCellClick){e.preventDefault();suppressNextCellClick=false}});
+  });
   document.querySelectorAll('.employee-edit').forEach(el=>el.addEventListener('click',()=>openEmployee(el.dataset.id)));
   let dragged=null; document.querySelectorAll('.employee-row').forEach(row=>{row.addEventListener('dragstart',()=>{dragged=row.dataset.id;row.style.opacity=.45});row.addEventListener('dragend',()=>{row.style.opacity='';document.querySelectorAll('.drop-target').forEach(x=>x.classList.remove('drop-target'))});row.addEventListener('dragover',e=>{e.preventDefault();row.classList.add('drop-target')});row.addEventListener('dragleave',()=>row.classList.remove('drop-target'));row.addEventListener('drop',e=>{e.preventDefault();const target=row.dataset.id;if(dragged&&dragged!==target){reorder(dragged,target)}})});
 }
@@ -239,11 +349,12 @@ async function pushRemote(){if(!supabaseClient)return;const cfg=window.TEAMPLAN_
 function setSync(cls,text){const p=document.getElementById('syncPill');p.className='sync-pill '+cls;p.textContent=text}
 
 // top controls
-document.getElementById('prevMonth').addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()-1);render()});
-document.getElementById('nextMonth').addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()+1);render()});
+document.getElementById('prevMonth').addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()-(currentView==='quarter'?3:1));render()});
+document.getElementById('nextMonth').addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()+(currentView==='quarter'?3:1));render()});
 document.getElementById('todayBtn').addEventListener('click',()=>{viewDate=new Date();viewDate.setDate(1);render()});
-document.getElementById('monthViewBtn').addEventListener('click',()=>{currentView='month';render()});
-document.getElementById('yearViewBtn').addEventListener('click',()=>{currentView='year';render()});
+document.getElementById('monthViewBtn').addEventListener('click',()=>{currentView='month';clearDragSelection();render()});
+document.getElementById('quarterViewBtn').addEventListener('click',()=>{currentView='quarter';viewDate.setMonth(Math.floor(viewDate.getMonth()/3)*3);clearDragSelection();render()});
+document.getElementById('yearViewBtn').addEventListener('click',()=>{currentView='year';clearDragSelection();render()});
 document.getElementById('vacationFullBtn').addEventListener('click',()=>{state.settings.vacationDisplayMode='full';persist();render();showToast('Urlaubsanzeige: Gesamtplanung')});
 document.getElementById('vacationActualBtn').addEventListener('click',()=>{state.settings.vacationDisplayMode='actual';persist();render();showToast('Urlaubsanzeige: anteilig fürs Firmenprogramm')});
 document.getElementById('searchInput').addEventListener('input',render);document.getElementById('addEmployeeBtn').addEventListener('click',()=>openEmployee());document.getElementById('bulkEntryBtn').addEventListener('click',openBulkDialog);document.getElementById('settingsBtn').addEventListener('click',openSettings);document.querySelectorAll('.close-dialog').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
@@ -265,5 +376,10 @@ document.getElementById('settingsForm').addEventListener('submit',e=>{e.preventD
 
 document.getElementById('exportBtn').addEventListener('click',()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`teamplan-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(a.href)});
 document.getElementById('importInput').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const incoming=normalizeState(JSON.parse(await f.text()));if(!confirm('Aktuelle Planung durch diese Sicherung ersetzen?'))return;state=incoming;persist();render();showToast('Sicherung importiert')}catch{alert('Die Datei konnte nicht gelesen werden.')}});
+
+document.querySelectorAll('[data-drag-code]').forEach(b=>b.addEventListener('click',()=>applyDragCode(b.dataset.dragCode)));
+document.getElementById('dragDeleteBtn').addEventListener('click',deleteDragEntries);
+document.getElementById('dragCancelBtn').addEventListener('click',clearDragSelection);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&dragSelectedKeys.size)clearDragSelection()});
 
 render();initRemote();
