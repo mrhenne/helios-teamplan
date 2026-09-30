@@ -104,9 +104,7 @@
     <div class="control-block zoom-block"><span class="control-caption">Zoom</span><button id="zoomOutBtn" class="zoom-btn" type="button">−</button><input id="zoomRange" type="range" min="70" max="140" step="5" value="100"><button id="zoomInBtn" class="zoom-btn" type="button">+</button><strong id="zoomLabel">100%</strong></div>
     <div class="control-block"><span class="control-caption">Urlaub</span><div class="segmented vacation-mode"><button id="vacationFullBtn" class="segment" type="button">Gesamt</button><button id="vacationActualBtn" class="segment active" type="button">Anteilig</button></div></div>
     <div class="controls-spacer"></div>
-    <input id="searchInput" class="search control-search" placeholder="Mitarbeiter suchen…" />
-    <button id="importNamesBtn" class="btn ghost">Namensliste</button>
-    <button id="bulkEntryBtn" class="btn ghost">Zeitraum</button>
+    <input id="searchInput" class="search control-search compact-employee-search" placeholder="Mitarbeiter suchen…" />
     <button id="addEmployeeBtn" class="btn primary">+ Mitarbeiter</button>
   </div>
   <div class="legend controls-legend">
@@ -157,6 +155,21 @@
         <span>Regelmäßige Arbeitstage</span>
         <div id="workweekToggles" class="weekday-toggles"></div>
         <small>Damit zählt Urlaub nur an tatsächlichen Arbeitstagen korrekt.</small>
+      </div>
+      <div class="auto-weekend-box">
+        <label class="toggle-line"><input id="employeeAutoWeekend" type="checkbox"> Freie Wochenenden automatisch als X eintragen</label>
+        <div id="autoWeekendOptions" class="form-grid two">
+          <label>Rhythmus
+            <select id="employeeWeekendInterval">
+              <option value="1">jedes Wochenende</option>
+              <option value="2" selected>alle 2 Wochen</option>
+              <option value="3">alle 3 Wochen</option>
+              <option value="4">alle 4 Wochen</option>
+            </select>
+          </label>
+          <label>Referenz-Samstag<input id="employeeWeekendAnchor" type="date"></label>
+        </div>
+        <small>Vom Referenz-Samstag aus werden Samstag und Sonntag im gewählten Rhythmus automatisch mit X markiert.</small>
       </div>
       <div id="vacationPreview" class="calc-preview"></div>
       <div class="dialog-actions"><button type="button" id="deleteEmployeeBtn" class="btn danger hidden">Löschen</button><div class="spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">Speichern</button></div>
@@ -320,6 +333,10 @@
         <button id="accountSaveBtn" type="button" class="btn ghost">Kontodaten speichern</button>
         <div id="accountInfo" class="dialog-copy"></div>
       </section>
+      <section class="settings-section">
+        <div class="settings-section-head"><strong>Daten & Mitarbeiter</strong><span>Importfunktionen</span></div>
+        <button id="importNamesBtn" type="button" class="btn ghost small-settings-action">⇧ Namensliste importieren</button>
+      </section>
       <section id="planningSettingsSection" class="settings-section">
         <div class="settings-section-head"><strong>Planungsregeln</strong><span>Nur für Admin und Planer</span></div>
       <div class="form-grid two">
@@ -370,6 +387,6 @@
   </dialog>
 
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20260930-6"></script>
+  <script src="app.js?v=20260930-7"></script>
 </body>
 </html>
