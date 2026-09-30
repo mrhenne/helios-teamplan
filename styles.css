@@ -415,3 +415,6 @@ body.planner-focus .planner-focus-controls{display:flex}
 body.fit-readable .date-head,
 body.fit-readable .day-cell{min-width:29px!important;width:29px!important;min-height:34px!important;height:34px!important}
 body.fit-readable .plan-table .employee-col{min-width:160px!important;width:160px!important}
+
+.compact-employee-search{font-size:9px!important;height:30px!important;padding:0 9px!important}
+#addEmployeeBtn{font-size:9px!important;height:30px!important;padding:0 10px!important;border-radius:9px!important}
