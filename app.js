@@ -12,7 +12,7 @@ const roundHalf = n => Math.round(n*2)/2;
 
 const defaultState = {
   version: 1,
-  settings: {baseVacation:30,maxVacation:4,maxAbsence:7,countSchool:true,confirmConflicts:true,state:'NW',vacationDisplayMode:'actual'},
+  settings: {baseVacation:30,maxVacation:4,maxAbsence:7,countSchool:true,confirmConflicts:true,state:'NW',vacationDisplayMode:'actual',theme:'light',zoom:1},
   employees: [
     {id:uid(),name:'Anna Beispiel',hours:38.5,percent:100,workdays:5,workweek:[1,2,3,4,5],carry:0,adjustment:0,order:0},
     {id:uid(),name:'Ben Beispiel',hours:30,percent:78,workdays:4,workweek:[1,2,3,4],carry:2,adjustment:0,order:1},
@@ -106,12 +106,17 @@ function schoolBreakForDate(d){
 }
 
 function monthDates(){const y=viewDate.getFullYear(),m=viewDate.getMonth(),last=new Date(y,m+1,0).getDate();return Array.from({length:last},(_,i)=>new Date(y,m,i+1));}
+function flowingMonthDates(){
+  const start=new Date(viewDate.getFullYear(),viewDate.getMonth()-4,1),end=new Date(viewDate.getFullYear(),viewDate.getMonth()+5,0),out=[];
+  for(let d=new Date(start);d<=end;d=addDays(d,1))out.push(new Date(d));
+  return out;
+}
 function quarterDates(){
   const y=viewDate.getFullYear(),qStart=Math.floor(viewDate.getMonth()/3)*3,out=[];
   for(let m=qStart;m<qStart+3;m++){const last=new Date(y,m+1,0).getDate();for(let i=1;i<=last;i++)out.push(new Date(y,m,i));}
   return out;
 }
-function activePlannerDates(){return currentView==='quarter'?quarterDates():monthDates();}
+function activePlannerDates(){return currentView==='quarter'?quarterDates():currentView==='month'?flowingMonthDates():monthDates();}
 function dailyCounts(key){let U=0,XU=0,S=0;state.employees.forEach(e=>{const c=entryFor(e.id,key).codes||[];if(c.includes('U'))U++;if(c.includes('XU'))XU++;if(c.includes('S'))S++});return {U,XU,S,total:U+XU+(state.settings.countSchool?S:0)};}
 function conflictLevel(key){const c=dailyCounts(key);return {vacation:c.U>state.settings.maxVacation,total:c.total>state.settings.maxAbsence};}
 
@@ -125,7 +130,7 @@ function render(){
   const filter=document.getElementById('searchInput').value.trim().toLowerCase();
   const employees=[...state.employees].sort((a,b)=>a.order-b.order).filter(e=>!filter||e.name.toLowerCase().includes(filter));
   let html='<table class="plan-table"><thead><tr><th class="employee-col">Mitarbeiter · Urlaub</th>';
-  dates.forEach(d=>{const key=dateKey(d),we=[0,6].includes(d.getDay()),hol=holidays[key],school=schoolBreakForDate(d),monthBoundary=d.getDate()===1;html+=`<th class="date-head ${we?'weekend':''} ${hol?'holiday':''} ${school?'school-holiday':''} ${monthBoundary&&currentView==='quarter'?'month-boundary':''}" title="${escapeHtml([hol,school&&('NRW '+school)].filter(Boolean).join(' · '))}">${currentView==='quarter'&&monthBoundary?`<span class="month-mini">${MONTHS[d.getMonth()].slice(0,3)}</span>`:''}${DOW[d.getDay()]}<strong>${d.getDate()}</strong>${hol?`<span class="holiday-label">${escapeHtml(hol)}</span>`:school?`<span class="school-label">${escapeHtml(school.replace('ferien',''))}</span>`:''}</th>`});
+  dates.forEach(d=>{const key=dateKey(d),we=[0,6].includes(d.getDay()),hol=holidays[key],school=schoolBreakForDate(d),monthBoundary=d.getDate()===1;html+=`<th class="date-head ${we?'weekend':''} ${hol?'holiday':''} ${school?'school-holiday':''} ${monthBoundary&&(currentView==='quarter'||currentView==='month')?'month-boundary':''}" title="${escapeHtml([hol,school&&('NRW '+school)].filter(Boolean).join(' · '))}">${(currentView==='quarter'||currentView==='month')&&monthBoundary?`<span class="month-mini">${MONTHS[d.getMonth()].slice(0,3)}</span>`:''}${DOW[d.getDay()]}<strong>${d.getDate()}</strong>${hol?`<span class="holiday-label">${escapeHtml(hol)}</span>`:school?`<span class="school-label">${escapeHtml(school.replace('ferien',''))}</span>`:''}</th>`});
   html+='</tr></thead><tbody>';
   employees.forEach(e=>{
     const used=usedVacation(e),total=vacationEntitlement(e),remain=remainingVacation(e),xu=countCode(e,'XU'); const status=remain<0?'status-bad':remain<=3?'status-low':'status-good';
@@ -134,7 +139,8 @@ function render(){
     html+='</tr>';
   });
   html+=summaryRow('Urlaub U','U',dates);html+=summaryRow('Wunschfrei XU','XU',dates);html+=summaryRow('Schule S','S',dates);html+=presenceRow(dates);html+=absenceNamesRow(dates);html+='</tbody></table>';
-  document.getElementById('planner').innerHTML=html; bindPlannerEvents(); renderMetrics(); syncViewControls();
+  document.getElementById('planner').innerHTML=html; bindPlannerEvents(); renderMetrics(); syncViewControls(); applyAppearance();
+  if(currentView==='month') setupFlowingMonthScroll();
   if(currentView==='year') renderYearOverview();
 }
 function summaryRow(label,code,dates){let s=`<tr class="summary-row ${code==='U'?'alarm':''}"><td class="employee-col">Σ ${label}</td>`;dates.forEach(d=>{const c=dailyCounts(dateKey(d)),n=c[code],hot=code==='U'&&n>state.settings.maxVacation,warn=code==='U'&&n===state.settings.maxVacation;s+=`<td class="${hot?'count-hot':warn?'count-warn':''}">${n||''}</td>`});return s+'</tr>'}
@@ -164,6 +170,37 @@ function syncViewControls(){
   document.getElementById('vacationActualBtn').classList.toggle('active',!full);
 }
 
+function applyAppearance(){
+  document.documentElement.dataset.theme=state.settings.theme||'light';
+  const z=Math.max(.65,Math.min(1.35,Number(state.settings.zoom||1)));
+  document.documentElement.style.setProperty('--zoom',z);
+  const zl=document.getElementById('zoomLabel');if(zl)zl.textContent=Math.round(z*100)+'%';
+  const tb=document.getElementById('themeBtn');if(tb)tb.textContent=(state.settings.theme==='dark'?'☀':'◐');
+}
+function changeZoom(delta){
+  state.settings.zoom=Math.max(.65,Math.min(1.35,Math.round((Number(state.settings.zoom||1)+delta)*20)/20));
+  persist();applyAppearance();
+}
+function toggleTheme(){state.settings.theme=state.settings.theme==='dark'?'light':'dark';persist();applyAppearance();}
+function setupFlowingMonthScroll(){
+  const planner=document.getElementById('planner');if(!planner)return;
+  requestAnimationFrame(()=>{
+    const currentKey=viewDate.getFullYear()+'-'+String(viewDate.getMonth()+1).padStart(2,'0')+'-01';
+    const current=document.querySelector('.day-cell[data-date="'+currentKey+'"]');
+    if(current)planner.scrollLeft=Math.max(0,current.offsetLeft-planner.clientWidth*.28);
+    let ticking=false;
+    planner.onscroll=()=>{
+      if(ticking)return;ticking=true;
+      requestAnimationFrame(()=>{
+        ticking=false;
+        const center=planner.scrollLeft+planner.clientWidth*.55,headers=[...document.querySelectorAll('.date-head')];
+        let nearest=null,best=Infinity;
+        headers.forEach((h,idx)=>{const x=h.offsetLeft+h.offsetWidth/2,dist=Math.abs(x-center);if(dist<best){best=dist;nearest={h,idx}}});
+        if(nearest){const d=flowingMonthDates()[nearest.idx];if(d){document.getElementById('monthLabel').textContent=MONTHS[d.getMonth()];document.getElementById('yearLabel').textContent=d.getFullYear();}}
+      });
+    };
+  });
+}
 function renderYearOverview(){
   const year=viewDate.getFullYear(), holidays=holidaysNRW(year);
   let html=`<div class="year-head glass"><div><span class="eyebrow">JAHRESÜBERSICHT</span><h2>${year}</h2></div><div class="year-legend"><span><b class="mini-dot u"></b> Urlaub</span><span><b class="mini-dot xu"></b> XU</span><span><b class="mini-dot s"></b> Schule</span><span><b class="mini-dot conflict"></b> Konflikt</span></div></div>`;
@@ -352,6 +389,9 @@ function setSync(cls,text){const p=document.getElementById('syncPill');p.classNa
 document.getElementById('prevMonth').addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()-(currentView==='quarter'?3:1));render()});
 document.getElementById('nextMonth').addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()+(currentView==='quarter'?3:1));render()});
 document.getElementById('todayBtn').addEventListener('click',()=>{viewDate=new Date();viewDate.setDate(1);render()});
+document.getElementById('zoomOutBtn').addEventListener('click',()=>changeZoom(-.05));
+document.getElementById('zoomInBtn').addEventListener('click',()=>changeZoom(.05));
+document.getElementById('themeBtn').addEventListener('click',toggleTheme);
 document.getElementById('monthViewBtn').addEventListener('click',()=>{currentView='month';clearDragSelection();render()});
 document.getElementById('quarterViewBtn').addEventListener('click',()=>{currentView='quarter';viewDate.setMonth(Math.floor(viewDate.getMonth()/3)*3);clearDragSelection();render()});
 document.getElementById('yearViewBtn').addEventListener('click',()=>{currentView='year';clearDragSelection();render()});
