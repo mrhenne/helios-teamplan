@@ -255,7 +255,8 @@ function render(){
   html+='</tr></thead><tbody>';
   employees.forEach(e=>{
     const used=usedVacation(e),total=vacationEntitlement(e),remain=remainingVacation(e),xu=countCode(e,'XU'); const status=remain<0?'status-bad':remain<=3?'status-low':'status-good';
-    html+=`<tr class="employee-row" draggable="true" data-id="${e.id}"><td class="employee-col employee-cell"><div class="employee-card"><span class="drag-handle">⠿</span><div class="employee-edit" data-id="${e.id}"><div class="employee-name">${escapeHtml(e.name)}</div><div class="employee-meta">${e.hours} h · ${e.percent}% · ${e.workdays} Tage/Woche · XU ${xu}</div></div><div class="employee-stats ${status}"><strong>${used}/${total}</strong><small>${remain} übrig</small></div></div></td>`;
+    const employeeFocusClass=sessionRole==='employee'?(e.id===sessionEmployeeId?'employee-own-row':'employee-muted-row'):'';
+    html+=`<tr class="employee-row ${employeeFocusClass}" draggable="true" data-id="${e.id}"><td class="employee-col employee-cell"><div class="employee-card"><span class="drag-handle">⠿</span><div class="employee-edit" data-id="${e.id}"><div class="employee-name">${escapeHtml(e.name)}</div><div class="employee-meta">${e.hours} h · ${e.percent}% · ${e.workdays} Tage/Woche · XU ${xu}</div></div><div class="employee-stats ${status}"><strong>${used}/${total}</strong><small>${remain} übrig</small></div></div></td>`;
     dates.forEach(d=>{const key=dateKey(d),v=entryFor(e.id,key),we=[0,6].includes(d.getDay()),nonwork=!isWorkday(e,d),conf=conflictLevel(key),school=schoolBreakForDate(d),monthTone=d.getMonth()%2===0?'month-even':'month-odd',blackout=blackoutForKey(key),status=v.status||'wish';const codes=(v.codes||[]).map(c=>{const d=codeDef(c);return `<span class="cell-code ${codeClassName(c)}"${d.color?` style="--code-color:${escapeHtml(d.color)}"`:''}>${c}</span>`}).join('');const warn=(conf.vacation&&entryIsActive(v)&&v.codes?.includes('U'))||(conf.total&&entryIsActive(v)&&v.codes?.some(c=>['U','XU','S'].includes(c)));html+=`<td class="day-cell ${we?'weekend':''} ${nonwork?'nonwork':''} ${school?'school-holiday-cell':''} ${monthTone} status-${status} ${blackout?'blackout-cell':''}" data-emp="${e.id}" data-date="${key}" title="${escapeHtml([v.note,blackout&&('Sperrzeit: '+blackout.name),school&&('NRW '+school),status&&('Status: '+status)].filter(Boolean).join(' · '))}"><div class="cell-codes">${codes}</div>${(v.codes||[]).length?`<span class="status-mark status-${status}"></span>`:''}${v.priority?`<span class="cell-priority p${v.priority}"></span>`:''}${v.note?'<span class="cell-note"></span>':''}${warn?'<span class="cell-warning-mark">!</span>':''}</td>`});
     html+='</tr>';
   });
@@ -511,6 +512,52 @@ function deleteDragEntries(){
   const changed=[...dragSelectedKeys],count=changed.length;changed.forEach(key=>delete state.entries[dragEmployeeId][key]);
   persist();changed.forEach(key=>saveRemoteEntry(dragEmployeeId,key,null));clearDragSelection();render();showToast(`${count} Tage gelöscht`);
 }
+function hideCellContextMenu(){
+  const menu=document.getElementById('cellContextMenu');if(menu)menu.classList.add('hidden');
+}
+function quickCellCode(empId,key,code,status=null){
+  if(!canPlan(empId)){showToast('Keine Bearbeitungsrechte');return}
+  if(['U','XU'].includes(code)&&blackoutBlocks(key)){showToast('Urlaubssperre: '+blackoutBlocks(key).name);return}
+  if(!state.entries[empId])state.entries[empId]={};
+  const old=entryFor(empId,key);
+  trackAction('Schnelleintrag', (state.employees.find(e=>e.id===empId)?.name||'')+' · '+key+' · '+code);
+  state.entries[empId][key]={...old,codes:[...new Set([...(old.codes||[]),code])],status:status||(old.status||'wish')};
+  persist();saveRemoteEntry(empId,key,state.entries[empId][key]);hideCellContextMenu();render();
+  showToast(code+(status==='approved'?' genehmigt':'')+' eingetragen');
+}
+function quickDeleteCell(empId,key){
+  if(!canPlan(empId)){showToast('Keine Bearbeitungsrechte');return}
+  if(!state.entries[empId]?.[key]){hideCellContextMenu();return}
+  trackAction('Eintrag gelöscht',(state.employees.find(e=>e.id===empId)?.name||'')+' · '+key);
+  delete state.entries[empId][key];persist();saveRemoteEntry(empId,key,null);hideCellContextMenu();render();showToast('Eintrag gelöscht');
+}
+function showCellContextMenu(event,empId,key){
+  event.preventDefault();event.stopPropagation();
+  if(!canPlan(empId)){
+    if(sessionRole==='employee')showToast('Du kannst nur deine eigene Zeile bearbeiten');
+    return;
+  }
+  clearDragSelection();
+  const menu=document.getElementById('cellContextMenu'),entry=entryFor(empId,key),emp=state.employees.find(e=>e.id===empId),d=new Date(key+'T12:00:00');
+  const codeButtons=allCodeDefs().map(c=>{
+    const active=(entry.codes||[]).includes(c.key),style=c.color?' style="--code-color:'+escapeHtml(c.color)+'"':'';
+    return '<button type="button" class="context-code '+codeClassName(c.key)+(active?' active':'')+'" data-context-code="'+escapeHtml(c.key)+'"'+style+'><b>'+escapeHtml(c.key)+'</b><span>'+escapeHtml(c.label)+'</span>'+(active?'<i>✓</i>':'')+'</button>';
+  }).join('');
+  menu.innerHTML='<div class="context-head"><strong>'+escapeHtml(emp?.name||'')+'</strong><span>'+DOW[d.getDay()]+' · '+d.getDate()+'. '+MONTHS[d.getMonth()]+'</span></div>'+
+    '<div class="context-section"><small>Schnell eintragen</small>'+codeButtons+'</div>'+
+    (canApprove()?'<button type="button" class="context-action approve-context" data-context-approved="1"><b>U✓</b><span>Urlaub genehmigt</span></button>':'')+
+    '<div class="context-separator"></div>'+
+    '<button type="button" class="context-action" data-context-edit="1"><b>✎</b><span>Vollständig bearbeiten…</span></button>'+
+    '<button type="button" class="context-action danger-context" data-context-delete="1"><b>⌫</b><span>Eintrag löschen</span></button>';
+  menu.querySelectorAll('[data-context-code]').forEach(b=>b.addEventListener('click',()=>quickCellCode(empId,key,b.dataset.contextCode)));
+  menu.querySelector('[data-context-approved]')?.addEventListener('click',()=>quickCellCode(empId,key,'U','approved'));
+  menu.querySelector('[data-context-edit]').addEventListener('click',()=>{hideCellContextMenu();openCell(empId,key)});
+  menu.querySelector('[data-context-delete]').addEventListener('click',()=>quickDeleteCell(empId,key));
+  menu.classList.remove('hidden');
+  const pad=8,w=menu.offsetWidth||230,h=menu.offsetHeight||360;
+  const x=Math.min(event.clientX,window.innerWidth-w-pad),y=Math.min(event.clientY,window.innerHeight-h-pad);
+  menu.style.left=Math.max(pad,x)+'px';menu.style.top=Math.max(pad,y)+'px';
+}
 function bindPlannerEvents(){
   document.querySelectorAll('.day-cell').forEach(el=>{
     el.addEventListener('pointerdown',e=>{
@@ -535,6 +582,7 @@ function bindPlannerEvents(){
       else {const emp=dragEmployeeId,key=dragStartKey;clearDragSelection();openCell(emp,key)}
     });
     el.addEventListener('click',e=>{if(suppressNextCellClick){e.preventDefault();suppressNextCellClick=false}});
+    el.addEventListener('contextmenu',e=>showCellContextMenu(e,el.dataset.emp,el.dataset.date));
   });
   document.querySelectorAll('.employee-edit').forEach(el=>el.addEventListener('click',()=>openEmployee(el.dataset.id)));
   let dragged=null; document.querySelectorAll('.employee-row').forEach(row=>{row.addEventListener('dragstart',()=>{dragged=row.dataset.id;row.style.opacity=.45});row.addEventListener('dragend',()=>{row.style.opacity='';document.querySelectorAll('.drop-target').forEach(x=>x.classList.remove('drop-target'))});row.addEventListener('dragover',e=>{e.preventDefault();row.classList.add('drop-target')});row.addEventListener('dragleave',()=>row.classList.remove('drop-target'));row.addEventListener('drop',e=>{e.preventDefault();const target=row.dataset.id;if(dragged&&dragged!==target){reorder(dragged,target)}})});
@@ -1179,6 +1227,9 @@ document.getElementById('loginForm').addEventListener('submit',async e=>{
   if(error){errEl.textContent=error.message;errEl.classList.remove('hidden')}
 });
 document.getElementById('logoutBtn').addEventListener('click',async()=>{if(supabaseClient)await supabaseClient.auth.signOut()});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&dragSelectedKeys.size)clearDragSelection()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(dragSelectedKeys.size)clearDragSelection();hideCellContextMenu()}});
+document.addEventListener('click',e=>{if(!e.target.closest('#cellContextMenu'))hideCellContextMenu()});
+window.addEventListener('resize',hideCellContextMenu);
+document.getElementById('planner').addEventListener('scroll',hideCellContextMenu,{passive:true});
 
 renderRoleControls();render();initRemote();
