@@ -14,11 +14,13 @@ const defaultState = {
   version: 1,
   settings: {baseVacation:30,maxVacation:4,maxAbsence:7,countSchool:true,confirmConflicts:true,state:'NW',vacationDisplayMode:'actual',theme:'light',zoom:1},
   employees: [
-    {id:uid(),name:'Anna Beispiel',hours:38.5,percent:100,workdays:5,workweek:[1,2,3,4,5],carry:0,adjustment:0,order:0},
-    {id:uid(),name:'Ben Beispiel',hours:30,percent:78,workdays:4,workweek:[1,2,3,4],carry:2,adjustment:0,order:1},
-    {id:uid(),name:'Clara Beispiel',hours:19.25,percent:50,workdays:3,workweek:[1,3,5],carry:0,adjustment:0,order:2}
+    {id:uid(),name:'Anna Beispiel',hours:38.5,percent:100,workdays:5,workweek:[1,2,3,4,5],carry:0,adjustment:0,role:'employee',order:0},
+    {id:uid(),name:'Ben Beispiel',hours:30,percent:78,workdays:4,workweek:[1,2,3,4],carry:2,adjustment:0,role:'employee',order:1},
+    {id:uid(),name:'Clara Beispiel',hours:19.25,percent:50,workdays:3,workweek:[1,3,5],carry:0,adjustment:0,role:'employee',order:2}
   ],
   entries: {},
+  blackouts: [],
+  audit: [],
   updatedAt: new Date().toISOString()
 };
 
@@ -36,36 +38,62 @@ let dragEmployeeId = null;
 let dragStartKey = null;
 let dragSelectedKeys = new Set();
 let suppressNextCellClick = false;
+let undoStack = [];
+let sessionRole = localStorage.getItem('teamplan-session-role') || 'admin';
+let sessionEmployeeId = localStorage.getItem('teamplan-session-employee') || '';
 
 function loadLocal(){
   try { const raw=localStorage.getItem('helios-teamplan-v1'); return raw ? normalizeState(JSON.parse(raw)) : structuredClone(defaultState); }
   catch { return structuredClone(defaultState); }
 }
 function normalizeState(s){
-  s.settings={...defaultState.settings,...(s.settings||{})}; s.employees=s.employees||[]; s.entries=s.entries||{};
-  s.employees.forEach((e,i)=>{e.order=e.order??i;e.workweek=e.workweek||[1,2,3,4,5];e.carry=Number(e.carry||0);e.adjustment=Number(e.adjustment||0)}); return s;
+  s.settings={...defaultState.settings,...(s.settings||{})}; s.employees=s.employees||[]; s.entries=s.entries||{}; s.blackouts=s.blackouts||[]; s.audit=s.audit||[];
+  s.employees.forEach((e,i)=>{e.order=e.order??i;e.workweek=e.workweek||[1,2,3,4,5];e.carry=Number(e.carry||0);e.adjustment=Number(e.adjustment||0);e.role=e.role||'employee'});
+  Object.values(s.entries).forEach(empEntries=>Object.values(empEntries||{}).forEach(v=>{v.status=v.status||'wish'}));
+  return s;
 }
 function persist(){
   state.updatedAt=new Date().toISOString(); localStorage.setItem('helios-teamplan-v1',JSON.stringify(state));
   if(!isApplyingRemote && supabaseClient){clearTimeout(syncTimer);syncTimer=setTimeout(pushRemote,350)}
 }
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+function actorName(){
+  if(sessionRole==='employee') return state.employees.find(e=>e.id===sessionEmployeeId)?.name || 'Mitarbeiter';
+  return sessionRole==='admin'?'Admin':sessionRole==='planner'?'Planer':'Nur Lesen';
+}
+function canPlan(empId){return sessionRole==='admin'||sessionRole==='planner'||(sessionRole==='employee'&&empId===sessionEmployeeId)}
+function canApprove(){return sessionRole==='admin'||sessionRole==='planner'}
+function canManage(){return sessionRole==='admin'||sessionRole==='planner'}
+function canEditEmployees(){return sessionRole==='admin'||sessionRole==='planner'}
+function trackAction(label,detail=''){
+  undoStack.push(structuredClone(state)); if(undoStack.length>20)undoStack.shift();
+  state.audit.unshift({id:uid(),time:new Date().toISOString(),label,detail,actor:actorName()});
+  state.audit=state.audit.slice(0,200);
+}
+function undoLastAction(){
+  const prev=undoStack.pop();if(!prev){showToast('Nichts zum Rückgängig machen');return}
+  state=normalizeState(prev);state.audit.unshift({id:uid(),time:new Date().toISOString(),label:'Rückgängig',detail:'Letzte lokale Aktion zurückgesetzt',actor:actorName()});
+  persist();render();renderHistory();showToast('Letzte Aktion rückgängig gemacht');
+}
+function entryIsActive(v){return (v?.status||'wish')!=='rejected'}
+function blackoutForKey(key){return (state.blackouts||[]).find(b=>key>=b.start&&key<=b.end)||null}
+function blackoutBlocks(key){const b=blackoutForKey(key);return b?.mode==='block'?b:null}
 function actualVacationEntitlement(e){return roundHalf(state.settings.baseVacation*(Number(e.workdays)||5)/5 + Number(e.carry||0) + Number(e.adjustment||0));}
 function fullVacationEntitlement(e){return roundHalf(state.settings.baseVacation + Number(e.carry||0) + Number(e.adjustment||0));}
 function vacationEntitlement(e){return state.settings.vacationDisplayMode==='full' ? fullVacationEntitlement(e) : actualVacationEntitlement(e);}
-function entryFor(empId,key){return state.entries?.[empId]?.[key] || {codes:[],priority:0,note:''};}
+function entryFor(empId,key){return state.entries?.[empId]?.[key] || {codes:[],priority:0,note:'',status:'wish'};}
 function isWorkday(e,d){return (e.workweek||[]).includes(d.getDay());}
 function usedVacationActual(e,year=viewDate.getFullYear()){let n=0;Object.entries(state.entries[e.id]||{}).forEach(([k,v])=>{if(k.startsWith(year+'-')&&v.codes?.includes('U')){const d=new Date(k+'T12:00:00');if(isWorkday(e,d)) n++;}});return n;}
-function usedVacationFull(e,year=viewDate.getFullYear()){return Object.entries(state.entries[e.id]||{}).filter(([k,v])=>k.startsWith(year+'-')&&v.codes?.includes('U')).length;}
+function usedVacationFull(e,year=viewDate.getFullYear()){return Object.entries(state.entries[e.id]||{}).filter(([k,v])=>k.startsWith(year+'-')&&entryIsActive(v)&&v.codes?.includes('U')).length;}
 function usedVacation(e,year=viewDate.getFullYear()){return state.settings.vacationDisplayMode==='full' ? usedVacationFull(e,year) : usedVacationActual(e,year);}
-function countCode(e,code,year=viewDate.getFullYear()){return Object.entries(state.entries[e.id]||{}).filter(([k,v])=>k.startsWith(year+'-')&&v.codes?.includes(code)).length;}
+function countCode(e,code,year=viewDate.getFullYear()){return Object.entries(state.entries[e.id]||{}).filter(([k,v])=>k.startsWith(year+'-')&&entryIsActive(v)&&v.codes?.includes(code)).length;}
 function remainingVacation(e,year=viewDate.getFullYear()){return vacationEntitlement(e)-usedVacation(e,year);}
-function absentCount(key){return state.employees.filter(e=>{const c=entryFor(e.id,key).codes||[];return c.some(code=>['U','X','XU','S'].includes(code));}).length;}
+function absentCount(key){return state.employees.filter(e=>{const v=entryFor(e.id,key),c=v.codes||[];return entryIsActive(v)&&c.some(code=>['U','X','XU','S'].includes(code));}).length;}
 function presentCount(key){return Math.max(0,state.employees.length-absentCount(key));}
 function absentEmployees(key){
   return [...state.employees].sort((a,b)=>a.order-b.order).filter(e=>{
-    const c=entryFor(e.id,key).codes||[];
-    return c.some(code=>['U','X','XU','S'].includes(code));
+    const v=entryFor(e.id,key),c=v.codes||[];
+    return entryIsActive(v)&&c.some(code=>['U','X','XU','S'].includes(code));
   }).map(e=>({employee:e,codes:(entryFor(e.id,key).codes||[]).filter(code=>['U','X','XU','S'].includes(code))}));
 }
 function firstName(name){return String(name||'').trim().split(/\s+/)[0]||name;}
@@ -117,7 +145,7 @@ function quarterDates(){
   return out;
 }
 function activePlannerDates(){return currentView==='quarter'?quarterDates():currentView==='month'?flowingMonthDates():monthDates();}
-function dailyCounts(key){let U=0,XU=0,S=0;state.employees.forEach(e=>{const c=entryFor(e.id,key).codes||[];if(c.includes('U'))U++;if(c.includes('XU'))XU++;if(c.includes('S'))S++});return {U,XU,S,total:U+XU+(state.settings.countSchool?S:0)};}
+function dailyCounts(key){let U=0,XU=0,S=0;state.employees.forEach(e=>{const v=entryFor(e.id,key);if(!entryIsActive(v))return;const c=v.codes||[];if(c.includes('U'))U++;if(c.includes('XU'))XU++;if(c.includes('S'))S++});return {U,XU,S,total:U+XU+(state.settings.countSchool?S:0)};}
 function conflictLevel(key){const c=dailyCounts(key);return {vacation:c.U>state.settings.maxVacation,total:c.total>state.settings.maxAbsence};}
 
 function render(){
@@ -141,7 +169,7 @@ function render(){
   employees.forEach(e=>{
     const used=usedVacation(e),total=vacationEntitlement(e),remain=remainingVacation(e),xu=countCode(e,'XU'); const status=remain<0?'status-bad':remain<=3?'status-low':'status-good';
     html+=`<tr class="employee-row" draggable="true" data-id="${e.id}"><td class="employee-col employee-cell"><div class="employee-card"><span class="drag-handle">⠿</span><div class="employee-edit" data-id="${e.id}"><div class="employee-name">${escapeHtml(e.name)}</div><div class="employee-meta">${e.hours} h · ${e.percent}% · ${e.workdays} Tage/Woche · XU ${xu}</div></div><div class="employee-stats ${status}"><strong>${used}/${total}</strong><small>${remain} übrig</small></div></div></td>`;
-    dates.forEach(d=>{const key=dateKey(d),v=entryFor(e.id,key),we=[0,6].includes(d.getDay()),nonwork=!isWorkday(e,d),conf=conflictLevel(key),school=schoolBreakForDate(d),monthTone=d.getMonth()%2===0?'month-even':'month-odd';const codes=(v.codes||[]).map(c=>`<span class="cell-code ${CODE_CLASS[c]}">${c}</span>`).join('');const warn=(conf.vacation&&v.codes?.includes('U'))||(conf.total&&v.codes?.some(c=>['U','XU','S'].includes(c)));html+=`<td class="day-cell ${we?'weekend':''} ${nonwork?'nonwork':''} ${school?'school-holiday-cell':''} ${monthTone}" data-emp="${e.id}" data-date="${key}" title="${escapeHtml([v.note,school&&('NRW '+school)].filter(Boolean).join(' · '))}"><div class="cell-codes">${codes}</div>${v.priority?`<span class="cell-priority p${v.priority}"></span>`:''}${v.note?'<span class="cell-note"></span>':''}${warn?'<span class="cell-warning-mark">!</span>':''}</td>`});
+    dates.forEach(d=>{const key=dateKey(d),v=entryFor(e.id,key),we=[0,6].includes(d.getDay()),nonwork=!isWorkday(e,d),conf=conflictLevel(key),school=schoolBreakForDate(d),monthTone=d.getMonth()%2===0?'month-even':'month-odd',blackout=blackoutForKey(key),status=v.status||'wish';const codes=(v.codes||[]).map(c=>`<span class="cell-code ${CODE_CLASS[c]}">${c}</span>`).join('');const warn=(conf.vacation&&entryIsActive(v)&&v.codes?.includes('U'))||(conf.total&&entryIsActive(v)&&v.codes?.some(c=>['U','XU','S'].includes(c)));html+=`<td class="day-cell ${we?'weekend':''} ${nonwork?'nonwork':''} ${school?'school-holiday-cell':''} ${monthTone} status-${status} ${blackout?'blackout-cell':''}" data-emp="${e.id}" data-date="${key}" title="${escapeHtml([v.note,blackout&&('Sperrzeit: '+blackout.name),school&&('NRW '+school),status&&('Status: '+status)].filter(Boolean).join(' · '))}"><div class="cell-codes">${codes}</div>${(v.codes||[]).length?`<span class="status-mark status-${status}"></span>`:''}${v.priority?`<span class="cell-priority p${v.priority}"></span>`:''}${v.note?'<span class="cell-note"></span>':''}${warn?'<span class="cell-warning-mark">!</span>':''}</td>`});
     html+='</tr>';
   });
   html+=summaryRow('Urlaub U','U',dates);html+=summaryRow('Wunschfrei XU','XU',dates);html+=summaryRow('Schule S','S',dates);html+=presenceRow(dates);html+=absenceNamesRow(dates);html+='</tbody></table>';
@@ -243,7 +271,7 @@ function importNames(names,replace){
   if(replace){state.employees=[];state.entries={};}
   const existing=new Set(state.employees.map(e=>e.name.toLocaleLowerCase('de-DE')));
   let added=0;
-  clean.forEach(name=>{const k=name.toLocaleLowerCase('de-DE');if(existing.has(k))return;state.employees.push({id:uid(),name,hours:38.5,percent:100,workdays:5,workweek:[1,2,3,4,5],carry:0,adjustment:0,order:state.employees.length});existing.add(k);added++;});
+  clean.forEach(name=>{const k=name.toLocaleLowerCase('de-DE');if(existing.has(k))return;state.employees.push({id:uid(),name,hours:38.5,percent:100,workdays:5,workweek:[1,2,3,4,5],carry:0,adjustment:0,role:'employee',order:state.employees.length});existing.add(k);added++;});
   state.employees.forEach((e,i)=>e.order=i);persist();render();return added;
 }
 function renderYearOverview(){
