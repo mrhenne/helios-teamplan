@@ -418,3 +418,56 @@ body.fit-readable .plan-table .employee-col{min-width:160px!important;width:160p
 
 .compact-employee-search{font-size:9px!important;height:30px!important;padding:0 9px!important}
 #addEmployeeBtn{font-size:9px!important;height:30px!important;padding:0 10px!important;border-radius:9px!important}
+
+/* KPI-Karten ruhiger und klarer */
+.summary-grid{gap:10px}
+.metric{padding:10px 12px!important;min-height:62px;display:flex!important;align-items:center;justify-content:space-between;gap:12px}
+.metric-label{font-size:9px!important;font-weight:800!important;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)!important;white-space:nowrap}
+.metric-main{display:flex;align-items:baseline;justify-content:flex-end;gap:6px;min-width:0}
+.metric-main strong{font-size:22px!important;line-height:1!important}
+.metric-main small{font-size:8px!important;line-height:1.15!important;color:var(--muted)!important;max-width:82px;text-align:left}
+
+/* Mitarbeitersuche und Button exakt wie übrige Controls */
+.compact-employee-search{
+  width:142px!important;min-width:125px!important;max-width:155px!important;
+  height:30px!important;padding:0 9px!important;
+  font-size:9px!important;font-weight:600!important;
+  border-radius:9px!important
+}
+.compact-employee-search::placeholder{font-size:9px!important;color:var(--muted)}
+#addEmployeeBtn{
+  height:30px!important;padding:0 9px!important;border-radius:9px!important;
+  font-size:9px!important;font-weight:750!important;line-height:1!important
+}
+
+/* Direktgenehmigung */
+.approve-inline{margin-top:8px;padding:8px 9px;border:1px solid rgba(31,146,117,.18);border-radius:10px;background:rgba(31,146,117,.07)}
+body.dark-mode .approve-inline{background:rgba(31,146,117,.12)}
+.custom-drag-codes{display:inline-flex;gap:5px;align-items:center}
+
+/* Eigene Kürzel */
+.custom-code{--code-color:#6f7f8f}
+.code-btn.custom-code,
+.drag-action.custom-code,
+.chip.custom-code,
+.cell-code.custom-code,
+.custom-code-swatch{
+  background:var(--code-color)!important;
+  border-color:var(--code-color)!important;
+  color:#fff!important
+}
+.custom-code-form{align-items:end}
+.custom-codes-list{display:grid;gap:7px;margin-top:10px}
+.custom-code-row{display:grid;grid-template-columns:42px 1fr auto;gap:9px;align-items:center;padding:8px 9px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.5)}
+.custom-code-swatch{width:38px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900}
+.custom-code-row strong{display:block;font-size:10px}
+.custom-code-row small{display:block;font-size:8px;color:var(--muted);margin-top:2px}
+.custom-legend-item{display:inline-flex;align-items:center;gap:4px;margin-right:7px}
+.compact-toggle{align-self:end;padding-bottom:6px}
+body.dark-mode .custom-code-row{background:#172723}
+
+@media(max-width:800px){
+  .summary-grid{grid-template-columns:1fr 1fr}
+  .metric{min-height:58px}
+  .metric-main strong{font-size:19px!important}
+}
