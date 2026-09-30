@@ -230,3 +230,53 @@ end $$;
 --
 -- Weitere Benutzer anschließend ebenfalls in team_members eintragen.
 -- Für Mitarbeiter employee_id auf die ID des Mitarbeiters aus TeamPlan setzen.
+
+
+-- Einmalige sichere Ersteinrichtung des ersten Admins
+create table if not exists private.team_bootstrap (
+  team_id text primary key,
+  setup_code text not null,
+  consumed_at timestamptz
+);
+
+create or replace function public.bootstrap_first_admin(
+  p_team_id text,
+  p_code text,
+  p_display_name text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid;
+  v_boot private.team_bootstrap%rowtype;
+begin
+  v_user := (select auth.uid());
+  if v_user is null then raise exception 'Nicht angemeldet'; end if;
+
+  select * into v_boot
+  from private.team_bootstrap
+  where team_id = p_team_id
+  for update;
+
+  if not found then raise exception 'Keine Ersteinrichtung verfügbar'; end if;
+  if v_boot.consumed_at is not null then raise exception 'Ersteinrichtung bereits abgeschlossen'; end if;
+  if v_boot.setup_code <> p_code then raise exception 'Ungültiger Setup-Code'; end if;
+  if exists(select 1 from public.team_members where team_id = p_team_id) then raise exception 'Team hat bereits Mitglieder'; end if;
+
+  insert into public.team_members(team_id,user_id,role,display_name)
+  values (p_team_id,v_user,'admin',coalesce(nullif(p_display_name,''),'Admin'));
+
+  update private.team_bootstrap set consumed_at = now() where team_id = p_team_id;
+end;
+$$;
+
+revoke all on function public.bootstrap_first_admin(text,text,text) from public, anon;
+grant execute on function public.bootstrap_first_admin(text,text,text) to authenticated;
+
+-- Den tatsächlichen Setup-Code setzt der Projekt-Administrator einmalig direkt in Supabase:
+-- insert into private.team_bootstrap(team_id,setup_code,consumed_at)
+-- values ('zna-homberg','EINMALIGER-CODE',null)
+-- on conflict(team_id) do update set setup_code=excluded.setup_code, consumed_at=null;
