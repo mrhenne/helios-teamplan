@@ -1037,6 +1037,22 @@ document.getElementById('deleteEmployeeBtn').addEventListener('click',()=>{if(se
 document.getElementById('cellForm').addEventListener('submit',e=>{e.preventDefault();const empId=document.getElementById('cellEmployeeId').value,key=document.getElementById('cellDateValue').value;if(!canPlan(empId))return;const blocked=blackoutBlocks(key);if(blocked&&[...selectedCodes].some(c=>['U','XU'].includes(c))){alert('Urlaub ist in dieser Sperrzeit blockiert: '+blocked.name);return}if(!state.entries[empId])state.entries[empId]={};const candidate={codes:[...selectedCodes],priority:Number(document.getElementById('cellPriority').value),note:document.getElementById('cellNote').value.trim(),status:canApprove()&&document.getElementById('cellDirectApprove').checked&&selectedCodes.has('U')?'approved':canApprove()?document.getElementById('cellStatus').value:'wish'};const warn=document.getElementById('cellWarning').textContent;if(warn&&state.settings.confirmConflicts&&!confirm(warn+' Trotzdem speichern?'))return;trackAction('Planung geändert',(state.employees.find(e=>e.id===empId)?.name||'')+' · '+key+' · '+candidate.codes.join('+'));if(candidate.codes.length||candidate.priority||candidate.note)state.entries[empId][key]=candidate;else delete state.entries[empId][key];persist();saveRemoteEntry(empId,key,state.entries[empId]?.[key]??null);render();document.getElementById('cellDialog').close();showToast('Planung aktualisiert')});
 document.getElementById('clearCellBtn').addEventListener('click',()=>{const emp=document.getElementById('cellEmployeeId').value,key=document.getElementById('cellDateValue').value;if(!canPlan(emp))return;if(state.entries[emp]){trackAction('Eintrag gelöscht',(state.employees.find(e=>e.id===emp)?.name||'')+' · '+key);delete state.entries[emp][key]}persist();saveRemoteEntry(emp,key,null);render();document.getElementById('cellDialog').close();showToast('Eintrag gelöscht')});
 
+document.getElementById('addCustomCodeBtn').addEventListener('click',()=>{
+  if(!canManage())return;
+  const key=document.getElementById('customCodeKey').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4);
+  const label=document.getElementById('customCodeLabel').value.trim();
+  const color=document.getElementById('customCodeColor').value||'#6f7f8f';
+  const absence=document.getElementById('customCodeAbsence').checked;
+  if(!key||!label){alert('Bitte Kürzel und Bezeichnung angeben.');return}
+  if(allCodeDefs().some(c=>c.key===key)){alert('Dieses Kürzel existiert bereits.');return}
+  trackAction('Kürzel angelegt',key+' · '+label);
+  state.settings.customCodes.push({key,label,color,absence,className:'custom-code'});
+  persist();
+  document.getElementById('customCodeKey').value='';
+  document.getElementById('customCodeLabel').value='';
+  document.getElementById('customCodeAbsence').checked=false;
+  renderCustomCodesSettings();render();showToast('Kürzel '+key+' angelegt');
+});
 document.getElementById('settingsForm').addEventListener('submit',e=>{e.preventDefault();if(!canManage())return;trackAction('Planungsregeln geändert');state.settings.baseVacation=Number(document.getElementById('settingBaseVacation').value);state.settings.maxVacation=Number(document.getElementById('settingMaxVacation').value);state.settings.maxAbsence=Number(document.getElementById('settingMaxAbsence').value);state.settings.countSchool=document.getElementById('settingCountSchool').checked;state.settings.confirmConflicts=document.getElementById('settingConfirmConflicts').checked;persist();render();document.getElementById('settingsDialog').close();showToast('Planungsregeln gespeichert')});
 
 document.getElementById('exportBtn').addEventListener('click',async()=>{
