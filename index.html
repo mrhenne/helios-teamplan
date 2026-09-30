@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
-  <script src="config.js"></script>
+  <script src="config.js?v=20260930-2"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
@@ -304,7 +304,7 @@
       </div>
       <div id="loginError" class="inline-warning hidden"></div>
       <div class="dialog-actions">
-        <button id="loginModeBtn" type="button" class="btn ghost">Ersten Admin einrichten</button>
+        <button id="loginModeBtn" type="button" class="btn ghost" onclick="toggleLoginMode()">Ersten Admin einrichten</button>
         <div class="spacer"></div>
         <button id="loginSubmitBtn" type="submit" class="btn primary">Anmelden</button>
       </div>
@@ -312,6 +312,6 @@
   </dialog>
 
   <div id="toast" class="toast"></div>
-  <script src="app.js"></script>
+  <script src="app.js?v=20260930-2"></script>
 </body>
 </html>
