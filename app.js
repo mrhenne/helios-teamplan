@@ -44,6 +44,15 @@ let sessionEmployeeId = localStorage.getItem('teamplan-session-employee') || '';
 let authUser = null;
 let authMembership = null;
 let loginMode = 'login';
+function toggleLoginMode(){
+  loginMode=loginMode==='login'?'bootstrap':'login';
+  const fields=document.getElementById('bootstrapFields');
+  const modeBtn=document.getElementById('loginModeBtn');
+  const submitBtn=document.getElementById('loginSubmitBtn');
+  if(fields)fields.classList.toggle('hidden',loginMode!=='bootstrap');
+  if(modeBtn)modeBtn.textContent=loginMode==='bootstrap'?'Zurück zur Anmeldung':'Ersten Admin einrichten';
+  if(submitBtn)submitBtn.textContent=loginMode==='bootstrap'?'Admin-Konto erstellen':'Anmelden';
+}
 
 function loadLocal(){
   try { const raw=localStorage.getItem('helios-teamplan-v1'); return raw ? normalizeState(JSON.parse(raw)) : structuredClone(defaultState); }
@@ -801,12 +810,7 @@ document.getElementById('dragApproveBtn').addEventListener('click',()=>applyDrag
 document.getElementById('dragRejectBtn').addEventListener('click',()=>applyDragStatus('rejected'));
 document.getElementById('dragDeleteBtn').addEventListener('click',deleteDragEntries);
 document.getElementById('dragCancelBtn').addEventListener('click',clearDragSelection);
-document.getElementById('loginModeBtn').addEventListener('click',()=>{
-  loginMode=loginMode==='login'?'bootstrap':'login';
-  document.getElementById('bootstrapFields').classList.toggle('hidden',loginMode!=='bootstrap');
-  document.getElementById('loginModeBtn').textContent=loginMode==='bootstrap'?'Zurück zur Anmeldung':'Ersten Admin einrichten';
-  document.getElementById('loginSubmitBtn').textContent=loginMode==='bootstrap'?'Admin-Konto erstellen':'Anmelden';
-});
+document.getElementById('loginModeBtn').addEventListener('click',()=>{});
 document.getElementById('loginForm').addEventListener('submit',async e=>{
   e.preventDefault();if(!supabaseClient)return;
   const errEl=document.getElementById('loginError');errEl.classList.add('hidden');
