@@ -11,3 +11,41 @@ button,input,select,textarea{font:inherit;color:inherit}.aurora{position:fixed;b
 @media(max-width:980px){.summary-grid{grid-template-columns:1fr 1fr}.topbar,.toolbar{align-items:flex-start;flex-direction:column}.legend{order:3}.toolbar-right{width:100%}.search{flex:1}.app-shell{padding:10px}.top-actions{width:100%}.plan-table .employee-col{width:210px;min-width:210px}.employee-stats{display:none}:root{--sticky-left:210px}}
 @media(max-width:560px){.summary-grid{grid-template-columns:1fr 1fr}.metric strong{font-size:22px}.form-grid.two{grid-template-columns:1fr}.code-selector{grid-template-columns:repeat(3,1fr)}h1{font-size:17px}.brand-mark{width:42px;height:42px}.top-actions .btn{padding:8px 10px}}
 @media print{body{background:white}.aurora,.top-actions,.toolbar-right,.hint{display:none}.app-shell{max-width:none;padding:0}.glass{box-shadow:none;border:0;background:white}.planner{max-height:none;overflow:visible}.plan-table{font-size:8px}.plan-table .employee-col{position:static}.plan-table thead th{position:static}.day-cell,.employee-cell{height:42px}}
+
+.segmented{display:inline-flex;align-items:center;padding:3px;background:rgba(231,239,235,.9);border:1px solid var(--line);border-radius:12px;gap:2px}
+.segment{border:0;background:transparent;border-radius:9px;padding:7px 9px;font-size:10px;font-weight:800;cursor:pointer;color:var(--muted)}
+.segment.active{background:white;color:var(--green);box-shadow:0 3px 10px rgba(17,67,58,.10)}
+.segment-label{font-size:9px;font-weight:800;color:var(--muted);padding:0 5px;text-transform:uppercase;letter-spacing:.05em}
+.presence-row td{background:#e4f2ed!important;color:#176854!important;font-size:11px!important}
+.presence-row .employee-col{color:#176854!important}
+.year-view{margin-top:0}
+.year-overview{display:grid;gap:12px}
+.year-head{border-radius:18px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between}
+.year-head h2{font-size:25px;margin-top:2px}
+.year-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:10px;color:var(--muted)}
+.year-legend span{display:flex;align-items:center;gap:5px}
+.mini-dot{width:9px;height:9px;border-radius:3px;display:inline-block}
+.mini-dot.conflict{background:#d74751}
+.year-month-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.year-month{border-radius:18px;padding:11px;overflow:hidden}
+.year-month-title{border:0;background:transparent;color:var(--ink);font-weight:800;font-size:13px;padding:3px 2px 8px;cursor:pointer}
+.mini-weekdays,.mini-calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.mini-weekdays span{font-size:8px;color:var(--muted);text-align:center;padding-bottom:3px}
+.mini-day{min-width:0;height:36px;border:0;border-radius:8px;background:rgba(255,255,255,.66);padding:3px;position:relative;cursor:pointer;text-align:left}
+.mini-day.empty{background:transparent;pointer-events:none}
+.mini-day.weekend{background:rgba(224,234,230,.76)}
+.mini-day.holiday{box-shadow:inset 0 -2px 0 #c85a62}
+.mini-day.conflict{outline:2px solid rgba(215,71,81,.48)}
+.mini-date{font-size:8px;font-weight:800;color:var(--muted)}
+.mini-counts{position:absolute;right:3px;bottom:3px;display:flex;gap:2px}
+.mini-counts b{font-size:7px;min-width:13px;height:13px;border-radius:4px;display:grid;place-items:center}
+.mini-present{position:absolute;right:4px;bottom:3px;font-size:7px;color:#6c857d}
+.year-staff{border-radius:18px;padding:14px 16px}
+.year-staff-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.year-staff-head small{color:var(--muted)}
+.year-staff-table{overflow:auto}
+.year-staff table{width:100%;border-collapse:collapse;font-size:10px}
+.year-staff th,.year-staff td{padding:8px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.year-staff th:first-child,.year-staff td:first-child{text-align:left}
+@media(max-width:1100px){.year-month-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:700px){.year-month-grid{grid-template-columns:1fr}.year-head{align-items:flex-start;flex-direction:column;gap:8px}.vacation-mode{order:2}.segmented{max-width:100%}}
