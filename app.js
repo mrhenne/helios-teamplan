@@ -582,7 +582,6 @@ function bindPlannerEvents(){
       else {const emp=dragEmployeeId,key=dragStartKey;clearDragSelection();openCell(emp,key)}
     });
     el.addEventListener('click',e=>{if(suppressNextCellClick){e.preventDefault();suppressNextCellClick=false}});
-    el.addEventListener('contextmenu',e=>showCellContextMenu(e,el.dataset.emp,el.dataset.date));
   });
   document.querySelectorAll('.employee-edit').forEach(el=>el.addEventListener('click',()=>openEmployee(el.dataset.id)));
   let dragged=null; document.querySelectorAll('.employee-row').forEach(row=>{row.addEventListener('dragstart',()=>{dragged=row.dataset.id;row.style.opacity=.45});row.addEventListener('dragend',()=>{row.style.opacity='';document.querySelectorAll('.drop-target').forEach(x=>x.classList.remove('drop-target'))});row.addEventListener('dragover',e=>{e.preventDefault();row.classList.add('drop-target')});row.addEventListener('dragleave',()=>row.classList.remove('drop-target'));row.addEventListener('drop',e=>{e.preventDefault();const target=row.dataset.id;if(dragged&&dragged!==target){reorder(dragged,target)}})});
@@ -849,7 +848,8 @@ function renderRoleControls(){
   const pill=document.getElementById('authUserPill'),logout=document.getElementById('logoutBtn');
   pill.classList.toggle('hidden',!authMode);logout.classList.toggle('hidden',!authMode);
   if(authMode)pill.textContent=(authUser.email||'Angemeldet')+' · '+sessionRole;
-  ['blackoutsBtn','addEmployeeBtn','importNamesBtn','planImportBtn'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=!canManage()});
+  ['blackoutsBtn','addEmployeeBtn','importNamesBtn','planImportBtn'].forEach(id=>{const el=document.getElementById(id);if(el){el.disabled=!canManage();el.classList.toggle('hidden',!canManage())}});
+  document.querySelectorAll('.manager-only').forEach(el=>el.classList.toggle('hidden',!canManage()));
   document.getElementById('settingsBtn').disabled=false;
   document.getElementById('usersBtn').classList.toggle('hidden',sessionRole!=='admin'||!authUser);
 }
@@ -958,6 +958,7 @@ function openSettings(){
   document.getElementById('accountPassword').value='';
   document.getElementById('accountInfo').textContent='E-Mail-Änderungen können eine Bestätigung an die neue Adresse auslösen.';
   const planning=document.getElementById('planningSettingsSection'),save=document.getElementById('planningSettingsSaveBtn');
+  document.querySelectorAll('.manager-only').forEach(el=>el.classList.toggle('hidden',!canManage()));
   planning.classList.toggle('settings-disabled',!canManage());save.classList.toggle('hidden',!canManage());
   planning.querySelectorAll('input,select').forEach(el=>el.disabled=!canManage());
   document.getElementById('settingsDialog').showModal();
@@ -1227,6 +1228,12 @@ document.getElementById('loginForm').addEventListener('submit',async e=>{
   if(error){errEl.textContent=error.message;errEl.classList.remove('hidden')}
 });
 document.getElementById('logoutBtn').addEventListener('click',async()=>{if(supabaseClient)await supabaseClient.auth.signOut()});
+document.getElementById('planner').addEventListener('contextmenu',e=>{
+  const cell=e.target.closest('.day-cell');
+  if(!cell)return;
+  e.preventDefault();
+  showCellContextMenu(e,cell.dataset.emp,cell.dataset.date);
+});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(dragSelectedKeys.size)clearDragSelection();hideCellContextMenu()}});
 document.addEventListener('click',e=>{if(!e.target.closest('#cellContextMenu'))hideCellContextMenu()});
 window.addEventListener('resize',hideCellContextMenu);
