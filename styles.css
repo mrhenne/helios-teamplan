@@ -78,3 +78,48 @@ button,input,select,textarea{font:inherit;color:inherit}.aurora{position:fixed;b
 .date-head.month-boundary,.day-cell.month-boundary{border-left:2px solid rgba(0,107,91,.35)!important}
 .mini-day.school-holiday{background:#fff5d9}
 @media(max-width:700px){.drag-action-bar{left:8px;right:8px;bottom:8px;transform:none;flex-direction:column;align-items:stretch}.drag-action-buttons{justify-content:space-between}.drag-action-info{display:flex;justify-content:space-between}}
+
+:root{--zoom:1;--cell-w:calc(52px * var(--zoom));--cell-h:calc(62px * var(--zoom));}
+.compact-toolbar{padding:7px 9px!important;gap:6px!important;display:grid!important;grid-template-columns:auto 1fr;grid-template-areas:"primary secondary" "legend legend";align-items:center}
+.toolbar-group{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.primary-tools{grid-area:primary}.secondary-tools{grid-area:secondary;justify-content:flex-end}.compact-legend{grid-area:legend;padding-top:3px;border-top:1px solid var(--line);gap:7px!important}
+.compact-legend>span{font-size:9px!important}
+.compact-toolbar .month-nav{min-width:180px}.compact-toolbar .month-title{min-width:100px}.compact-toolbar .icon-btn{width:30px;height:30px;font-size:18px}
+.compact-btn{padding:7px 9px!important;font-size:10px!important;border-radius:9px!important}.compact-search{min-width:120px!important;width:145px;padding:7px 9px!important;font-size:10px!important}
+.segmented{padding:2px!important;border-radius:9px!important}.segment{padding:5px 7px!important;font-size:9px!important}.segment-label{font-size:8px!important}
+.zoom-control{display:flex;align-items:center;border:1px solid var(--line);background:rgba(231,239,235,.78);border-radius:9px;overflow:hidden}
+.zoom-btn{border:0;background:transparent;min-width:27px;height:27px;cursor:pointer;font-weight:900;color:var(--ink)}
+.zoom-control span{font-size:8px;font-weight:800;color:var(--muted);min-width:36px;text-align:center}
+.holiday-key{width:11px;height:7px;border-radius:3px;background:#f2d77d;display:inline-block}
+.date-head{width:var(--cell-w)!important;min-width:var(--cell-w)!important;height:var(--cell-h)!important}
+.day-cell{width:var(--cell-w)!important;min-width:var(--cell-w)!important;height:var(--cell-h)!important}
+.employee-cell{height:var(--cell-h)!important}
+.plan-table .employee-col{width:calc(265px * max(.82,var(--zoom)))!important;min-width:calc(265px * max(.82,var(--zoom)))!important}
+.planner{scroll-behavior:smooth}
+.month-boundary{border-left:3px solid rgba(0,107,91,.38)!important}
+html[data-theme="dark"]{
+  --bg:#0d1715;--ink:#e7f0ed;--muted:#94aaa4;--green:#44b7a3;--green2:#268f7d;--red:#ee7178;--line:rgba(200,235,226,.12);--glass:rgba(20,35,31,.76);--white:#14211e;
+}
+html[data-theme="dark"] body{background:linear-gradient(145deg,#0b1311,#11211d 55%,#151813)}
+html[data-theme="dark"] .glass,html[data-theme="dark"] .glass-solid{border-color:rgba(210,240,232,.08)}
+html[data-theme="dark"] .glass-solid{background:rgba(18,31,28,.97)}
+html[data-theme="dark"] .btn.ghost,html[data-theme="dark"] .icon-btn,html[data-theme="dark"] input,html[data-theme="dark"] select,html[data-theme="dark"] textarea,html[data-theme="dark"] .segment.active{background:#172723;color:var(--ink);border-color:var(--line)}
+html[data-theme="dark"] .segmented,html[data-theme="dark"] .zoom-control{background:#12201d}
+html[data-theme="dark"] .plan-table{background:rgba(12,23,20,.7)}
+html[data-theme="dark"] .plan-table thead th{background:rgba(19,34,30,.98)}
+html[data-theme="dark"] .plan-table .employee-col{background:rgba(17,30,27,.98)}
+html[data-theme="dark"] .day-cell{background:rgba(23,39,35,.84)}
+html[data-theme="dark"] .day-cell.weekend{background:rgba(31,49,44,.86)}
+html[data-theme="dark"] .day-cell:hover{background:rgba(42,71,63,.94)}
+html[data-theme="dark"] .summary-row td{background:#14241f!important;color:var(--ink)}
+html[data-theme="dark"] .presence-row td{background:#15342b!important;color:#7bd0b8!important}
+html[data-theme="dark"] .absence-names-row td{background:#2a211e!important}
+html[data-theme="dark"] .absent-name{background:#3b2a24;color:#f1c7ae}
+html[data-theme="dark"] .workweek-box,html[data-theme="dark"] .bulk-options{background:#14241f}
+html[data-theme="dark"] .calc-preview,html[data-theme="dark"] .bulk-preview{background:#133027}
+html[data-theme="dark"] .mini-day{background:#172824;color:var(--ink)}
+html[data-theme="dark"] .mini-day.weekend{background:#20352f}
+html[data-theme="dark"] .mini-day.school-holiday{background:#3b3420}
+html[data-theme="dark"] .date-head.school-holiday{background-image:linear-gradient(rgba(173,140,52,.18),rgba(173,140,52,.18))}
+html[data-theme="dark"] .day-cell.school-holiday-cell{box-shadow:inset 0 3px 0 rgba(217,169,44,.55)}
+@media(max-width:980px){.compact-toolbar{grid-template-columns:1fr;grid-template-areas:"primary" "secondary" "legend"}.secondary-tools{justify-content:flex-start}.compact-search{flex:1}}
