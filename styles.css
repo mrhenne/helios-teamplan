@@ -471,3 +471,11 @@ body.dark-mode .custom-code-row{background:#172723}
   .metric{min-height:58px}
   .metric-main strong{font-size:19px!important}
 }
+
+.cleanup-preview{margin-top:14px;padding:12px 13px;border:1px solid rgba(182,62,70,.18);border-radius:12px;background:rgba(182,62,70,.06);display:grid;gap:4px}
+.cleanup-preview strong{font-size:15px;color:#a53641}
+.cleanup-preview span{font-size:9px;color:var(--muted);line-height:1.4}
+.cleanup-preview.empty{border-color:var(--line);background:rgba(120,140,134,.05)}
+.cleanup-preview.empty strong{color:var(--muted)}
+body.dark-mode .cleanup-preview{background:rgba(163,54,65,.12)}
+.employee-dialog-tools{flex-wrap:wrap}
