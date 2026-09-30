@@ -307,3 +307,48 @@ body.dark-mode .top-tool.primary-tool{background:var(--green2);color:#fff}
 .user-row{grid-template-columns:minmax(150px,1.2fr) 105px minmax(145px,1fr) auto auto auto}
 body.dark-mode .employee-range-btn,body.dark-mode .auto-weekend-box{background:#172723;color:#8fdbc2;border-color:rgba(200,235,226,.12)}
 @media(max-width:900px){.user-row{grid-template-columns:1fr 1fr}.user-main{grid-column:1/-1}.compact-employee-search{width:130px!important}}
+
+:root{--planner-scale:1}
+
+.view-tool-btn{height:30px!important;padding:0 9px!important;font-size:9px!important;white-space:nowrap}
+.employee-dialog-tools{display:flex;justify-content:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+
+.planner-focus-controls{display:none;position:fixed;right:8px;top:8px;z-index:300;gap:5px}
+.planner-focus-controls button{width:32px;height:32px;border:1px solid rgba(255,255,255,.22);border-radius:10px;background:rgba(16,39,34,.78);color:#fff;backdrop-filter:blur(12px);cursor:pointer;font-size:15px}
+
+body.planner-focus{overflow:hidden;background:var(--bg)!important}
+body.planner-focus .aurora,
+body.planner-focus .topbar,
+body.planner-focus .summary-grid,
+body.planner-focus .planner-controls,
+body.planner-focus .year-view,
+body.planner-focus .hint{display:none!important}
+body.planner-focus .app-shell{padding:0!important;margin:0!important;max-width:none!important;width:100vw!important;height:100vh!important}
+body.planner-focus #monthView{display:block!important;position:fixed;inset:0;z-index:200;border-radius:0!important;border:0!important;margin:0!important;background:var(--white)}
+body.planner-focus #planner{height:100vh!important;max-height:100vh!important;width:100vw!important;overflow:auto!important}
+body.planner-focus .planner-focus-controls{display:flex}
+body.planner-focus .plan-table{min-height:100%}
+
+.employee-cell{padding:calc(8px * var(--planner-scale)) calc(10px * var(--planner-scale))!important}
+.employee-card{grid-template-columns:calc(22px * max(.35,var(--planner-scale))) 1fr auto;gap:calc(8px * max(.3,var(--planner-scale)))}
+.drag-handle{font-size:clamp(5px,calc(16px * var(--planner-scale)),16px)}
+.employee-name{font-size:clamp(5px,calc(12px * var(--planner-scale)),12px)}
+.employee-meta{font-size:clamp(4px,calc(9px * var(--planner-scale)),9px);margin-top:calc(3px * var(--planner-scale))}
+.employee-stats strong{font-size:clamp(5px,calc(12px * var(--planner-scale)),12px)}
+.employee-stats small{font-size:clamp(4px,calc(8px * var(--planner-scale)),8px)}
+.date-head{font-size:clamp(4px,calc(10px * var(--planner-scale)),10px)}
+.date-head strong{font-size:clamp(5px,calc(15px * var(--planner-scale)),15px);margin-top:calc(4px * var(--planner-scale))}
+.month-mini{font-size:clamp(4px,calc(7px * var(--planner-scale)),7px);margin-bottom:calc(1px * var(--planner-scale))}
+.holiday-label,.school-label{font-size:clamp(3px,calc(7px * var(--planner-scale)),7px);padding:calc(2px * var(--planner-scale)) calc(3px * var(--planner-scale))}
+.cell-code{font-size:clamp(4px,calc(9px * var(--planner-scale)),9px)}
+.summary-row td{font-size:clamp(4px,calc(9px * var(--planner-scale)),9px)}
+.absent-name{font-size:clamp(3px,calc(7px * var(--planner-scale)),7px);padding:calc(1px * var(--planner-scale)) calc(2px * var(--planner-scale))}
+.absent-name small{font-size:clamp(3px,calc(6px * var(--planner-scale)),6px)}
+.status-mark{height:max(1px,calc(3px * var(--planner-scale)));width:max(4px,calc(18px * var(--planner-scale)));bottom:max(1px,calc(3px * var(--planner-scale)))}
+.cell-priority{transform:scale(max(.35,var(--planner-scale)));transform-origin:center}
+.cell-note,.cell-warning-mark{transform:scale(max(.35,var(--planner-scale)));transform-origin:center}
+
+@media(max-width:700px){
+  .view-tool-btn{padding:0 7px!important}
+  .planner-focus-controls{right:5px;top:5px}
+}
