@@ -25,29 +25,44 @@
           <h1>Gemeinsame Urlaubsplanung</h1>
         </div>
       </div>
-      <div class="top-actions">
-        <div id="syncPill" class="sync-pill local">● Lokal</div>
-        <div id="authUserPill" class="sync-pill hidden"></div>
-        <button id="logoutBtn" class="btn ghost compact-btn hidden">Abmelden</button>
-        <select id="roleSelect" class="role-select" title="Arbeitsmodus">
-          <option value="admin">Admin</option>
-          <option value="planner">Planer</option>
-          <option value="employee">Mitarbeiter</option>
-          <option value="viewer">Nur Lesen</option>
-        </select>
-        <select id="roleEmployeeSelect" class="role-select hidden" title="Mitarbeiter auswählen"></select>
-        <button id="roleHelpBtn" class="btn ghost compact-btn" data-tool-action="roles">Rollen?</button>
-        <button id="usersBtn" class="btn ghost compact-btn hidden">Benutzer</button>
-        <button id="todayBtn" class="btn ghost compact-btn">Heute</button>
-        <button id="conflictsBtn" class="btn ghost compact-btn" data-tool-action="conflicts">Konflikte</button>
-        <button id="historyBtn" class="btn ghost compact-btn" data-tool-action="history">Verlauf</button>
-        <button id="blackoutsBtn" class="btn ghost compact-btn" data-tool-action="blackouts">Sperrzeiten</button>
-        <button id="planImportBtn" class="btn ghost compact-btn" data-tool-action="plan-import">Plan importieren</button>
-        <button id="excelExportBtn" class="btn ghost compact-btn" data-tool-action="excel">Excel</button>
-        <button id="pdfExportBtn" class="btn ghost compact-btn" data-tool-action="pdf">PDF</button>
-        <button id="exportBtn" class="btn ghost compact-btn" title="JSON-Sicherung">Backup</button>
-        <label class="btn ghost file-btn compact-btn">Import<input id="importInput" type="file" accept="application/json" hidden></label>
-        <button id="settingsBtn" class="btn primary compact-btn" title="Einstellungen">⚙</button>
+      <div class="top-actions organized-actions">
+        <div class="status-cluster">
+          <div id="syncPill" class="sync-pill local">● Lokal</div>
+          <div id="authUserPill" class="sync-pill hidden"></div>
+          <select id="roleSelect" class="role-select" title="Arbeitsmodus">
+            <option value="admin">Admin</option>
+            <option value="planner">Planer</option>
+            <option value="employee">Mitarbeiter</option>
+            <option value="viewer">Nur Lesen</option>
+          </select>
+          <select id="roleEmployeeSelect" class="role-select hidden" title="Mitarbeiter auswählen"></select>
+        </div>
+        <div class="action-groups">
+          <div class="action-group" aria-label="Team">
+            <span class="action-group-label">Team</span>
+            <button id="usersBtn" class="top-tool hidden" title="Benutzer verwalten"><span class="tool-icon">♟</span><span>Benutzer</span></button>
+            <button id="roleHelpBtn" class="top-tool" data-tool-action="roles" title="Rollen und Rechte"><span class="tool-icon">?</span><span>Rollen</span></button>
+          </div>
+          <div class="action-group" aria-label="Planung">
+            <span class="action-group-label">Planung</span>
+            <button id="conflictsBtn" class="top-tool" data-tool-action="conflicts" title="Konflikte prüfen"><span class="tool-icon">!</span><span>Konflikte</span></button>
+            <button id="historyBtn" class="top-tool" data-tool-action="history" title="Änderungsverlauf"><span class="tool-icon">↶</span><span>Verlauf</span></button>
+            <button id="blackoutsBtn" class="top-tool" data-tool-action="blackouts" title="Sperrzeiten verwalten"><span class="tool-icon">⊘</span><span>Sperrzeiten</span></button>
+          </div>
+          <div class="action-group" aria-label="Daten">
+            <span class="action-group-label">Daten</span>
+            <button id="planImportBtn" class="top-tool" data-tool-action="plan-import" title="Urlaubsplan importieren"><span class="tool-icon">⇧</span><span>Plan</span></button>
+            <button id="excelExportBtn" class="top-tool" data-tool-action="excel" title="Als Excel exportieren"><span class="tool-icon">▦</span><span>Excel</span></button>
+            <button id="pdfExportBtn" class="top-tool" data-tool-action="pdf" title="Als PDF / Drucken"><span class="tool-icon">▤</span><span>PDF</span></button>
+            <button id="exportBtn" class="top-tool" title="JSON-Sicherung"><span class="tool-icon">↓</span><span>Backup</span></button>
+            <label class="top-tool file-btn" title="JSON-Sicherung importieren"><span class="tool-icon">↑</span><span>Import</span><input id="importInput" type="file" accept="application/json" hidden></label>
+          </div>
+          <div class="action-group account-group" aria-label="Konto">
+            <span class="action-group-label">Konto</span>
+            <button id="settingsBtn" class="top-tool primary-tool" title="Einstellungen"><span class="tool-icon">⚙</span><span>Einstellungen</span></button>
+            <button id="logoutBtn" class="top-tool hidden" title="Abmelden"><span class="tool-icon">↪</span><span>Abmelden</span></button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -79,9 +94,9 @@
     </div>
     <div class="segmented view-switch" aria-label="Ansicht">
       <button id="monthViewBtn" class="segment active" type="button">Monat</button>
-      <button id="quarterViewBtn" class="segment" type="button">Quartal</button>
       <button id="yearViewBtn" class="segment" type="button">Jahr</button>
     </div>
+    <button id="todayBtn" class="btn ghost today-btn" type="button" title="Zum heutigen Monat">◎ Heute</button>
     <div class="controls-spacer"></div>
     <div class="theme-switch-wrap"><span>Darstellung</span><button id="themeBtn" class="theme-switch" type="button"><span class="theme-switch-knob"></span><b id="themeLabel">Hell</b></button></div>
   </div>
@@ -355,6 +370,6 @@
   </dialog>
 
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20260930-4"></script>
+  <script src="app.js?v=20260930-5"></script>
 </body>
 </html>
