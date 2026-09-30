@@ -834,10 +834,21 @@ document.getElementById('undoBtn').addEventListener('click',undoLastAction);
 document.addEventListener('click',e=>{const btn=e.target.closest('[data-tool-action]');if(btn){e.preventDefault();runToolAction(btn.dataset.toolAction)}});
 document.getElementById('userInviteForm').addEventListener('submit',async e=>{
   e.preventDefault();
+  const resultBox=document.getElementById('inviteResult');resultBox.classList.add('hidden');resultBox.innerHTML='';
   try{
-    await invokeUserAdmin({action:'invite',email:document.getElementById('inviteEmail').value.trim(),displayName:document.getElementById('inviteName').value.trim(),role:document.getElementById('inviteRole').value,employeeId:document.getElementById('inviteEmployee').value||null});
-    e.target.reset();document.getElementById('inviteEmployee').innerHTML=employeeOptions('');showToast('Einladung gesendet');await renderUsersList();
-  }catch(err){alert(err.message)}
+    const data=await invokeUserAdmin({action:'invite',email:document.getElementById('inviteEmail').value.trim(),displayName:document.getElementById('inviteName').value.trim(),role:document.getElementById('inviteRole').value,employeeId:document.getElementById('inviteEmployee').value||null});
+    e.target.reset();document.getElementById('inviteEmployee').innerHTML=employeeOptions('');
+    if(data.delivery==='link'&&data.inviteLink){
+      resultBox.innerHTML='<strong>Mail-Limit erreicht</strong><span>Supabase konnte keine Einladungsmail versenden. Der Account ist vorbereitet. Schicke stattdessen diesen Link:</span><div class="invite-link-row"><input id="generatedInviteLink" readonly value="'+escapeHtml(data.inviteLink)+'"><button type="button" id="copyInviteLink" class="btn primary">Link kopieren</button></div>';
+      resultBox.classList.remove('hidden');
+      document.getElementById('copyInviteLink').addEventListener('click',async()=>{await navigator.clipboard.writeText(data.inviteLink);showToast('Einladungslink kopiert')});
+      showToast('Einladungslink erstellt');
+    }else if(data.delivery==='existing'){
+      resultBox.innerHTML='<strong>Benutzer bereits vorhanden</strong><span>Der bestehende Account wurde dem Team zugeordnet bzw. aktualisiert.</span>';
+      resultBox.classList.remove('hidden');showToast('Benutzer zugeordnet');
+    }else showToast('Einladung per E-Mail gesendet');
+    await renderUsersList();
+  }catch(err){console.error(err);resultBox.innerHTML='<strong>Einladung fehlgeschlagen</strong><span>'+escapeHtml(err.message||String(err))+'</span>';resultBox.classList.remove('hidden')}
 });
 document.getElementById('planImportFile').addEventListener('change',async e=>{try{renderPlanImportPreview(await readPlanImportFile(e.target.files[0]))}catch(err){console.error(err);renderPlanImportPreview({entries:[],names:[],warnings:[err.message]})}});
 document.getElementById('planImportForm').addEventListener('submit',e=>{e.preventDefault();applyPlanImport()});
