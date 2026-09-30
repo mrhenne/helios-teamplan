@@ -236,3 +236,12 @@ body.dark-mode .conflict-item:hover{background:#1d352e}
 body.dark-mode .role-help-grid article,body.dark-mode .plan-import-preview{background:#14241f}
 body.dark-mode .role-security-note{background:#3c3420;color:#ead99b}
 @media(max-width:700px){.role-help-grid{grid-template-columns:1fr}}
+
+.drag-action.approve{background:#dff3eb;color:#146b56}
+.drag-action.reject{background:#ffe4e7;color:#a53641}
+.login-dialog{width:min(440px,calc(100vw - 28px))}
+.login-dialog form{padding:24px}
+.login-dialog label+label{margin-top:12px}
+#authUserPill{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.dark-mode .drag-action.approve{background:#1e4b3e;color:#8fdbc2}
+body.dark-mode .drag-action.reject{background:#51262d;color:#ffadb5}
