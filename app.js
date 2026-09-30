@@ -541,9 +541,66 @@ function bindPlannerEvents(){
 }
 function reorder(sourceId,targetId){if(!canEditEmployees()){showToast('Keine Rechte für Stammdaten');return}trackAction('Reihenfolge geändert');const arr=[...state.employees].sort((a,b)=>a.order-b.order);const from=arr.findIndex(e=>e.id===sourceId),to=arr.findIndex(e=>e.id===targetId);const [x]=arr.splice(from,1);arr.splice(to,0,x);arr.forEach((e,i)=>e.order=i);state.employees=arr;persist();render();showToast('Reihenfolge gespeichert')}
 
+function cleanupMatchesDate(key,period){
+  if(period==='all')return true;
+  const year=String(viewDate.getFullYear());
+  if(period==='year')return key.startsWith(year+'-');
+  const month=String(viewDate.getMonth()+1).padStart(2,'0');
+  return key.startsWith(year+'-'+month+'-');
+}
+function cleanupAffectedEntries(){
+  const empValue=document.getElementById('cleanupEmployee')?.value||'all';
+  const period=document.getElementById('cleanupPeriod')?.value||'month';
+  const code=document.getElementById('cleanupCode')?.value||'all';
+  const employees=empValue==='all'?state.employees:state.employees.filter(e=>e.id===empValue);
+  const matches=[];
+  employees.forEach(emp=>{
+    Object.entries(state.entries[emp.id]||{}).forEach(([key,entry])=>{
+      if(!cleanupMatchesDate(key,period))return;
+      if(code==='all'){
+        if((entry.codes||[]).length||entry.note||entry.priority||entry.status)matches.push({empId:emp.id,key,code:null});
+      }else if((entry.codes||[]).includes(code))matches.push({empId:emp.id,key,code});
+    });
+  });
+  return matches;
+}
+function updateCleanupPreview(){
+  const box=document.getElementById('cleanupPreview');if(!box)return;
+  const count=cleanupAffectedEntries().length;
+  const emp=document.getElementById('cleanupEmployee'),period=document.getElementById('cleanupPeriod'),code=document.getElementById('cleanupCode');
+  const empText=emp?.options[emp.selectedIndex]?.text||'',periodText=period?.options[period.selectedIndex]?.text||'',codeText=code?.options[code.selectedIndex]?.text||'';
+  box.innerHTML='<strong>'+count+' '+(count===1?'Eintrag':'Einträge')+'</strong><span>'+escapeHtml(empText)+' · '+escapeHtml(periodText)+' · '+escapeHtml(codeText)+'</span>';
+  box.classList.toggle('empty',count===0);
+}
+function openCleanupDialog(selectedEmpId='all'){
+  if(!canManage()){showToast('Nur Admin und Planer dürfen Planungsdaten gesammelt löschen');return}
+  const emp=document.getElementById('cleanupEmployee'),code=document.getElementById('cleanupCode');
+  emp.innerHTML='<option value="all">Alle Mitarbeiter</option>'+[...state.employees].sort((a,b)=>a.order-b.order).map(e=>'<option value="'+e.id+'">'+escapeHtml(e.name)+'</option>').join('');
+  emp.value=selectedEmpId&&state.employees.some(e=>e.id===selectedEmpId)?selectedEmpId:'all';
+  code.innerHTML='<option value="all">Alle Einträge</option>'+allCodeDefs().map(c=>'<option value="'+escapeHtml(c.key)+'">'+escapeHtml(c.key+' · '+c.label)+'</option>').join('');
+  document.getElementById('cleanupPeriod').value='month';
+  updateCleanupPreview();
+  safeShowDialog('cleanupDialog');
+}
+function applyCleanup(){
+  if(!canManage())return;
+  const matches=cleanupAffectedEntries();if(!matches.length){showToast('Keine passenden Einträge gefunden');return}
+  const emp=document.getElementById('cleanupEmployee'),period=document.getElementById('cleanupPeriod'),code=document.getElementById('cleanupCode');
+  const summary=[emp.options[emp.selectedIndex]?.text,period.options[period.selectedIndex]?.text,code.options[code.selectedIndex]?.text].filter(Boolean).join(' · ');
+  if(!confirm(matches.length+' '+(matches.length===1?'Eintrag':'Einträge')+' wirklich löschen?\n\n'+summary+'\n\nDie Aktion kann über Verlauf → Rückgängig wiederhergestellt werden.'))return;
+  trackAction('Planungsdaten gelöscht',summary+' · '+matches.length+' Einträge');
+  matches.forEach(({empId,key,code:targetCode})=>{
+    const entry=state.entries[empId]?.[key];if(!entry)return;
+    if(!targetCode){delete state.entries[empId][key];return}
+    const codes=(entry.codes||[]).filter(c=>c!==targetCode);
+    if(codes.length||entry.note||entry.priority){state.entries[empId][key]={...entry,codes}}
+    else delete state.entries[empId][key];
+  });
+  persist();render();document.getElementById('cleanupDialog').close();showToast(matches.length+' Einträge gelöscht');
+}
 function openEmployee(id=null){
   if(!canEditEmployees()){showToast('Keine Rechte für Mitarbeiter-Stammdaten');return}
-  const d=document.getElementById('employeeDialog'),e=id?state.employees.find(x=>x.id===id):null; document.getElementById('employeeDialogTitle').textContent=e?'Mitarbeiter bearbeiten':'Mitarbeiter anlegen';document.getElementById('employeeId').value=e?.id||'';document.getElementById('employeeName').value=e?.name||'';document.getElementById('employeeHours').value=e?.hours??38.5;document.getElementById('employeePercent').value=e?.percent??100;document.getElementById('employeeWorkdays').value=e?.workdays??5;document.getElementById('employeeCarry').value=e?.carry??0;document.getElementById('employeeAdjustment').value=e?.adjustment??0;document.getElementById('employeeRole').value=e?.role||'employee';document.getElementById('employeeRole').disabled=sessionRole!=='admin';document.getElementById('deleteEmployeeBtn').classList.toggle('hidden',!e||sessionRole!=='admin');document.getElementById('employeeRangeBtn').classList.toggle('hidden',!e||!canPlan(e.id));const aw=e?.autoWeekend||{enabled:false,intervalWeeks:2,anchorDate:''};document.getElementById('employeeAutoWeekend').checked=!!aw.enabled;document.getElementById('employeeWeekendInterval').value=String(aw.intervalWeeks||2);document.getElementById('employeeWeekendAnchor').value=aw.anchorDate||'';document.getElementById('autoWeekendOptions').classList.toggle('disabled-block',!aw.enabled);renderWorkweekToggles(e?.workweek||[1,2,3,4,5]);updateVacationPreview();d.showModal();
+  const d=document.getElementById('employeeDialog'),e=id?state.employees.find(x=>x.id===id):null; document.getElementById('employeeDialogTitle').textContent=e?'Mitarbeiter bearbeiten':'Mitarbeiter anlegen';document.getElementById('employeeId').value=e?.id||'';document.getElementById('employeeName').value=e?.name||'';document.getElementById('employeeHours').value=e?.hours??38.5;document.getElementById('employeePercent').value=e?.percent??100;document.getElementById('employeeWorkdays').value=e?.workdays??5;document.getElementById('employeeCarry').value=e?.carry??0;document.getElementById('employeeAdjustment').value=e?.adjustment??0;document.getElementById('employeeRole').value=e?.role||'employee';document.getElementById('employeeRole').disabled=sessionRole!=='admin';document.getElementById('deleteEmployeeBtn').classList.toggle('hidden',!e||sessionRole!=='admin');document.getElementById('employeeRangeBtn').classList.toggle('hidden',!e||!canPlan(e.id));document.getElementById('employeeCleanupBtn').classList.toggle('hidden',!e||!canManage());const aw=e?.autoWeekend||{enabled:false,intervalWeeks:2,anchorDate:''};document.getElementById('employeeAutoWeekend').checked=!!aw.enabled;document.getElementById('employeeWeekendInterval').value=String(aw.intervalWeeks||2);document.getElementById('employeeWeekendAnchor').value=aw.anchorDate||'';document.getElementById('autoWeekendOptions').classList.toggle('disabled-block',!aw.enabled);renderWorkweekToggles(e?.workweek||[1,2,3,4,5]);updateVacationPreview();d.showModal();
 }
 function renderWorkweekToggles(days){document.getElementById('workweekToggles').innerHTML=WORKDAY_LABELS.map(x=>`<button type="button" data-day="${x.d}" class="weekday-toggle ${days.includes(x.d)?'active':''}">${x.l}</button>`).join('');document.querySelectorAll('.weekday-toggle').forEach(b=>b.addEventListener('click',()=>{b.classList.toggle('active');syncWorkdaysFromToggles();updateVacationPreview()}))}
 function syncWorkdaysFromToggles(){document.getElementById('employeeWorkdays').value=document.querySelectorAll('.weekday-toggle.active').length||1}
@@ -1027,6 +1084,10 @@ document.querySelectorAll('#cellDialog .code-btn').forEach(b=>b.addEventListener
 document.getElementById('employeeWorkdays').addEventListener('input',updateVacationPreview);document.getElementById('employeeCarry').addEventListener('input',updateVacationPreview);document.getElementById('employeeAdjustment').addEventListener('input',updateVacationPreview);
 document.getElementById('employeeAutoWeekend').addEventListener('change',e=>document.getElementById('autoWeekendOptions').classList.toggle('disabled-block',!e.target.checked));
 document.getElementById('employeeRangeBtn').addEventListener('click',()=>{const id=document.getElementById('employeeId').value;if(!id)return;document.getElementById('employeeDialog').close();openBulkDialog(id)});
+document.getElementById('employeeCleanupBtn').addEventListener('click',()=>{const id=document.getElementById('employeeId').value;if(!id)return;document.getElementById('employeeDialog').close();openCleanupDialog(id)});
+document.getElementById('openCleanupBtn').addEventListener('click',()=>openCleanupDialog('all'));
+['cleanupEmployee','cleanupPeriod','cleanupCode'].forEach(id=>document.getElementById(id).addEventListener('change',updateCleanupPreview));
+document.getElementById('cleanupForm').addEventListener('submit',e=>{e.preventDefault();applyCleanup()});
 document.getElementById('fitEmployeesBtn').addEventListener('click',fitAllEmployees);
 document.getElementById('focusFitBtn').addEventListener('click',fitAllEmployees);
 document.getElementById('focusModeBtn').addEventListener('click',enterPlannerFocus);
