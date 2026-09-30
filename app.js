@@ -561,6 +561,7 @@ function showCellContextMenu(event,empId,key){
 function bindPlannerEvents(){
   document.querySelectorAll('.day-cell').forEach(el=>{
     el.addEventListener('pointerdown',e=>{
+      if(e.ctrlKey){e.preventDefault();showCellContextMenu(e,el.dataset.emp,el.dataset.date);return}
       if(e.button!==0)return;
       if(!canPlan(el.dataset.emp)){showToast('Nur-Lese-Modus oder keine Rechte für diesen Mitarbeiter');return}
       e.preventDefault();const anchorDate=new Date(el.dataset.date+'T12:00:00');viewDate=new Date(anchorDate.getFullYear(),anchorDate.getMonth(),1);saveLastViewDate();clearDragSelection();dragSelecting=true;dragEmployeeId=el.dataset.emp;dragStartKey=el.dataset.date;dragSelectedKeys=new Set([el.dataset.date]);updateDragVisuals();
@@ -1234,7 +1235,21 @@ document.getElementById('planner').addEventListener('contextmenu',e=>{
   e.preventDefault();
   showCellContextMenu(e,cell.dataset.emp,cell.dataset.date);
 });
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(dragSelectedKeys.size)clearDragSelection();hideCellContextMenu()}});
+document.getElementById('planner').addEventListener('click',e=>{
+  if(!e.ctrlKey)return;
+  const cell=e.target.closest('.day-cell');if(!cell)return;
+  e.preventDefault();e.stopPropagation();
+  showCellContextMenu(e,cell.dataset.emp,cell.dataset.date);
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){if(dragSelectedKeys.size)clearDragSelection();hideCellContextMenu()}
+  if(e.shiftKey&&e.key==='F10'){
+    const cell=document.querySelector('.day-cell:hover');if(!cell)return;
+    e.preventDefault();
+    const r=cell.getBoundingClientRect();
+    showCellContextMenu({preventDefault(){},stopPropagation(){},clientX:r.left+12,clientY:r.top+12},cell.dataset.emp,cell.dataset.date);
+  }
+});
 document.addEventListener('click',e=>{if(!e.target.closest('#cellContextMenu'))hideCellContextMenu()});
 window.addEventListener('resize',hideCellContextMenu);
 document.getElementById('planner').addEventListener('scroll',hideCellContextMenu,{passive:true});
