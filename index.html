@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="styles.css" />
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
   <div class="aurora aurora-a"></div>
@@ -41,34 +42,34 @@
       <article class="metric glass"><span>Konflikte</span><strong id="metricConflicts">0</strong><small>aktuelle Ansicht</small></article>
     </section>
 
-    <section class="toolbar glass compact-toolbar">
-      <div class="toolbar-group primary-tools">
-        <div class="month-nav">
-          <button id="prevMonth" class="icon-btn" aria-label="Zurück">‹</button>
-          <div class="month-title"><strong id="monthLabel"></strong><span id="yearLabel"></span></div>
-          <button id="nextMonth" class="icon-btn" aria-label="Weiter">›</button>
-        </div>
-        <div class="segmented view-switch" aria-label="Ansicht">
-          <button id="monthViewBtn" class="segment active" type="button">Monat</button>
-          <button id="quarterViewBtn" class="segment" type="button">Quartal</button>
-          <button id="yearViewBtn" class="segment" type="button">Jahr</button>
-        </div>
-      </div>
-      <div class="toolbar-group secondary-tools">
-        <div class="zoom-control" title="Kalender-Zoom">
-          <button id="zoomOutBtn" class="zoom-btn" type="button">−</button><span id="zoomLabel">100%</span><button id="zoomInBtn" class="zoom-btn" type="button">+</button>
-        </div>
-        <div class="segmented vacation-mode" aria-label="Urlaubsanzeige">
-          <span class="segment-label">Urlaub</span><button id="vacationFullBtn" class="segment" type="button">Gesamt</button><button id="vacationActualBtn" class="segment active" type="button">Anteilig</button>
-        </div>
-        <input id="searchInput" class="search compact-search" placeholder="Suchen…" />
-        <button id="bulkEntryBtn" class="btn ghost compact-btn">Zeitraum</button>
-        <button id="addEmployeeBtn" class="btn primary compact-btn">+ Mitarbeiter</button>
-      </div>
-      <div class="legend compact-legend">
-        <span><b class="chip u">U</b> Urlaub</span><span><b class="chip x">X</b> Frei-WE</span><span><b class="chip xu">XU</b> Wunsch-WE</span><span><b class="chip s">S</b> Schule</span><span><b class="chip g">G</b> Geburtstag</span><span><b class="holiday-key"></b> NRW Ferien</span>
-      </div>
-    </section>
+    <section class="toolbar glass planner-controls">
+  <div class="controls-row controls-primary">
+    <div class="month-nav">
+      <button id="prevMonth" class="icon-btn" aria-label="Zurück">‹</button>
+      <div class="month-title"><strong id="monthLabel"></strong><span id="yearLabel"></span></div>
+      <button id="nextMonth" class="icon-btn" aria-label="Weiter">›</button>
+    </div>
+    <div class="segmented view-switch" aria-label="Ansicht">
+      <button id="monthViewBtn" class="segment active" type="button">Monat</button>
+      <button id="quarterViewBtn" class="segment" type="button">Quartal</button>
+      <button id="yearViewBtn" class="segment" type="button">Jahr</button>
+    </div>
+    <div class="controls-spacer"></div>
+    <div class="theme-switch-wrap"><span>Darstellung</span><button id="themeBtn" class="theme-switch" type="button"><span class="theme-switch-knob"></span><b id="themeLabel">Hell</b></button></div>
+  </div>
+  <div class="controls-row controls-secondary">
+    <div class="control-block zoom-block"><span class="control-caption">Zoom</span><button id="zoomOutBtn" class="zoom-btn" type="button">−</button><input id="zoomRange" type="range" min="70" max="140" step="5" value="100"><button id="zoomInBtn" class="zoom-btn" type="button">+</button><strong id="zoomLabel">100%</strong></div>
+    <div class="control-block"><span class="control-caption">Urlaub</span><div class="segmented vacation-mode"><button id="vacationFullBtn" class="segment" type="button">Gesamt</button><button id="vacationActualBtn" class="segment active" type="button">Anteilig</button></div></div>
+    <div class="controls-spacer"></div>
+    <input id="searchInput" class="search control-search" placeholder="Mitarbeiter suchen…" />
+    <button id="importNamesBtn" class="btn ghost">Namensliste</button>
+    <button id="bulkEntryBtn" class="btn ghost">Zeitraum</button>
+    <button id="addEmployeeBtn" class="btn primary">+ Mitarbeiter</button>
+  </div>
+  <div class="legend controls-legend">
+    <span><b class="chip u">U</b> Urlaub</span><span><b class="chip x">X</b> Frei-WE</span><span><b class="chip xu">XU</b> Wunsch-WE</span><span><b class="chip s">S</b> Schule</span><span><b class="chip g">G</b> Geburtstag</span><span><b class="holiday-key"></b> NRW Ferien</span>
+  </div>
+</section>
 
     <section id="monthView" class="planner-wrap glass">
       <div id="planner" class="planner"></div>
@@ -82,6 +83,19 @@
       <strong>Bedienung:</strong> Zelle anklicken, mehrere Kürzel wählen und optional Priorität/Notiz setzen. Mitarbeitende links per Drag & Drop sortieren. Wochenenden und NRW-Feiertage werden automatisch hervorgehoben.
     </section>
   </main>
+
+  <dialog id="namesImportDialog" class="dialog glass-solid">
+    <form id="namesImportForm" method="dialog">
+      <div class="dialog-head"><div><span class="eyebrow">MITARBEITER IMPORTIEREN</span><h2>Namensliste übernehmen</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <p class="dialog-copy">Du kannst eine TXT-, CSV- oder Excel-Datei hochladen oder Namen direkt einfügen. Pro Zeile wird ein Mitarbeiter angelegt.</p>
+      <label>Datei auswählen<input id="namesFileInput" type="file" accept=".txt,.csv,.xlsx,.xls,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"></label>
+      <div class="import-divider"><span>oder</span></div>
+      <label>Namen einfügen<textarea id="namesPasteInput" rows="9" placeholder="Max Mustermann&#10;Erika Musterfrau&#10;..."></textarea></label>
+      <div id="namesImportPreview" class="names-import-preview">Noch keine Namen erkannt.</div>
+      <label class="toggle-line"><input id="replaceExistingNames" type="checkbox"> Vorhandene Mitarbeiterliste ersetzen</label>
+      <div class="dialog-actions"><div class="spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">Namen übernehmen</button></div>
+    </form>
+  </dialog>
 
   <dialog id="employeeDialog" class="dialog glass-solid">
     <form id="employeeForm" method="dialog">
