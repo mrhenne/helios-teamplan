@@ -836,6 +836,30 @@ async function tryBootstrapAdmin(){
   localStorage.removeItem('teamplan-bootstrap-code');localStorage.removeItem('teamplan-bootstrap-name');
   return true;
 }
+
+function requireInvitePasswordSetup(){
+  return new Promise(resolve=>{
+    const dialog=document.getElementById('invitePasswordDialog');
+    const form=document.getElementById('invitePasswordForm');
+    const err=document.getElementById('invitePasswordError');
+    const pass=document.getElementById('invitePassword');
+    const confirm=document.getElementById('invitePasswordConfirm');
+    pass.value='';confirm.value='';err.classList.add('hidden');err.textContent='';
+    const handler=async e=>{
+      e.preventDefault();
+      err.classList.add('hidden');
+      if(pass.value.length<8){err.textContent='Das Passwort muss mindestens 8 Zeichen lang sein.';err.classList.remove('hidden');return}
+      if(pass.value!==confirm.value){err.textContent='Die Passwörter stimmen nicht überein.';err.classList.remove('hidden');return}
+      const {error}=await supabaseClient.auth.updateUser({password:pass.value});
+      if(error){err.textContent=error.message;err.classList.remove('hidden');return}
+      form.removeEventListener('submit',handler);
+      if(dialog.open)dialog.close();
+      resolve();
+    };
+    form.addEventListener('submit',handler);
+    if(!dialog.open)dialog.showModal();
+  });
+}
 async function loadAuthMembership(){
   if(!supabaseClient||!authUser)return false;
   const cfg=window.TEAMPLAN_CONFIG||{};
@@ -871,7 +895,8 @@ async function initRemote(){
       const {error:verifyError}=await supabaseClient.auth.verifyOtp({token_hash:inviteToken,type:inviteType});
       if(verifyError)throw verifyError;
       history.replaceState({},document.title,window.location.pathname);
-      showToast('Einladung bestätigt');
+      await requireInvitePasswordSetup();
+      showToast('Einladung abgeschlossen');
     }
     const {data:{session}}=await supabaseClient.auth.getSession();
     if(!session){setSync('local','● Login erforderlich');showLogin()}
