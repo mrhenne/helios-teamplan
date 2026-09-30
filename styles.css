@@ -295,3 +295,15 @@ body.dark-mode .top-tool.primary-tool{background:var(--green2);color:#fff}
   .status-cluster{padding-top:0}
   .action-groups{justify-content:flex-end}
 }
+
+.compact-employee-search{width:145px!important;min-width:125px!important;max-width:165px}
+.employee-range-btn{border:1px solid var(--line);background:rgba(255,255,255,.72);color:var(--green);border-radius:8px;padding:4px 6px;font-size:7px;font-weight:800;cursor:pointer;white-space:nowrap}
+.employee-range-btn:hover{background:#e7f3ef}
+.auto-weekend-box{margin-top:10px;padding:10px 11px;border:1px solid var(--line);border-radius:12px;background:#f3f7f5}
+.auto-weekend-box>small{display:block;margin-top:7px;color:var(--muted);font-size:9px;line-height:1.4}
+#autoWeekendOptions{margin-top:9px;transition:.18s}
+.disabled-block{opacity:.42;pointer-events:none}
+.small-settings-action{padding:7px 9px!important;font-size:9px!important}
+.user-row{grid-template-columns:minmax(150px,1.2fr) 105px minmax(145px,1fr) auto auto auto}
+body.dark-mode .employee-range-btn,body.dark-mode .auto-weekend-box{background:#172723;color:#8fdbc2;border-color:rgba(200,235,226,.12)}
+@media(max-width:900px){.user-row{grid-template-columns:1fr 1fr}.user-main{grid-column:1/-1}.compact-employee-search{width:130px!important}}
