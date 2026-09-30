@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260930-12" />
+  <link rel="stylesheet" href="styles.css?v=20260930-13" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -183,6 +183,7 @@
       <div id="vacationPreview" class="calc-preview"></div>
       <div class="employee-dialog-tools">
         <button type="button" id="employeeRangeBtn" class="btn ghost hidden">▦ Zeitraum planen</button>
+        <button type="button" id="employeeCleanupBtn" class="btn ghost hidden">⌫ Planungsdaten löschen…</button>
       </div>
       <div class="dialog-actions"><button type="button" id="deleteEmployeeBtn" class="btn danger hidden">Löschen</button><div class="spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">Speichern</button></div>
     </form>
@@ -254,6 +255,38 @@
         <div class="spacer"></div>
         <button type="button" class="btn ghost close-dialog">Abbrechen</button>
         <button type="submit" class="btn primary">Zeitraum übernehmen</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="cleanupDialog" class="dialog glass-solid">
+    <form id="cleanupForm">
+      <div class="dialog-head"><div><span class="eyebrow">PLANUNG BEREINIGEN</span><h2>Planungsdaten löschen</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <p class="dialog-copy">Lösche gezielt Einträge. Mitarbeiter selbst werden dabei nicht entfernt.</p>
+      <div class="form-grid two">
+        <label>Ziel
+          <select id="cleanupEmployee">
+            <option value="all">Alle Mitarbeiter</option>
+          </select>
+        </label>
+        <label>Zeitraum
+          <select id="cleanupPeriod">
+            <option value="month">Aktueller Monat</option>
+            <option value="year">Aktuelles Jahr</option>
+            <option value="all">Alle Jahre</option>
+          </select>
+        </label>
+        <label>Kürzel
+          <select id="cleanupCode">
+            <option value="all">Alle Einträge</option>
+          </select>
+        </label>
+      </div>
+      <div id="cleanupPreview" class="cleanup-preview"></div>
+      <div class="dialog-actions">
+        <div class="spacer"></div>
+        <button type="button" class="btn ghost close-dialog">Abbrechen</button>
+        <button type="submit" class="btn danger">Ausgewählte Daten löschen</button>
       </div>
     </form>
   </dialog>
@@ -362,6 +395,10 @@
         <button id="addCustomCodeBtn" type="button" class="btn ghost small-settings-action">+ Kürzel hinzufügen</button>
         <div id="customCodesList" class="custom-codes-list"></div>
       </section>
+      <section class="settings-section">
+        <div class="settings-section-head"><strong>Planungsdaten</strong><span>Gezielt bereinigen</span></div>
+        <button id="openCleanupBtn" type="button" class="btn ghost small-settings-action">⌫ Planungsdaten löschen…</button>
+      </section>
       <section id="planningSettingsSection" class="settings-section">
         <div class="settings-section-head"><strong>Planungsregeln</strong><span>Nur für Admin und Planer</span></div>
       <div class="form-grid two">
@@ -425,6 +462,6 @@
   </dialog>
 
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20260930-12"></script>
+  <script src="app.js?v=20260930-13"></script>
 </body>
 </html>
