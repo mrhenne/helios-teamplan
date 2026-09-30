@@ -224,6 +224,8 @@ function syncViewControls(){
   const full=state.settings.vacationDisplayMode==='full';
   document.getElementById('vacationFullBtn').classList.toggle('active',full);
   document.getElementById('vacationActualBtn').classList.toggle('active',!full);
+  const ms=document.getElementById('monthSelect');if(ms)ms.value=String(viewDate.getMonth());
+  const ys=document.getElementById('yearSelect');if(ys){const year=viewDate.getFullYear();if(!ys.options.length){for(let y=2025;y<=2035;y++){const o=document.createElement('option');o.value=String(y);o.textContent=String(y);ys.appendChild(o)}}ys.value=String(year)}
 }
 
 function applyAppearance(){
@@ -263,7 +265,7 @@ function setupFlowingMonthScroll(){
         const center=planner.scrollLeft+planner.clientWidth*.55,headers=[...document.querySelectorAll('.date-head')];
         let nearest=null,best=Infinity;
         headers.forEach((h,idx)=>{const x=h.offsetLeft+h.offsetWidth/2,dist=Math.abs(x-center);if(dist<best){best=dist;nearest={idx}}});
-        if(nearest){const d=flowingMonthDates()[nearest.idx];if(d){document.getElementById('monthLabel').textContent=MONTHS[d.getMonth()];document.getElementById('yearLabel').textContent=d.getFullYear();document.querySelectorAll('.month-band').forEach(b=>b.classList.toggle('active',Number(b.dataset.month)===d.getMonth()));}}
+        if(nearest){const d=flowingMonthDates()[nearest.idx];if(d){viewDate=new Date(d.getFullYear(),d.getMonth(),1);document.getElementById('monthLabel').textContent=MONTHS[d.getMonth()];document.getElementById('yearLabel').textContent=d.getFullYear();const ms=document.getElementById('monthSelect');if(ms)ms.value=String(d.getMonth());const ys=document.getElementById('yearSelect');if(ys)ys.value=String(d.getFullYear());document.querySelectorAll('.month-band').forEach(b=>b.classList.toggle('active',Number(b.dataset.month)===d.getMonth()));}}
       });
     };
   });
@@ -387,7 +389,7 @@ function bindPlannerEvents(){
     el.addEventListener('pointerdown',e=>{
       if(e.button!==0)return;
       if(!canPlan(el.dataset.emp)){showToast('Nur-Lese-Modus oder keine Rechte für diesen Mitarbeiter');return}
-      e.preventDefault();clearDragSelection();dragSelecting=true;dragEmployeeId=el.dataset.emp;dragStartKey=el.dataset.date;dragSelectedKeys=new Set([el.dataset.date]);updateDragVisuals();
+      e.preventDefault();const anchorDate=new Date(el.dataset.date+'T12:00:00');viewDate=new Date(anchorDate.getFullYear(),anchorDate.getMonth(),1);clearDragSelection();dragSelecting=true;dragEmployeeId=el.dataset.emp;dragStartKey=el.dataset.date;dragSelectedKeys=new Set([el.dataset.date]);updateDragVisuals();
       try{el.setPointerCapture(e.pointerId)}catch{}
     });
     el.addEventListener('pointerenter',()=>{
@@ -420,7 +422,7 @@ function renderWorkweekToggles(days){document.getElementById('workweekToggles').
 function syncWorkdaysFromToggles(){document.getElementById('employeeWorkdays').value=document.querySelectorAll('.weekday-toggle.active').length||1}
 function updateVacationPreview(){const wd=Number(document.getElementById('employeeWorkdays').value||5),carry=Number(document.getElementById('employeeCarry').value||0),adj=Number(document.getElementById('employeeAdjustment').value||0),base=state.settings.baseVacation,actual=roundHalf(base*wd/5+carry+adj),full=roundHalf(base+carry+adj);document.getElementById('vacationPreview').innerHTML=`<strong>Gesamtplanung: ${full} Tage</strong> · <strong>Anteilig fürs Firmenprogramm: ${actual} Tage</strong><br><span style="color:var(--muted)">Anteilig = ${base} × ${wd}/5 + ${carry} Übertrag ${adj>=0?'+':''}${adj} Korrektur. Der Stellenanteil in % allein reduziert die Urlaubstage nicht.</span>`}
 
-function openCell(empId,key){if(!canPlan(empId)){showToast('Keine Bearbeitungsrechte für diesen Mitarbeiter');return}const e=state.employees.find(x=>x.id===empId),v=entryFor(empId,key);selectedCodes=new Set(v.codes||[]);document.getElementById('cellEmployeeId').value=empId;document.getElementById('cellDateValue').value=key;document.getElementById('cellEmployee').textContent=e.name;const d=new Date(key+'T12:00:00');document.getElementById('cellDate').textContent=`${DOW_LONG[d.getDay()]}, ${d.getDate()}. ${MONTHS[d.getMonth()]}`;document.getElementById('cellStatus').value=v.status||'wish';document.getElementById('cellStatus').disabled=!canApprove();document.getElementById('cellPriority').value=v.priority||0;document.getElementById('cellNote').value=v.note||'';document.querySelectorAll('#cellDialog .code-btn').forEach(b=>b.classList.toggle('selected',selectedCodes.has(b.dataset.code)));updateCellWarning(empId,key);document.getElementById('cellDialog').showModal()}
+function openCell(empId,key){if(!canPlan(empId)){showToast('Keine Bearbeitungsrechte für diesen Mitarbeiter');return}const clickedDate=new Date(key+'T12:00:00');viewDate=new Date(clickedDate.getFullYear(),clickedDate.getMonth(),1);const e=state.employees.find(x=>x.id===empId),v=entryFor(empId,key);selectedCodes=new Set(v.codes||[]);document.getElementById('cellEmployeeId').value=empId;document.getElementById('cellDateValue').value=key;document.getElementById('cellEmployee').textContent=e.name;const d=new Date(key+'T12:00:00');document.getElementById('cellDate').textContent=`${DOW_LONG[d.getDay()]}, ${d.getDate()}. ${MONTHS[d.getMonth()]}`;document.getElementById('cellStatus').value=v.status||'wish';document.getElementById('cellStatus').disabled=!canApprove();document.getElementById('cellPriority').value=v.priority||0;document.getElementById('cellNote').value=v.note||'';document.querySelectorAll('#cellDialog .code-btn').forEach(b=>b.classList.toggle('selected',selectedCodes.has(b.dataset.code)));updateCellWarning(empId,key);document.getElementById('cellDialog').showModal()}
 function updateCellWarning(empId,key){const e=state.employees.find(x=>x.id===empId),d=new Date(key+'T12:00:00'),w=document.getElementById('cellWarning');let msgs=[];const blackout=blackoutForKey(key);if(blackout&&[...selectedCodes].some(c=>['U','XU'].includes(c)))msgs.push((blackout.mode==='block'?'URLAUBSSPERRE: ':'Sperrzeit-Hinweis: ')+blackout.name+'.');if(selectedCodes.has('U')&&!isWorkday(e,d))msgs.push('U liegt auf einem nicht regulären Arbeitstag und zählt deshalb nicht vom Urlaubsanspruch ab.');const c=dailyCounts(key),currentEntry=entryFor(empId,key),current=currentEntry.codes||[],currentActive=entryIsActive(currentEntry);const uAfter=c.U-(currentActive&&current.includes('U')?1:0)+(selectedCodes.has('U')?1:0);const sAfter=c.S-(currentActive&&current.includes('S')?1:0)+(selectedCodes.has('S')?1:0);const xuAfter=c.XU-(currentActive&&current.includes('XU')?1:0)+(selectedCodes.has('XU')?1:0);const total=uAfter+xuAfter+(state.settings.countSchool?sAfter:0);if(uAfter>state.settings.maxVacation)msgs.push(`Urlaubslimit überschritten: ${uAfter} statt maximal ${state.settings.maxVacation}.`);if(total>state.settings.maxAbsence)msgs.push(`Gesamt-Abwesenheitswarnung: ${total} statt maximal ${state.settings.maxAbsence}.`);w.textContent=msgs.join(' ');w.classList.toggle('hidden',!msgs.length)}
 
 function bulkDates(){
@@ -614,8 +616,52 @@ function renderRoleControls(){
   const pill=document.getElementById('authUserPill'),logout=document.getElementById('logoutBtn');
   pill.classList.toggle('hidden',!authMode);logout.classList.toggle('hidden',!authMode);
   if(authMode)pill.textContent=(authUser.email||'Angemeldet')+' · '+sessionRole;
-  ['blackoutsBtn','settingsBtn','addEmployeeBtn','importNamesBtn','planImportBtn'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=!canManage()});
+  ['blackoutsBtn','addEmployeeBtn','importNamesBtn','planImportBtn'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=!canManage()});
+  document.getElementById('settingsBtn').disabled=false;
+  document.getElementById('usersBtn').classList.toggle('hidden',sessionRole!=='admin'||!authUser);
   document.getElementById('bulkEntryBtn').disabled=sessionRole==='viewer';
+}
+
+async function invokeUserAdmin(body){
+  if(!supabaseClient||sessionRole!=='admin')throw new Error('Nur Admins dürfen Benutzer verwalten.');
+  const {data,error}=await supabaseClient.functions.invoke('teamplan-users',{body:{teamId:(window.TEAMPLAN_CONFIG||{}).teamId,...body}});
+  if(error)throw error;if(data?.error)throw new Error(data.error);return data;
+}
+function employeeOptions(selected=''){
+  return '<option value="">Keine Verknüpfung</option>'+[...state.employees].sort((a,b)=>a.order-b.order).map(e=>`<option value="${e.id}" ${e.id===selected?'selected':''}>${escapeHtml(e.name)}</option>`).join('');
+}
+async function openUsersDialog(){
+  if(sessionRole!=='admin'){showToast('Nur Admins dürfen Benutzer verwalten');return}
+  document.getElementById('inviteEmployee').innerHTML=employeeOptions('');
+  safeShowDialog('usersDialog');await renderUsersList();
+}
+async function renderUsersList(){
+  const list=document.getElementById('usersList');list.innerHTML='<div class="empty-state">Benutzer werden geladen…</div>';
+  try{
+    const data=await invokeUserAdmin({action:'list'}),members=data.members||[];
+    list.innerHTML=members.length?members.map(m=>`
+      <div class="user-row" data-user="${m.user_id}">
+        <div class="user-main"><strong>${escapeHtml(m.display_name||m.email||'Benutzer')}</strong><span>${escapeHtml(m.email||'')}</span></div>
+        <select class="user-role">
+          <option value="admin" ${m.role==='admin'?'selected':''}>Admin</option>
+          <option value="planner" ${m.role==='planner'?'selected':''}>Planer</option>
+          <option value="employee" ${m.role==='employee'?'selected':''}>Mitarbeiter</option>
+          <option value="viewer" ${m.role==='viewer'?'selected':''}>Nur Lesen</option>
+        </select>
+        <select class="user-employee">${employeeOptions(m.employee_id||'')}</select>
+        <button type="button" class="btn ghost user-save">Speichern</button>
+        <button type="button" class="btn ${m.active?'danger':'ghost'} user-toggle">${m.active?'Deaktivieren':'Reaktivieren'}</button>
+      </div>`).join(''):'<div class="empty-state">Noch keine Benutzer gefunden.</div>';
+    list.querySelectorAll('.user-row').forEach(row=>{
+      row.querySelector('.user-save').addEventListener('click',async()=>{
+        try{await invokeUserAdmin({action:'update',userId:row.dataset.user,role:row.querySelector('.user-role').value,employeeId:row.querySelector('.user-employee').value||null,displayName:row.querySelector('.user-main strong').textContent,active:!row.querySelector('.user-toggle').textContent.includes('Reaktivieren')});showToast('Benutzer aktualisiert');await renderUsersList()}catch(err){alert(err.message)}
+      });
+      row.querySelector('.user-toggle').addEventListener('click',async()=>{
+        const active=row.querySelector('.user-toggle').textContent.includes('Reaktivieren');
+        try{await invokeUserAdmin({action:'update',userId:row.dataset.user,role:row.querySelector('.user-role').value,employeeId:row.querySelector('.user-employee').value||null,displayName:row.querySelector('.user-main strong').textContent,active});showToast(active?'Benutzer reaktiviert':'Benutzer deaktiviert');await renderUsersList()}catch(err){alert(err.message)}
+      });
+    });
+  }catch(err){console.error(err);list.innerHTML='<div class="empty-state">Fehler: '+escapeHtml(err.message)+'</div>'}
 }
 function renderBlackouts(){
   const list=document.getElementById('blackoutsList');
@@ -666,8 +712,36 @@ async function exportExcel(){
   XLSX.writeFile(wb,filename);showToast('Excel erstellt');
 }
 function exportPdf(){showToast('Druckansicht wird geöffnet');setTimeout(()=>window.print(),80)}
-function openSettings(){const s=state.settings;document.getElementById('settingBaseVacation').value=s.baseVacation;document.getElementById('settingMaxVacation').value=s.maxVacation;document.getElementById('settingMaxAbsence').value=s.maxAbsence;document.getElementById('settingCountSchool').checked=s.countSchool;document.getElementById('settingConfirmConflicts').checked=s.confirmConflicts;document.getElementById('settingsDialog').showModal()}
+function openSettings(){
+  const s=state.settings;
+  document.getElementById('settingBaseVacation').value=s.baseVacation;document.getElementById('settingMaxVacation').value=s.maxVacation;document.getElementById('settingMaxAbsence').value=s.maxAbsence;document.getElementById('settingCountSchool').checked=s.countSchool;document.getElementById('settingConfirmConflicts').checked=s.confirmConflicts;
+  document.getElementById('accountName').value=authMembership?.display_name||'';
+  document.getElementById('accountEmail').value=authUser?.email||'';
+  document.getElementById('accountPassword').value='';
+  document.getElementById('accountInfo').textContent='E-Mail-Änderungen können eine Bestätigung an die neue Adresse auslösen.';
+  const planning=document.getElementById('planningSettingsSection'),save=document.getElementById('planningSettingsSaveBtn');
+  planning.classList.toggle('settings-disabled',!canManage());save.classList.toggle('hidden',!canManage());
+  planning.querySelectorAll('input,select').forEach(el=>el.disabled=!canManage());
+  document.getElementById('settingsDialog').showModal();
+}
 
+
+async function saveMyAccount(){
+  if(!supabaseClient||!authUser){showToast('Nicht angemeldet');return}
+  const name=document.getElementById('accountName').value.trim(),email=document.getElementById('accountEmail').value.trim(),password=document.getElementById('accountPassword').value;
+  const info=document.getElementById('accountInfo');
+  try{
+    if(name&&name!==(authMembership?.display_name||'')){
+      const {error}=await supabaseClient.rpc('update_my_display_name',{p_team_id:(window.TEAMPLAN_CONFIG||{}).teamId,p_display_name:name});if(error)throw error;
+      authMembership={...(authMembership||{}),display_name:name};
+    }
+    const changes={};if(email&&email!==authUser.email)changes.email=email;if(password)changes.password=password;
+    if(Object.keys(changes).length){const {data,error}=await supabaseClient.auth.updateUser(changes);if(error)throw error;if(data?.user)authUser=data.user}
+    renderRoleControls();document.getElementById('accountPassword').value='';
+    info.textContent=email!==authUser?.email?'Änderung gespeichert. Prüfe ggf. die Bestätigungsmail.':'Kontodaten gespeichert.';
+    showToast('Kontodaten gespeichert');
+  }catch(err){console.error(err);info.textContent='Fehler: '+err.message}
+}
 async function tryBootstrapAdmin(){
   const code=localStorage.getItem('teamplan-bootstrap-code')||document.getElementById('bootstrapCode')?.value.trim();
   if(!code||!supabaseClient||!authUser)return false;
@@ -680,12 +754,12 @@ async function tryBootstrapAdmin(){
 async function loadAuthMembership(){
   if(!supabaseClient||!authUser)return false;
   const cfg=window.TEAMPLAN_CONFIG||{};
-  let {data,error}=await supabaseClient.from('team_members').select('role,employee_id,display_name').eq('team_id',cfg.teamId).eq('user_id',authUser.id).maybeSingle();
+  let {data,error}=await supabaseClient.from('team_members').select('role,employee_id,display_name,active').eq('team_id',cfg.teamId).eq('user_id',authUser.id).maybeSingle();
   if(error)throw error;
   if(!data){
-    try{if(await tryBootstrapAdmin()){({data,error}=await supabaseClient.from('team_members').select('role,employee_id,display_name').eq('team_id',cfg.teamId).eq('user_id',authUser.id).maybeSingle());if(error)throw error}}catch(err){console.error(err);throw err}
+    try{if(await tryBootstrapAdmin()){({data,error}=await supabaseClient.from('team_members').select('role,employee_id,display_name,active').eq('team_id',cfg.teamId).eq('user_id',authUser.id).maybeSingle());if(error)throw error}}catch(err){console.error(err);throw err}
   }
-  if(!data){throw new Error('Dein Konto ist diesem Team noch nicht zugeordnet.')}
+  if(!data||data.active===false){throw new Error('Dein Konto ist diesem Team nicht aktiv zugeordnet.')}
   authMembership=data;sessionRole=data.role||'viewer';sessionEmployeeId=data.employee_id||'';
   localStorage.setItem('teamplan-session-role',sessionRole);localStorage.setItem('teamplan-session-employee',sessionEmployeeId);
   renderRoleControls();return true;
@@ -731,8 +805,12 @@ async function pushRemote(){
 function setSync(cls,text){const p=document.getElementById('syncPill');p.className='sync-pill '+cls;p.textContent=text}
 
 // top controls
-document.getElementById('prevMonth').addEventListener('click',()=>{if(currentView==='month')viewDate.setFullYear(viewDate.getFullYear()-1);else viewDate.setMonth(viewDate.getMonth()-(currentView==='quarter'?3:1));render()});
-document.getElementById('nextMonth').addEventListener('click',()=>{if(currentView==='month')viewDate.setFullYear(viewDate.getFullYear()+1);else viewDate.setMonth(viewDate.getMonth()+(currentView==='quarter'?3:1));render()});
+document.getElementById('prevMonth').addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()-1);render()});
+document.getElementById('nextMonth').addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()+1);render()});
+document.getElementById('prevYear').addEventListener('click',()=>{viewDate.setFullYear(viewDate.getFullYear()-1);render()});
+document.getElementById('nextYear').addEventListener('click',()=>{viewDate.setFullYear(viewDate.getFullYear()+1);render()});
+document.getElementById('monthSelect').addEventListener('change',e=>{viewDate.setMonth(Number(e.target.value));render()});
+document.getElementById('yearSelect').addEventListener('change',e=>{viewDate.setFullYear(Number(e.target.value));render()});
 document.getElementById('todayBtn').addEventListener('click',()=>{viewDate=new Date();viewDate.setDate(1);render()});
 document.getElementById('zoomOutBtn').addEventListener('click',()=>changeZoom(-.05));
 document.getElementById('zoomInBtn').addEventListener('click',()=>changeZoom(.05));
@@ -749,9 +827,18 @@ document.getElementById('searchInput').addEventListener('input',render);
 document.getElementById('addEmployeeBtn').addEventListener('click',()=>openEmployee());
 document.getElementById('bulkEntryBtn').addEventListener('click',openBulkDialog);
 document.getElementById('importNamesBtn').addEventListener('click',()=>{if(!canManage())return;document.getElementById('namesPasteInput').value='';document.getElementById('namesFileInput').value='';updateNamesImportPreview([]);document.getElementById('namesImportDialog').showModal()});
-document.getElementById('settingsBtn').addEventListener('click',()=>{if(canManage())openSettings()});
+document.getElementById('settingsBtn').addEventListener('click',openSettings);
+document.getElementById('usersBtn').addEventListener('click',openUsersDialog);
+document.getElementById('accountSaveBtn').addEventListener('click',saveMyAccount);
 document.getElementById('undoBtn').addEventListener('click',undoLastAction);
 document.addEventListener('click',e=>{const btn=e.target.closest('[data-tool-action]');if(btn){e.preventDefault();runToolAction(btn.dataset.toolAction)}});
+document.getElementById('userInviteForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  try{
+    await invokeUserAdmin({action:'invite',email:document.getElementById('inviteEmail').value.trim(),displayName:document.getElementById('inviteName').value.trim(),role:document.getElementById('inviteRole').value,employeeId:document.getElementById('inviteEmployee').value||null});
+    e.target.reset();document.getElementById('inviteEmployee').innerHTML=employeeOptions('');showToast('Einladung gesendet');await renderUsersList();
+  }catch(err){alert(err.message)}
+});
 document.getElementById('planImportFile').addEventListener('change',async e=>{try{renderPlanImportPreview(await readPlanImportFile(e.target.files[0]))}catch(err){console.error(err);renderPlanImportPreview({entries:[],names:[],warnings:[err.message]})}});
 document.getElementById('planImportForm').addEventListener('submit',e=>{e.preventDefault();applyPlanImport()});
 document.querySelectorAll('.close-dialog').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
