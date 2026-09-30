@@ -44,6 +44,7 @@ let sessionEmployeeId = localStorage.getItem('teamplan-session-employee') || '';
 let authUser = null;
 let authMembership = null;
 let loginMode = 'login';
+let plannerScrollLeft = null;
 function toggleLoginMode(){
   loginMode=loginMode==='login'?'bootstrap':'login';
   const fields=document.getElementById('bootstrapFields');
@@ -161,21 +162,13 @@ function flowingMonthDates(){
   for(let d=new Date(start);d<=end;d=addDays(d,1))out.push(new Date(d));
   return out;
 }
-function quarterDates(){
-  const y=viewDate.getFullYear(),qStart=Math.floor(viewDate.getMonth()/3)*3,out=[];
-  for(let m=qStart;m<qStart+3;m++){const last=new Date(y,m+1,0).getDate();for(let i=1;i<=last;i++)out.push(new Date(y,m,i));}
-  return out;
-}
-function activePlannerDates(){return currentView==='quarter'?quarterDates():currentView==='month'?flowingMonthDates():monthDates();}
+function activePlannerDates(){return currentView==='month'?flowingMonthDates():monthDates();}
 function dailyCounts(key){let U=0,XU=0,S=0;state.employees.forEach(e=>{const v=entryFor(e.id,key);if(!entryIsActive(v))return;const c=v.codes||[];if(c.includes('U'))U++;if(c.includes('XU'))XU++;if(c.includes('S'))S++});return {U,XU,S,total:U+XU+(state.settings.countSchool?S:0)};}
 function conflictLevel(key){const c=dailyCounts(key);return {vacation:c.U>state.settings.maxVacation,total:c.total>state.settings.maxAbsence};}
 
 function render(){
   const dates=activePlannerDates(), holidays=holidaysNRW(viewDate.getFullYear());
-  if(currentView==='quarter'){
-    const q=Math.floor(viewDate.getMonth()/3)+1,start=(q-1)*3;
-    document.getElementById('monthLabel').textContent=`Q${q} · ${MONTHS[start].slice(0,3)}–${MONTHS[start+2].slice(0,3)}`;
-  } else document.getElementById('monthLabel').textContent=MONTHS[viewDate.getMonth()];
+  document.getElementById('monthLabel').textContent=MONTHS[viewDate.getMonth()];
   document.getElementById('yearLabel').textContent=viewDate.getFullYear();
   const filter=document.getElementById('searchInput').value.trim().toLowerCase();
   const employees=[...state.employees].sort((a,b)=>a.order-b.order).filter(e=>!filter||e.name.toLowerCase().includes(filter));
@@ -186,7 +179,7 @@ function render(){
   } else {
     html+='</tr><tr><th class="employee-col">Mitarbeiter · Urlaub</th>';
   }
-  dates.forEach(d=>{const key=dateKey(d),we=[0,6].includes(d.getDay()),hol=holidays[key],school=schoolBreakForDate(d),monthBoundary=d.getDate()===1,monthTone=d.getMonth()%2===0?'month-even':'month-odd';html+=`<th class="date-head ${we?'weekend':''} ${hol?'holiday':''} ${school?'school-holiday':''} ${monthTone} ${monthBoundary&&(currentView==='quarter'||currentView==='month')?'month-boundary':''}" title="${escapeHtml([hol,school&&('NRW '+school)].filter(Boolean).join(' · '))}">${(currentView==='quarter'||currentView==='month')&&monthBoundary?`<span class="month-mini">${MONTHS[d.getMonth()].slice(0,3)}</span>`:''}${DOW[d.getDay()]}<strong>${d.getDate()}</strong>${hol?`<span class="holiday-label">${escapeHtml(hol)}</span>`:school?`<span class="school-label">${escapeHtml(school.replace('ferien',''))}</span>`:''}</th>`});
+  dates.forEach(d=>{const key=dateKey(d),we=[0,6].includes(d.getDay()),hol=holidays[key],school=schoolBreakForDate(d),monthBoundary=d.getDate()===1,monthTone=d.getMonth()%2===0?'month-even':'month-odd';html+=`<th class="date-head ${we?'weekend':''} ${hol?'holiday':''} ${school?'school-holiday':''} ${monthTone} ${monthBoundary&&currentView==='month'?'month-boundary':''}" title="${escapeHtml([hol,school&&('NRW '+school)].filter(Boolean).join(' · '))}">${currentView==='month'&&monthBoundary?`<span class="month-mini">${MONTHS[d.getMonth()].slice(0,3)}</span>`:''}${DOW[d.getDay()]}<strong>${d.getDate()}</strong>${hol?`<span class="holiday-label">${escapeHtml(hol)}</span>`:school?`<span class="school-label">${escapeHtml(school.replace('ferien',''))}</span>`:''}</th>`});
   html+='</tr></thead><tbody>';
   employees.forEach(e=>{
     const used=usedVacation(e),total=vacationEntitlement(e),remain=remainingVacation(e),xu=countCode(e,'XU'); const status=remain<0?'status-bad':remain<=3?'status-low':'status-good';
@@ -219,7 +212,6 @@ function syncViewControls(){
   document.getElementById('monthView').classList.toggle('hidden',currentView==='year');
   document.getElementById('yearView').classList.toggle('hidden',currentView!=='year');
   document.getElementById('monthViewBtn').classList.toggle('active',currentView==='month');
-  document.getElementById('quarterViewBtn').classList.toggle('active',currentView==='quarter');
   document.getElementById('yearViewBtn').classList.toggle('active',currentView==='year');
   const full=state.settings.vacationDisplayMode==='full';
   document.getElementById('vacationFullBtn').classList.toggle('active',full);
@@ -253,12 +245,18 @@ function toggleTheme(){
 function setupFlowingMonthScroll(){
   const planner=document.getElementById('planner');if(!planner)return;
   requestAnimationFrame(()=>{
-    const currentKey=viewDate.getFullYear()+'-'+String(viewDate.getMonth()+1).padStart(2,'0')+'-01';
-    const current=document.querySelector('.day-cell[data-date="'+currentKey+'"]');
-    if(current)planner.scrollLeft=Math.max(0,current.offsetLeft-planner.clientWidth*.28);
+    if(plannerScrollLeft!==null){
+      planner.scrollLeft=Math.min(plannerScrollLeft,Math.max(0,planner.scrollWidth-planner.clientWidth));
+    }else{
+      const currentKey=viewDate.getFullYear()+'-'+String(viewDate.getMonth()+1).padStart(2,'0')+'-01';
+      const current=document.querySelector('.day-cell[data-date="'+currentKey+'"]');
+      if(current)planner.scrollLeft=Math.max(0,current.offsetLeft-planner.clientWidth*.28);
+      plannerScrollLeft=planner.scrollLeft;
+    }
     document.querySelectorAll('.month-band').forEach(b=>b.classList.toggle('active',Number(b.dataset.month)===viewDate.getMonth()));
     let ticking=false;
     planner.onscroll=()=>{
+      plannerScrollLeft=planner.scrollLeft;
       if(ticking)return;ticking=true;
       requestAnimationFrame(()=>{
         ticking=false;
@@ -805,21 +803,20 @@ async function pushRemote(){
 function setSync(cls,text){const p=document.getElementById('syncPill');p.className='sync-pill '+cls;p.textContent=text}
 
 // top controls
-document.getElementById('prevMonth').addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()-1);render()});
-document.getElementById('nextMonth').addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()+1);render()});
-document.getElementById('prevYear').addEventListener('click',()=>{viewDate.setFullYear(viewDate.getFullYear()-1);render()});
-document.getElementById('nextYear').addEventListener('click',()=>{viewDate.setFullYear(viewDate.getFullYear()+1);render()});
-document.getElementById('monthSelect').addEventListener('change',e=>{viewDate.setMonth(Number(e.target.value));render()});
-document.getElementById('yearSelect').addEventListener('change',e=>{viewDate.setFullYear(Number(e.target.value));render()});
-document.getElementById('todayBtn').addEventListener('click',()=>{viewDate=new Date();viewDate.setDate(1);render()});
+document.getElementById('prevMonth').addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()-1);plannerScrollLeft=null;render()});
+document.getElementById('nextMonth').addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()+1);plannerScrollLeft=null;render()});
+document.getElementById('prevYear').addEventListener('click',()=>{viewDate.setFullYear(viewDate.getFullYear()-1);plannerScrollLeft=null;render()});
+document.getElementById('nextYear').addEventListener('click',()=>{viewDate.setFullYear(viewDate.getFullYear()+1);plannerScrollLeft=null;render()});
+document.getElementById('monthSelect').addEventListener('change',e=>{viewDate.setMonth(Number(e.target.value));plannerScrollLeft=null;render()});
+document.getElementById('yearSelect').addEventListener('change',e=>{viewDate.setFullYear(Number(e.target.value));plannerScrollLeft=null;render()});
+document.getElementById('todayBtn').addEventListener('click',()=>{viewDate=new Date();viewDate.setDate(1);plannerScrollLeft=null;render()});
 document.getElementById('zoomOutBtn').addEventListener('click',()=>changeZoom(-.05));
 document.getElementById('zoomInBtn').addEventListener('click',()=>changeZoom(.05));
 document.getElementById('zoomRange').addEventListener('input',e=>setZoom(Number(e.target.value)/100));
 document.getElementById('themeBtn').addEventListener('click',toggleTheme);
 document.getElementById('roleSelect').addEventListener('change',e=>{sessionRole=e.target.value;localStorage.setItem('teamplan-session-role',sessionRole);renderRoleControls();render();showToast('Modus: '+e.target.options[e.target.selectedIndex].text)});
 document.getElementById('roleEmployeeSelect').addEventListener('change',e=>{sessionEmployeeId=e.target.value;localStorage.setItem('teamplan-session-employee',sessionEmployeeId);render();});
-document.getElementById('monthViewBtn').addEventListener('click',()=>{currentView='month';clearDragSelection();render()});
-document.getElementById('quarterViewBtn').addEventListener('click',()=>{currentView='quarter';viewDate.setMonth(Math.floor(viewDate.getMonth()/3)*3);clearDragSelection();render()});
+document.getElementById('monthViewBtn').addEventListener('click',()=>{currentView='month';plannerScrollLeft=null;clearDragSelection();render()});
 document.getElementById('yearViewBtn').addEventListener('click',()=>{currentView='year';clearDragSelection();render()});
 document.getElementById('vacationFullBtn').addEventListener('click',()=>{state.settings.vacationDisplayMode='full';persist();render();showToast('Urlaubsanzeige: Gesamtplanung')});
 document.getElementById('vacationActualBtn').addEventListener('click',()=>{state.settings.vacationDisplayMode='actual';persist();render();showToast('Urlaubsanzeige: anteilig fürs Firmenprogramm')});
