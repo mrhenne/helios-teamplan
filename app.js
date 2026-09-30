@@ -658,15 +658,54 @@ async function exportExcel(){
 function exportPdf(){showToast('Druckansicht wird geöffnet');setTimeout(()=>window.print(),80)}
 function openSettings(){const s=state.settings;document.getElementById('settingBaseVacation').value=s.baseVacation;document.getElementById('settingMaxVacation').value=s.maxVacation;document.getElementById('settingMaxAbsence').value=s.maxAbsence;document.getElementById('settingCountSchool').checked=s.countSchool;document.getElementById('settingConfirmConflicts').checked=s.confirmConflicts;document.getElementById('settingsDialog').showModal()}
 
-async function initRemote(){
-  const cfg=window.TEAMPLAN_CONFIG||{}; if(!cfg.supabaseUrl||!cfg.supabaseAnonKey||!window.supabase){setSync('local','● Lokal');return}
-  try{
-    supabaseClient=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey); const {data,error}=await supabaseClient.from('team_plans').select('data,updated_at').eq('team_id',cfg.teamId).maybeSingle(); if(error)throw error;
-    if(data?.data){isApplyingRemote=true;state=normalizeState(data.data);localStorage.setItem('helios-teamplan-v1',JSON.stringify(state));isApplyingRemote=false;render()} else await pushRemote();
-    supabaseClient.channel('teamplan-live').on('postgres_changes',{event:'*',schema:'public',table:'team_plans',filter:`team_id=eq.${cfg.teamId}`},payload=>{const remote=payload.new?.data;if(remote&&remote.updatedAt!==state.updatedAt){isApplyingRemote=true;state=normalizeState(remote);localStorage.setItem('helios-teamplan-v1',JSON.stringify(state));isApplyingRemote=false;render();showToast('Plan wurde aktualisiert')}}).subscribe(); setSync('live','● Live synchron');
-  }catch(err){console.error(err);setSync('error','● Sync-Fehler');showToast('Supabase nicht erreichbar, lokaler Modus aktiv')}
+async function loadAuthMembership(){
+  if(!supabaseClient||!authUser)return false;
+  const cfg=window.TEAMPLAN_CONFIG||{};
+  const {data,error}=await supabaseClient.from('team_members').select('role,employee_id,display_name').eq('team_id',cfg.teamId).eq('user_id',authUser.id).maybeSingle();
+  if(error)throw error;
+  if(!data){throw new Error('Dein Konto ist diesem Team noch nicht zugeordnet.')}
+  authMembership=data;sessionRole=data.role||'viewer';sessionEmployeeId=data.employee_id||'';
+  localStorage.setItem('teamplan-session-role',sessionRole);localStorage.setItem('teamplan-session-employee',sessionEmployeeId);
+  renderRoleControls();return true;
 }
-async function pushRemote(){if(!supabaseClient)return;const cfg=window.TEAMPLAN_CONFIG;try{const {error}=await supabaseClient.from('team_plans').upsert({team_id:cfg.teamId,data:state,updated_at:new Date().toISOString()},{onConflict:'team_id'});if(error)throw error;setSync('live','● Live synchron')}catch(e){console.error(e);setSync('error','● Sync-Fehler')}}
+async function loadRemotePlan(){
+  const cfg=window.TEAMPLAN_CONFIG||{};
+  const {data,error}=await supabaseClient.from('team_plans').select('data,updated_at').eq('team_id',cfg.teamId).maybeSingle();
+  if(error)throw error;
+  if(data?.data){isApplyingRemote=true;state=normalizeState(data.data);localStorage.setItem('helios-teamplan-v1',JSON.stringify(state));isApplyingRemote=false;renderRoleControls();render()}
+  else if(canManage())await pushRemote();
+}
+function showLogin(){
+  const d=document.getElementById('loginDialog');if(d&&!d.open)d.showModal();
+}
+function hideLogin(){const d=document.getElementById('loginDialog');if(d?.open)d.close()}
+async function initRemote(){
+  const cfg=window.TEAMPLAN_CONFIG||{};
+  if(!authConfigured()){setSync('local','● Lokal');return}
+  try{
+    supabaseClient=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey);
+    const {data:{session}}=await supabaseClient.auth.getSession();
+    if(!session){setSync('local','● Login erforderlich');showLogin()}
+    else{
+      const {data:{user},error:userError}=await supabaseClient.auth.getUser();if(userError)throw userError;
+      authUser=user;await loadAuthMembership();await loadRemotePlan();hideLogin();setSync('live','● Live synchron');
+    }
+    supabaseClient.auth.onAuthStateChange(async(event,session)=>{
+      if(event==='SIGNED_OUT'||!session){authUser=null;authMembership=null;renderRoleControls();setSync('local','● Abgemeldet');showLogin();return}
+      if(event==='SIGNED_IN'||event==='TOKEN_REFRESHED'){
+        const {data:{user}}=await supabaseClient.auth.getUser();authUser=user;
+        try{await loadAuthMembership();await loadRemotePlan();hideLogin();setSync('live','● Live synchron')}catch(err){console.error(err);document.getElementById('loginError').textContent=err.message;document.getElementById('loginError').classList.remove('hidden');showLogin()}
+      }
+    });
+    supabaseClient.channel('teamplan-live').on('postgres_changes',{event:'*',schema:'public',table:'team_plans',filter:`team_id=eq.${cfg.teamId}`},payload=>{const remote=payload.new?.data;if(remote&&remote.updatedAt!==state.updatedAt){isApplyingRemote=true;state=normalizeState(remote);localStorage.setItem('helios-teamplan-v1',JSON.stringify(state));isApplyingRemote=false;render();showToast('Plan wurde aktualisiert')}}).subscribe();
+  }catch(err){console.error(err);setSync('error','● Login/Sync-Fehler');showLogin()}
+}
+async function pushRemote(){
+  if(!supabaseClient||!authUser||!canManage())return;
+  const cfg=window.TEAMPLAN_CONFIG;
+  try{const {error}=await supabaseClient.from('team_plans').upsert({team_id:cfg.teamId,data:state,updated_at:new Date().toISOString()},{onConflict:'team_id'});if(error)throw error;setSync('live','● Live synchron')}
+  catch(e){console.error(e);setSync('error','● Sync-Fehler')}
+}
 function setSync(cls,text){const p=document.getElementById('syncPill');p.className='sync-pill '+cls;p.textContent=text}
 
 // top controls
@@ -745,8 +784,18 @@ document.getElementById('blackoutsForm').addEventListener('submit',e=>{
   state.blackouts.push({id:uid(),name,start,end,mode});persist();renderBlackouts();render();e.target.reset();showToast('Sperrzeit gespeichert');
 });
 document.querySelectorAll('[data-drag-code]').forEach(b=>b.addEventListener('click',()=>applyDragCode(b.dataset.dragCode)));
+document.getElementById('dragApproveBtn').addEventListener('click',()=>applyDragStatus('approved'));
+document.getElementById('dragRejectBtn').addEventListener('click',()=>applyDragStatus('rejected'));
 document.getElementById('dragDeleteBtn').addEventListener('click',deleteDragEntries);
 document.getElementById('dragCancelBtn').addEventListener('click',clearDragSelection);
+document.getElementById('loginForm').addEventListener('submit',async e=>{
+  e.preventDefault();if(!supabaseClient)return;
+  const errEl=document.getElementById('loginError');errEl.classList.add('hidden');
+  const email=document.getElementById('loginEmail').value.trim(),password=document.getElementById('loginPassword').value;
+  const {error}=await supabaseClient.auth.signInWithPassword({email,password});
+  if(error){errEl.textContent=error.message;errEl.classList.remove('hidden')}
+});
+document.getElementById('logoutBtn').addEventListener('click',async()=>{if(supabaseClient)await supabaseClient.auth.signOut()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&dragSelectedKeys.size)clearDragSelection()});
 
 renderRoleControls();render();initRemote();
