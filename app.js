@@ -107,7 +107,7 @@ function schoolBreakForDate(d){
 
 function monthDates(){const y=viewDate.getFullYear(),m=viewDate.getMonth(),last=new Date(y,m+1,0).getDate();return Array.from({length:last},(_,i)=>new Date(y,m,i+1));}
 function flowingMonthDates(){
-  const start=new Date(viewDate.getFullYear(),viewDate.getMonth()-4,1),end=new Date(viewDate.getFullYear(),viewDate.getMonth()+5,0),out=[];
+  const year=viewDate.getFullYear(),start=new Date(year,0,1),end=new Date(year,11,31),out=[];
   for(let d=new Date(start);d<=end;d=addDays(d,1))out.push(new Date(d));
   return out;
 }
@@ -129,13 +129,19 @@ function render(){
   document.getElementById('yearLabel').textContent=viewDate.getFullYear();
   const filter=document.getElementById('searchInput').value.trim().toLowerCase();
   const employees=[...state.employees].sort((a,b)=>a.order-b.order).filter(e=>!filter||e.name.toLowerCase().includes(filter));
-  let html='<table class="plan-table"><thead><tr><th class="employee-col">Mitarbeiter · Urlaub</th>';
-  dates.forEach(d=>{const key=dateKey(d),we=[0,6].includes(d.getDay()),hol=holidays[key],school=schoolBreakForDate(d),monthBoundary=d.getDate()===1;html+=`<th class="date-head ${we?'weekend':''} ${hol?'holiday':''} ${school?'school-holiday':''} ${monthBoundary&&(currentView==='quarter'||currentView==='month')?'month-boundary':''}" title="${escapeHtml([hol,school&&('NRW '+school)].filter(Boolean).join(' · '))}">${(currentView==='quarter'||currentView==='month')&&monthBoundary?`<span class="month-mini">${MONTHS[d.getMonth()].slice(0,3)}</span>`:''}${DOW[d.getDay()]}<strong>${d.getDate()}</strong>${hol?`<span class="holiday-label">${escapeHtml(hol)}</span>`:school?`<span class="school-label">${escapeHtml(school.replace('ferien',''))}</span>`:''}</th>`});
+  let html='<table class="plan-table"><thead><tr class="month-band-row"><th class="employee-col month-band-label">Jahresverlauf</th>';
+  if(currentView==='month'){
+    for(let m=0;m<12;m++){const days=new Date(viewDate.getFullYear(),m+1,0).getDate();html+='<th class="month-band" colspan="'+days+'" data-month="'+m+'">'+MONTHS[m]+'</th>';}
+    html+='</tr><tr><th class="employee-col">Mitarbeiter · Urlaub</th>';
+  } else {
+    html+='</tr><tr><th class="employee-col">Mitarbeiter · Urlaub</th>';
+  }
+  dates.forEach(d=>{const key=dateKey(d),we=[0,6].includes(d.getDay()),hol=holidays[key],school=schoolBreakForDate(d),monthBoundary=d.getDate()===1,monthTone=d.getMonth()%2===0?'month-even':'month-odd';html+=`<th class="date-head ${we?'weekend':''} ${hol?'holiday':''} ${school?'school-holiday':''} ${monthTone} ${monthBoundary&&(currentView==='quarter'||currentView==='month')?'month-boundary':''}" title="${escapeHtml([hol,school&&('NRW '+school)].filter(Boolean).join(' · '))}">${(currentView==='quarter'||currentView==='month')&&monthBoundary?`<span class="month-mini">${MONTHS[d.getMonth()].slice(0,3)}</span>`:''}${DOW[d.getDay()]}<strong>${d.getDate()}</strong>${hol?`<span class="holiday-label">${escapeHtml(hol)}</span>`:school?`<span class="school-label">${escapeHtml(school.replace('ferien',''))}</span>`:''}</th>`});
   html+='</tr></thead><tbody>';
   employees.forEach(e=>{
     const used=usedVacation(e),total=vacationEntitlement(e),remain=remainingVacation(e),xu=countCode(e,'XU'); const status=remain<0?'status-bad':remain<=3?'status-low':'status-good';
     html+=`<tr class="employee-row" draggable="true" data-id="${e.id}"><td class="employee-col employee-cell"><div class="employee-card"><span class="drag-handle">⠿</span><div class="employee-edit" data-id="${e.id}"><div class="employee-name">${escapeHtml(e.name)}</div><div class="employee-meta">${e.hours} h · ${e.percent}% · ${e.workdays} Tage/Woche · XU ${xu}</div></div><div class="employee-stats ${status}"><strong>${used}/${total}</strong><small>${remain} übrig</small></div></div></td>`;
-    dates.forEach(d=>{const key=dateKey(d),v=entryFor(e.id,key),we=[0,6].includes(d.getDay()),nonwork=!isWorkday(e,d),conf=conflictLevel(key),school=schoolBreakForDate(d);const codes=(v.codes||[]).map(c=>`<span class="cell-code ${CODE_CLASS[c]}">${c}</span>`).join('');const warn=(conf.vacation&&v.codes?.includes('U'))||(conf.total&&v.codes?.some(c=>['U','XU','S'].includes(c)));html+=`<td class="day-cell ${we?'weekend':''} ${nonwork?'nonwork':''} ${school?'school-holiday-cell':''}" data-emp="${e.id}" data-date="${key}" title="${escapeHtml([v.note,school&&('NRW '+school)].filter(Boolean).join(' · '))}"><div class="cell-codes">${codes}</div>${v.priority?`<span class="cell-priority p${v.priority}"></span>`:''}${v.note?'<span class="cell-note"></span>':''}${warn?'<span class="cell-warning-mark">!</span>':''}</td>`});
+    dates.forEach(d=>{const key=dateKey(d),v=entryFor(e.id,key),we=[0,6].includes(d.getDay()),nonwork=!isWorkday(e,d),conf=conflictLevel(key),school=schoolBreakForDate(d),monthTone=d.getMonth()%2===0?'month-even':'month-odd';const codes=(v.codes||[]).map(c=>`<span class="cell-code ${CODE_CLASS[c]}">${c}</span>`).join('');const warn=(conf.vacation&&v.codes?.includes('U'))||(conf.total&&v.codes?.some(c=>['U','XU','S'].includes(c)));html+=`<td class="day-cell ${we?'weekend':''} ${nonwork?'nonwork':''} ${school?'school-holiday-cell':''} ${monthTone}" data-emp="${e.id}" data-date="${key}" title="${escapeHtml([v.note,school&&('NRW '+school)].filter(Boolean).join(' · '))}"><div class="cell-codes">${codes}</div>${v.priority?`<span class="cell-priority p${v.priority}"></span>`:''}${v.note?'<span class="cell-note"></span>':''}${warn?'<span class="cell-warning-mark">!</span>':''}</td>`});
     html+='</tr>';
   });
   html+=summaryRow('Urlaub U','U',dates);html+=summaryRow('Wunschfrei XU','XU',dates);html+=summaryRow('Schule S','S',dates);html+=presenceRow(dates);html+=absenceNamesRow(dates);html+='</tbody></table>';
@@ -198,6 +204,7 @@ function setupFlowingMonthScroll(){
     const currentKey=viewDate.getFullYear()+'-'+String(viewDate.getMonth()+1).padStart(2,'0')+'-01';
     const current=document.querySelector('.day-cell[data-date="'+currentKey+'"]');
     if(current)planner.scrollLeft=Math.max(0,current.offsetLeft-planner.clientWidth*.28);
+    document.querySelectorAll('.month-band').forEach(b=>b.classList.toggle('active',Number(b.dataset.month)===viewDate.getMonth()));
     let ticking=false;
     planner.onscroll=()=>{
       if(ticking)return;ticking=true;
@@ -206,7 +213,7 @@ function setupFlowingMonthScroll(){
         const center=planner.scrollLeft+planner.clientWidth*.55,headers=[...document.querySelectorAll('.date-head')];
         let nearest=null,best=Infinity;
         headers.forEach((h,idx)=>{const x=h.offsetLeft+h.offsetWidth/2,dist=Math.abs(x-center);if(dist<best){best=dist;nearest={idx}}});
-        if(nearest){const d=flowingMonthDates()[nearest.idx];if(d){document.getElementById('monthLabel').textContent=MONTHS[d.getMonth()];document.getElementById('yearLabel').textContent=d.getFullYear();}}
+        if(nearest){const d=flowingMonthDates()[nearest.idx];if(d){document.getElementById('monthLabel').textContent=MONTHS[d.getMonth()];document.getElementById('yearLabel').textContent=d.getFullYear();document.querySelectorAll('.month-band').forEach(b=>b.classList.toggle('active',Number(b.dataset.month)===d.getMonth()));}}
       });
     };
   });
@@ -424,8 +431,8 @@ async function pushRemote(){if(!supabaseClient)return;const cfg=window.TEAMPLAN_
 function setSync(cls,text){const p=document.getElementById('syncPill');p.className='sync-pill '+cls;p.textContent=text}
 
 // top controls
-document.getElementById('prevMonth').addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()-(currentView==='quarter'?3:1));render()});
-document.getElementById('nextMonth').addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()+(currentView==='quarter'?3:1));render()});
+document.getElementById('prevMonth').addEventListener('click',()=>{if(currentView==='month')viewDate.setFullYear(viewDate.getFullYear()-1);else viewDate.setMonth(viewDate.getMonth()-(currentView==='quarter'?3:1));render()});
+document.getElementById('nextMonth').addEventListener('click',()=>{if(currentView==='month')viewDate.setFullYear(viewDate.getFullYear()+1);else viewDate.setMonth(viewDate.getMonth()+(currentView==='quarter'?3:1));render()});
 document.getElementById('todayBtn').addEventListener('click',()=>{viewDate=new Date();viewDate.setDate(1);render()});
 document.getElementById('zoomOutBtn').addEventListener('click',()=>changeZoom(-.05));
 document.getElementById('zoomInBtn').addEventListener('click',()=>changeZoom(.05));
@@ -453,7 +460,17 @@ document.getElementById('clearCellBtn').addEventListener('click',()=>{const emp=
 
 document.getElementById('settingsForm').addEventListener('submit',e=>{e.preventDefault();state.settings.baseVacation=Number(document.getElementById('settingBaseVacation').value);state.settings.maxVacation=Number(document.getElementById('settingMaxVacation').value);state.settings.maxAbsence=Number(document.getElementById('settingMaxAbsence').value);state.settings.countSchool=document.getElementById('settingCountSchool').checked;state.settings.confirmConflicts=document.getElementById('settingConfirmConflicts').checked;persist();render();document.getElementById('settingsDialog').close();showToast('Planungsregeln gespeichert')});
 
-document.getElementById('exportBtn').addEventListener('click',()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`teamplan-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(a.href)});
+document.getElementById('exportBtn').addEventListener('click',async()=>{
+  const filename='teamplan-backup-'+new Date().toISOString().slice(0,10)+'.json';
+  const content=JSON.stringify(state,null,2);
+  try{
+    if(window.showSaveFilePicker){
+      const handle=await window.showSaveFilePicker({suggestedName:filename,types:[{description:'TeamPlan JSON',accept:{'application/json':['.json']}}]});
+      const writable=await handle.createWritable();await writable.write(content);await writable.close();showToast('Sicherung gespeichert');return;
+    }
+  }catch(err){if(err?.name==='AbortError')return;console.warn(err)}
+  const blob=new Blob([content],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();URL.revokeObjectURL(a.href);showToast('Download gestartet');
+});
 document.getElementById('importInput').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const incoming=normalizeState(JSON.parse(await f.text()));if(!confirm('Aktuelle Planung durch diese Sicherung ersetzen?'))return;state=incoming;persist();render();showToast('Sicherung importiert')}catch{alert('Die Datei konnte nicht gelesen werden.')}});
 
 document.getElementById('namesPasteInput').addEventListener('input',e=>updateNamesImportPreview(parseNamesText(e.target.value)));
