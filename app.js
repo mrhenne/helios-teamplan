@@ -12,7 +12,7 @@ const roundHalf = n => Math.round(n*2)/2;
 
 const defaultState = {
   version: 1,
-  settings: {baseVacation:30,maxVacation:4,maxAbsence:7,countSchool:true,confirmConflicts:true,state:'NW'},
+  settings: {baseVacation:30,maxVacation:4,maxAbsence:7,countSchool:true,confirmConflicts:true,state:'NW',vacationDisplayMode:'actual'},
   employees: [
     {id:uid(),name:'Anna Beispiel',hours:38.5,percent:100,workdays:5,workweek:[1,2,3,4,5],carry:0,adjustment:0,order:0},
     {id:uid(),name:'Ben Beispiel',hours:30,percent:78,workdays:4,workweek:[1,2,3,4],carry:2,adjustment:0,order:1},
@@ -28,6 +28,7 @@ let selectedCodes = new Set();
 let supabaseClient = null;
 let syncTimer = null;
 let isApplyingRemote = false;
+let currentView = 'month';
 
 function loadLocal(){
   try { const raw=localStorage.getItem('helios-teamplan-v1'); return raw ? normalizeState(JSON.parse(raw)) : structuredClone(defaultState); }
@@ -42,12 +43,18 @@ function persist(){
   if(!isApplyingRemote && supabaseClient){clearTimeout(syncTimer);syncTimer=setTimeout(pushRemote,350)}
 }
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
-function vacationEntitlement(e){return roundHalf(state.settings.baseVacation*(Number(e.workdays)||5)/5 + Number(e.carry||0) + Number(e.adjustment||0));}
+function actualVacationEntitlement(e){return roundHalf(state.settings.baseVacation*(Number(e.workdays)||5)/5 + Number(e.carry||0) + Number(e.adjustment||0));}
+function fullVacationEntitlement(e){return roundHalf(state.settings.baseVacation + Number(e.carry||0) + Number(e.adjustment||0));}
+function vacationEntitlement(e){return state.settings.vacationDisplayMode==='full' ? fullVacationEntitlement(e) : actualVacationEntitlement(e);}
 function entryFor(empId,key){return state.entries?.[empId]?.[key] || {codes:[],priority:0,note:''};}
 function isWorkday(e,d){return (e.workweek||[]).includes(d.getDay());}
-function usedVacation(e){let n=0;Object.entries(state.entries[e.id]||{}).forEach(([k,v])=>{if(v.codes?.includes('U')){const d=new Date(k+'T12:00:00');if(isWorkday(e,d)) n++;}});return n;}
-function countCode(e,code){return Object.values(state.entries[e.id]||{}).filter(v=>v.codes?.includes(code)).length;}
-function remainingVacation(e){return vacationEntitlement(e)-usedVacation(e);}
+function usedVacationActual(e,year=viewDate.getFullYear()){let n=0;Object.entries(state.entries[e.id]||{}).forEach(([k,v])=>{if(k.startsWith(year+'-')&&v.codes?.includes('U')){const d=new Date(k+'T12:00:00');if(isWorkday(e,d)) n++;}});return n;}
+function usedVacationFull(e,year=viewDate.getFullYear()){return Object.entries(state.entries[e.id]||{}).filter(([k,v])=>k.startsWith(year+'-')&&v.codes?.includes('U')).length;}
+function usedVacation(e,year=viewDate.getFullYear()){return state.settings.vacationDisplayMode==='full' ? usedVacationFull(e,year) : usedVacationActual(e,year);}
+function countCode(e,code,year=viewDate.getFullYear()){return Object.entries(state.entries[e.id]||{}).filter(([k,v])=>k.startsWith(year+'-')&&v.codes?.includes(code)).length;}
+function remainingVacation(e,year=viewDate.getFullYear()){return vacationEntitlement(e)-usedVacation(e,year);}
+function absentCount(key){return state.employees.filter(e=>{const c=entryFor(e.id,key).codes||[];return c.some(code=>['U','X','XU','S'].includes(code));}).length;}
+function presentCount(key){return Math.max(0,state.employees.length-absentCount(key));}
 
 function getEaster(year){
   const f=Math.floor,a=year%19,b=Math.floor(year/100),c=year%100,d=Math.floor(b/4),e=b%4,g=Math.floor((8*b+13)/25),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+19*l)/433),month=Math.floor((h+l-7*m+90)/25),day=(h+l-7*m+33*month+19)%32; return new Date(year,month-1,day);
@@ -73,12 +80,52 @@ function render(){
     dates.forEach(d=>{const key=dateKey(d),v=entryFor(e.id,key),we=[0,6].includes(d.getDay()),nonwork=!isWorkday(e,d),conf=conflictLevel(key);const codes=(v.codes||[]).map(c=>`<span class="cell-code ${CODE_CLASS[c]}">${c}</span>`).join('');const warn=(conf.vacation&&v.codes?.includes('U'))||(conf.total&&v.codes?.some(c=>['U','XU','S'].includes(c)));html+=`<td class="day-cell ${we?'weekend':''} ${nonwork?'nonwork':''}" data-emp="${e.id}" data-date="${key}" title="${v.note?escapeHtml(v.note):''}"><div class="cell-codes">${codes}</div>${v.priority?`<span class="cell-priority p${v.priority}"></span>`:''}${v.note?'<span class="cell-note"></span>':''}${warn?'<span class="cell-warning-mark">!</span>':''}</td>`});
     html+='</tr>';
   });
-  html+=summaryRow('Urlaub U','U',dates);html+=summaryRow('Wunschfrei XU','XU',dates);html+=summaryRow('Schule S','S',dates);html+='</tbody></table>';
-  document.getElementById('planner').innerHTML=html; bindPlannerEvents(); renderMetrics();
+  html+=summaryRow('Urlaub U','U',dates);html+=summaryRow('Wunschfrei XU','XU',dates);html+=summaryRow('Schule S','S',dates);html+=presenceRow(dates);html+='</tbody></table>';
+  document.getElementById('planner').innerHTML=html; bindPlannerEvents(); renderMetrics(); syncViewControls();
+  if(currentView==='year') renderYearOverview();
 }
 function summaryRow(label,code,dates){let s=`<tr class="summary-row ${code==='U'?'alarm':''}"><td class="employee-col">Σ ${label}</td>`;dates.forEach(d=>{const c=dailyCounts(dateKey(d)),n=c[code],hot=code==='U'&&n>state.settings.maxVacation,warn=code==='U'&&n===state.settings.maxVacation;s+=`<td class="${hot?'count-hot':warn?'count-warn':''}">${n||''}</td>`});return s+'</tr>'}
+function presenceRow(dates){let s='<tr class="summary-row presence-row"><td class="employee-col">✓ Anwesend</td>';dates.forEach(d=>{const n=presentCount(dateKey(d));s+=`<td>${n}</td>`});return s+'</tr>'}
 function renderMetrics(){
   document.getElementById('metricEmployees').textContent=state.employees.length; document.getElementById('metricVacation').textContent=state.employees.reduce((a,e)=>a+usedVacation(e),0); document.getElementById('metricXU').textContent=state.employees.reduce((a,e)=>a+countCode(e,'XU'),0); document.getElementById('metricConflicts').textContent=monthDates().filter(d=>{const c=conflictLevel(dateKey(d));return c.vacation||c.total}).length;
+}
+
+function syncViewControls(){
+  document.getElementById('monthView').classList.toggle('hidden',currentView!=='month');
+  document.getElementById('yearView').classList.toggle('hidden',currentView!=='year');
+  document.getElementById('monthViewBtn').classList.toggle('active',currentView==='month');
+  document.getElementById('yearViewBtn').classList.toggle('active',currentView==='year');
+  const full=state.settings.vacationDisplayMode==='full';
+  document.getElementById('vacationFullBtn').classList.toggle('active',full);
+  document.getElementById('vacationActualBtn').classList.toggle('active',!full);
+}
+
+function renderYearOverview(){
+  const year=viewDate.getFullYear(), holidays=holidaysNRW(year);
+  let html=`<div class="year-head glass"><div><span class="eyebrow">JAHRESÜBERSICHT</span><h2>${year}</h2></div><div class="year-legend"><span><b class="mini-dot u"></b> Urlaub</span><span><b class="mini-dot xu"></b> XU</span><span><b class="mini-dot s"></b> Schule</span><span><b class="mini-dot conflict"></b> Konflikt</span></div></div>`;
+  html+='<div class="year-month-grid">';
+  for(let month=0;month<12;month++){
+    const first=new Date(year,month,1), days=new Date(year,month+1,0).getDate(), offset=(first.getDay()+6)%7;
+    html+=`<article class="year-month glass" data-month="${month}"><button type="button" class="year-month-title" data-month="${month}">${MONTHS[month]}</button><div class="mini-weekdays"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div><div class="mini-calendar">`;
+    for(let i=0;i<offset;i++) html+='<span class="mini-day empty"></span>';
+    for(let day=1;day<=days;day++){
+      const d=new Date(year,month,day), key=dateKey(d), counts=dailyCounts(key), conf=conflictLevel(key), weekend=[0,6].includes(d.getDay()), hol=holidays[key];
+      const total=counts.U+counts.XU+counts.S;
+      html+=`<button type="button" class="mini-day ${weekend?'weekend':''} ${hol?'holiday':''} ${conf.vacation||conf.total?'conflict':''}" data-date="${key}" title="${hol||''}"><span class="mini-date">${day}</span><span class="mini-counts">${counts.U?'<b class="u">'+counts.U+'</b>':''}${counts.XU?'<b class="xu">'+counts.XU+'</b>':''}${counts.S?'<b class="s">'+counts.S+'</b>':''}</span>${!total?'<span class="mini-present">'+presentCount(key)+'</span>':''}</button>`;
+    }
+    html+='</div></article>';
+  }
+  html+='</div>';
+  const employees=[...state.employees].sort((a,b)=>a.order-b.order);
+  html+='<section class="year-staff glass"><div class="year-staff-head"><strong>Urlaubskonto '+year+'</strong><small>Anzeige: '+(state.settings.vacationDisplayMode==='full'?'Gesamtplanung':'anteilig fürs Firmenprogramm')+'</small></div><div class="year-staff-table"><table><thead><tr><th>Mitarbeiter</th><th>Gesamt geplant</th><th>Anteilig nötig</th><th>Anspruch anteilig</th><th>Rest anteilig</th><th>XU</th></tr></thead><tbody>';
+  employees.forEach(e=>{
+    const full=usedVacationFull(e,year), actual=usedVacationActual(e,year), ent=actualVacationEntitlement(e), rest=ent-actual;
+    html+=`<tr><td>${escapeHtml(e.name)}</td><td>${full}</td><td><strong>${actual}</strong></td><td>${ent}</td><td class="${rest<0?'status-bad':rest<=3?'status-low':'status-good'}">${rest}</td><td>${countCode(e,'XU',year)}</td></tr>`;
+  });
+  html+='</tbody></table></div></section>';
+  document.getElementById('yearOverview').innerHTML=html;
+  document.querySelectorAll('.year-month-title').forEach(b=>b.addEventListener('click',()=>{viewDate.setMonth(Number(b.dataset.month));currentView='month';render()}));
+  document.querySelectorAll('.mini-day[data-date]').forEach(b=>b.addEventListener('click',()=>{const d=new Date(b.dataset.date+'T12:00:00');viewDate=new Date(d.getFullYear(),d.getMonth(),1);currentView='month';render()}));
 }
 
 function bindPlannerEvents(){
@@ -93,7 +140,7 @@ function openEmployee(id=null){
 }
 function renderWorkweekToggles(days){document.getElementById('workweekToggles').innerHTML=WORKDAY_LABELS.map(x=>`<button type="button" data-day="${x.d}" class="weekday-toggle ${days.includes(x.d)?'active':''}">${x.l}</button>`).join('');document.querySelectorAll('.weekday-toggle').forEach(b=>b.addEventListener('click',()=>{b.classList.toggle('active');syncWorkdaysFromToggles();updateVacationPreview()}))}
 function syncWorkdaysFromToggles(){document.getElementById('employeeWorkdays').value=document.querySelectorAll('.weekday-toggle.active').length||1}
-function updateVacationPreview(){const wd=Number(document.getElementById('employeeWorkdays').value||5),carry=Number(document.getElementById('employeeCarry').value||0),adj=Number(document.getElementById('employeeAdjustment').value||0),base=state.settings.baseVacation,total=roundHalf(base*wd/5+carry+adj);document.getElementById('vacationPreview').innerHTML=`Berechnung: <strong>${base} × ${wd}/5 + ${carry} Übertrag ${adj>=0?'+':''}${adj} Korrektur = ${total} Urlaubstage</strong><br><span style="color:var(--muted)">Stellenprozent beeinflussen die Urlaubstage nicht, solange die Zahl der Arbeitstage gleich bleibt.</span>`}
+function updateVacationPreview(){const wd=Number(document.getElementById('employeeWorkdays').value||5),carry=Number(document.getElementById('employeeCarry').value||0),adj=Number(document.getElementById('employeeAdjustment').value||0),base=state.settings.baseVacation,actual=roundHalf(base*wd/5+carry+adj),full=roundHalf(base+carry+adj);document.getElementById('vacationPreview').innerHTML=`<strong>Gesamtplanung: ${full} Tage</strong> · <strong>Anteilig fürs Firmenprogramm: ${actual} Tage</strong><br><span style="color:var(--muted)">Anteilig = ${base} × ${wd}/5 + ${carry} Übertrag ${adj>=0?'+':''}${adj} Korrektur. Der Stellenanteil in % allein reduziert die Urlaubstage nicht.</span>`}
 
 function openCell(empId,key){const e=state.employees.find(x=>x.id===empId),v=entryFor(empId,key);selectedCodes=new Set(v.codes||[]);document.getElementById('cellEmployeeId').value=empId;document.getElementById('cellDateValue').value=key;document.getElementById('cellEmployee').textContent=e.name;const d=new Date(key+'T12:00:00');document.getElementById('cellDate').textContent=`${DOW_LONG[d.getDay()]}, ${d.getDate()}. ${MONTHS[d.getMonth()]}`;document.getElementById('cellPriority').value=v.priority||0;document.getElementById('cellNote').value=v.note||'';document.querySelectorAll('.code-btn').forEach(b=>b.classList.toggle('selected',selectedCodes.has(b.dataset.code)));updateCellWarning(empId,key);document.getElementById('cellDialog').showModal()}
 function updateCellWarning(empId,key){const e=state.employees.find(x=>x.id===empId),d=new Date(key+'T12:00:00'),w=document.getElementById('cellWarning');let msgs=[];if(selectedCodes.has('U')&&!isWorkday(e,d))msgs.push('U liegt auf einem nicht regulären Arbeitstag und zählt deshalb nicht vom Urlaubsanspruch ab.');const c=dailyCounts(key),current=entryFor(empId,key).codes||[];const uAfter=c.U-(current.includes('U')?1:0)+(selectedCodes.has('U')?1:0);const sAfter=c.S-(current.includes('S')?1:0)+(selectedCodes.has('S')?1:0);const xuAfter=c.XU-(current.includes('XU')?1:0)+(selectedCodes.has('XU')?1:0);const total=uAfter+xuAfter+(state.settings.countSchool?sAfter:0);if(uAfter>state.settings.maxVacation)msgs.push(`Urlaubslimit überschritten: ${uAfter} statt maximal ${state.settings.maxVacation}.`);if(total>state.settings.maxAbsence)msgs.push(`Gesamt-Abwesenheitswarnung: ${total} statt maximal ${state.settings.maxAbsence}.`);w.textContent=msgs.join(' ');w.classList.toggle('hidden',!msgs.length)}
@@ -115,6 +162,10 @@ function setSync(cls,text){const p=document.getElementById('syncPill');p.classNa
 document.getElementById('prevMonth').addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()-1);render()});
 document.getElementById('nextMonth').addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()+1);render()});
 document.getElementById('todayBtn').addEventListener('click',()=>{viewDate=new Date();viewDate.setDate(1);render()});
+document.getElementById('monthViewBtn').addEventListener('click',()=>{currentView='month';render()});
+document.getElementById('yearViewBtn').addEventListener('click',()=>{currentView='year';render()});
+document.getElementById('vacationFullBtn').addEventListener('click',()=>{state.settings.vacationDisplayMode='full';persist();render();showToast('Urlaubsanzeige: Gesamtplanung')});
+document.getElementById('vacationActualBtn').addEventListener('click',()=>{state.settings.vacationDisplayMode='actual';persist();render();showToast('Urlaubsanzeige: anteilig fürs Firmenprogramm')});
 document.getElementById('searchInput').addEventListener('input',render);document.getElementById('addEmployeeBtn').addEventListener('click',()=>openEmployee());document.getElementById('settingsBtn').addEventListener('click',openSettings);document.querySelectorAll('.close-dialog').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
 
 document.querySelectorAll('.code-btn').forEach(b=>b.addEventListener('click',()=>{selectedCodes.has(b.dataset.code)?selectedCodes.delete(b.dataset.code):selectedCodes.add(b.dataset.code);b.classList.toggle('selected');updateCellWarning(document.getElementById('cellEmployeeId').value,document.getElementById('cellDateValue').value)}));
