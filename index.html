@@ -67,10 +67,10 @@
     </header>
 
     <section class="summary-grid">
-      <article class="metric glass"><span>Team</span><strong id="metricEmployees">0</strong><small>Mitarbeitende</small></article>
-      <article class="metric glass"><span>Urlaub geplant</span><strong id="metricVacation">0</strong><small>Tage gesamt</small></article>
-      <article class="metric glass"><span>XU geplant</span><strong id="metricXU">0</strong><small>Wunsch-Wochenenden</small></article>
-      <article class="metric glass"><span>Konflikte</span><strong id="metricConflicts">0</strong><small>aktuelle Ansicht</small></article>
+      <article class="metric glass"><span class="metric-label">Team</span><div class="metric-main"><strong id="metricEmployees">0</strong><small>Mitarbeitende</small></div></article>
+      <article class="metric glass"><span class="metric-label">Urlaub geplant</span><div class="metric-main"><strong id="metricVacation">0</strong><small>Tage gesamt</small></div></article>
+      <article class="metric glass"><span class="metric-label">XU geplant</span><div class="metric-main"><strong id="metricXU">0</strong><small>Wunsch-Wochenenden</small></div></article>
+      <article class="metric glass"><span class="metric-label">Konflikte</span><div class="metric-main"><strong id="metricConflicts">0</strong><small>aktuelle Ansicht</small></div></article>
     </section>
 
     <section class="toolbar glass planner-controls">
@@ -110,7 +110,7 @@
     <button id="addEmployeeBtn" class="btn primary">+ Mitarbeiter</button>
   </div>
   <div class="legend controls-legend">
-    <span><b class="chip u">U</b> Urlaub</span><span><b class="chip x">X</b> Frei-WE</span><span><b class="chip xu">XU</b> Wunsch-WE</span><span><b class="chip s">S</b> Schule</span><span><b class="chip g">G</b> Geburtstag</span><span><b class="holiday-key"></b> NRW Ferien</span>
+    <span><b class="chip u">U</b> Urlaub</span><span><b class="chip x">X</b> Frei-WE</span><span><b class="chip xu">XU</b> Wunsch-WE</span><span><b class="chip s">S</b> Schule</span><span><b class="chip g">G</b> Geburtstag</span><span id="customLegend"></span><span><b class="holiday-key"></b> NRW Ferien</span>
   </div>
 </section>
 
@@ -192,7 +192,7 @@
     <form id="cellForm" method="dialog">
       <div class="dialog-head"><div><span id="cellEmployee" class="eyebrow"></span><h2 id="cellDate"></h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
       <input id="cellEmployeeId" type="hidden"><input id="cellDateValue" type="hidden">
-      <div class="code-selector">
+      <div id="cellCodeSelector" class="code-selector">
         <button type="button" data-code="U" class="code-btn u">U <small>Urlaub</small></button>
         <button type="button" data-code="X" class="code-btn x">X <small>Frei-WE</small></button>
         <button type="button" data-code="XU" class="code-btn xu">XU <small>Wunsch-WE</small></button>
@@ -203,6 +203,7 @@
         <label>Status<select id="cellStatus"><option value="wish">Wunsch</option><option value="preliminary">Vorläufig</option><option value="approved">Genehmigt</option><option value="rejected">Abgelehnt</option></select></label>
         <label>Priorität<select id="cellPriority"><option value="0">Normal</option><option value="1">Wichtig</option><option value="2">Hohe Priorität</option></select></label>
       </div>
+      <label id="cellDirectApproveLine" class="toggle-line approve-inline"><input id="cellDirectApprove" type="checkbox"> Urlaub direkt genehmigen</label>
       <label>Notiz<textarea id="cellNote" rows="3" placeholder="Optional, z. B. bereits gebuchte Reise"></textarea></label>
       <div id="cellWarning" class="inline-warning hidden"></div>
       <div class="dialog-actions"><button type="button" id="clearCellBtn" class="btn danger">Eintrag löschen</button><div class="spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">Übernehmen</button></div>
@@ -241,6 +242,7 @@
           <select id="bulkMode"><option value="merge">Zusammenführen</option><option value="replace">Ersetzen</option></select>
         </label>
       </div>
+      <label id="bulkDirectApproveLine" class="toggle-line approve-inline"><input id="bulkDirectApprove" type="checkbox"> Urlaub in diesem Zeitraum direkt genehmigen</label>
       <label>Notiz<textarea id="bulkNote" rows="2" placeholder="Optional für den gesamten Zeitraum"></textarea></label>
       <div class="bulk-options">
         <label class="toggle-line"><input id="bulkOnlyWorkdays" type="checkbox"> Nur reguläre Arbeitstage dieses Mitarbeiters</label>
@@ -349,6 +351,17 @@
         <div class="settings-section-head"><strong>Daten & Mitarbeiter</strong><span>Importfunktionen</span></div>
         <button id="importNamesBtn" type="button" class="btn ghost small-settings-action">⇧ Namensliste importieren</button>
       </section>
+      <section class="settings-section">
+        <div class="settings-section-head"><strong>Eigene Kürzel</strong><span>Zusätzliche interne Kennzeichnungen</span></div>
+        <div class="form-grid four custom-code-form">
+          <label>Kürzel<input id="customCodeKey" maxlength="4" placeholder="z. B. F"></label>
+          <label>Bezeichnung<input id="customCodeLabel" maxlength="40" placeholder="z. B. Fortbildung"></label>
+          <label>Farbe<input id="customCodeColor" type="color" value="#6f7f8f"></label>
+          <label class="toggle-line compact-toggle"><input id="customCodeAbsence" type="checkbox"> zählt als Abwesenheit</label>
+        </div>
+        <button id="addCustomCodeBtn" type="button" class="btn ghost small-settings-action">+ Kürzel hinzufügen</button>
+        <div id="customCodesList" class="custom-codes-list"></div>
+      </section>
       <section id="planningSettingsSection" class="settings-section">
         <div class="settings-section-head"><strong>Planungsregeln</strong><span>Nur für Admin und Planer</span></div>
       <div class="form-grid two">
@@ -372,6 +385,8 @@
       <button type="button" data-drag-code="XU" class="drag-action xu">XU</button>
       <button type="button" data-drag-code="S" class="drag-action s">S</button>
       <button type="button" data-drag-code="G" class="drag-action g">G</button>
+      <button type="button" id="dragApprovedVacationBtn" class="drag-action approve hidden" title="Urlaub direkt genehmigt eintragen">U✓</button>
+      <span id="customDragCodes" class="custom-drag-codes"></span>
       <button type="button" id="dragApproveBtn" class="drag-action approve hidden">Genehmigen</button>
       <button type="button" id="dragRejectBtn" class="drag-action reject hidden">Ablehnen</button>
       <button type="button" id="dragDeleteBtn" class="drag-action delete">Löschen</button>
@@ -410,6 +425,6 @@
   </dialog>
 
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20260930-10"></script>
+  <script src="app.js?v=20260930-11"></script>
 </body>
 </html>
