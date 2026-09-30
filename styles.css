@@ -245,3 +245,22 @@ body.dark-mode .role-security-note{background:#3c3420;color:#ead99b}
 #authUserPill{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 body.dark-mode .drag-action.approve{background:#1e4b3e;color:#8fdbc2}
 body.dark-mode .drag-action.reject{background:#51262d;color:#ffadb5}
+
+.calendar-heading{display:grid;min-width:110px}
+.calendar-heading strong{font-size:16px}.calendar-heading span{font-size:9px;color:var(--muted)}
+.date-nav-block{display:flex;align-items:center;gap:5px;padding:4px 6px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.54)}
+.date-nav-block .control-caption{margin-right:2px}
+.date-select{border:0!important;background:transparent!important;padding:5px 4px!important;font-size:10px!important;font-weight:800;min-width:92px;color:var(--ink)}
+#yearSelect{min-width:70px}
+.settings-section{padding:13px 0}
+.settings-section+.settings-section{border-top:1px solid var(--line);margin-top:8px}
+.settings-section-head{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+.settings-section-head strong{font-size:12px}.settings-section-head span{font-size:9px;color:var(--muted)}
+.settings-disabled{opacity:.58}
+.user-invite-box{padding:12px;border:1px solid var(--line);border-radius:14px;background:rgba(239,247,244,.65)}
+.users-list{max-height:48vh}
+.user-row{display:grid;grid-template-columns:minmax(150px,1.2fr) 110px minmax(150px,1fr) auto auto;gap:8px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.6)}
+.user-main{min-width:0}.user-main strong,.user-main span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.user-main strong{font-size:11px}.user-main span{font-size:9px;color:var(--muted);margin-top:2px}
+.user-row select{font-size:9px;padding:7px}
+body.dark-mode .date-nav-block,body.dark-mode .user-invite-box,body.dark-mode .user-row{background:#172723;border-color:rgba(200,235,226,.12)}
+@media(max-width:900px){.user-row{grid-template-columns:1fr 1fr}.user-main{grid-column:1/-1}.date-nav-block{flex-wrap:wrap}}
