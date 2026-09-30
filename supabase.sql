@@ -280,3 +280,37 @@ grant execute on function public.bootstrap_first_admin(text,text,text) to authen
 -- insert into private.team_bootstrap(team_id,setup_code,consumed_at)
 -- values ('zna-homberg','EINMALIGER-CODE',null)
 -- on conflict(team_id) do update set setup_code=excluded.setup_code, consumed_at=null;
+
+
+-- Benutzerverwaltung / Aktivstatus
+alter table public.team_members
+  add column if not exists active boolean not null default true;
+
+create index if not exists team_members_user_id_idx on public.team_members(user_id);
+create index if not exists team_members_team_active_idx on public.team_members(team_id,active);
+
+create or replace function public.update_my_display_name(
+  p_team_id text,
+  p_display_name text
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if (select auth.uid()) is null then raise exception 'Nicht angemeldet'; end if;
+  if length(trim(coalesce(p_display_name,''))) < 1 or length(trim(p_display_name)) > 80 then
+    raise exception 'Ungültiger Name';
+  end if;
+  update public.team_members
+  set display_name = trim(p_display_name)
+  where team_id = p_team_id
+    and user_id = (select auth.uid())
+    and active = true;
+  if not found then raise exception 'Keine aktive Teamzuordnung'; end if;
+end;
+$$;
+
+revoke all on function public.update_my_display_name(text,text) from public, anon;
+grant execute on function public.update_my_display_name(text,text) to authenticated;
