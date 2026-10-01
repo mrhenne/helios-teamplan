@@ -2463,10 +2463,44 @@ function filteredProjects(){
 }
 function projectCardHtml(p){
   const tasks=projectTasks.filter(t=>t.project_id===p.id),done=tasks.filter(t=>t.status==='done').length,progress=tasks.length?Math.round(done/tasks.length*100):Number(p.progress||0);
-  return '<article class="project-card" data-project-id="'+p.id+'" draggable="'+(projectCanManage()?'true':'false')+'" style="--project-color:'+escapeHtml(p.color||'#d8891c')+';--progress:'+progress+'%"><div class="project-card-head"><div><strong>'+escapeHtml(p.name)+'</strong><span>'+escapeHtml(projectStatusLabel(p.status))+'</span></div><span>'+progress+' %</span></div><div class="project-progress"><i></i></div><div class="project-meta"><span class="project-chip">'+escapeHtml(projectPriorityLabel(p.priority))+'</span><span class="project-chip">'+escapeHtml(projectEmployeeName(p.lead_employee_id))+'</span><span class="project-chip">'+done+'/'+tasks.length+' Aufgaben</span>'+(p.due_date?'<span class="project-chip">'+escapeHtml(projectDateLabel(p.due_date))+'</span>':'')+'</div></article>';
+  return '<article class="project-card" data-project-id="'+p.id+'" draggable="'+(projectCanManageProject(p.id)?'true':'false')+'" style="--project-color:'+escapeHtml(p.color||'#d8891c')+';--progress:'+progress+'%"><div class="project-card-head"><div><strong>'+escapeHtml(p.name)+'</strong><span>'+escapeHtml(projectStatusLabel(p.status))+'</span></div><span>'+progress+' %</span></div><div class="project-progress"><i></i></div><div class="project-meta"><span class="project-chip">'+escapeHtml(projectPriorityLabel(p.priority))+'</span><span class="project-chip">'+escapeHtml(projectEmployeeName(p.lead_employee_id))+'</span><span class="project-chip">'+done+'/'+tasks.length+' Aufgaben</span>'+(p.due_date?'<span class="project-chip">'+escapeHtml(projectDateLabel(p.due_date))+'</span>':'')+'</div></article>';
+}
+function projectTaskConflictInfo(task){
+  if(!task?.assignee_employee_id||!task?.due_date)return null;
+  const entry=entryFor(task.assignee_employee_id,task.due_date);
+  const absence=(entryIsActive(entry)?(entry.codes||[]).filter(c=>['U','XU','S'].includes(c)):[]);
+  const dayTraining=trainingForEmployeeDate(task.assignee_employee_id,task.due_date);
+  if(!absence.length&&!dayTraining.length)return null;
+  const parts=[];
+  if(absence.length)parts.push('Abwesenheit: '+absence.join('+'));
+  if(dayTraining.length)parts.push('Fortbildung: '+dayTraining.map(t=>t.title).join(', '));
+  return parts.join(' · ');
+}
+function projectChecklistProgress(task){
+  const list=Array.isArray(task?.checklist)?task.checklist:[];
+  return {total:list.length,done:list.filter(x=>x.done).length};
+}
+function projectIsOverdue(task){
+  return !!(task?.status!=='done'&&task?.due_date&&task.due_date<dateKey(new Date()));
+}
+function renderProjectMy(){
+  const box=document.getElementById('projectsMyTasks');if(!box)return;
+  const employeeId=currentProjectEmployeeId();
+  let tasks=projectTasks.filter(t=>t.status!=='done'&&(!employeeId||t.assignee_employee_id===employeeId));
+  tasks.sort((a,b)=>(a.due_date||'9999-99-99').localeCompare(b.due_date||'9999-99-99'));
+  const today=dateKey(new Date()),soon=dateKey(addDays(new Date(),14));
+  const groups=[
+    ['Überfällig',tasks.filter(t=>t.due_date&&t.due_date<today)],
+    ['Heute',tasks.filter(t=>t.due_date===today)],
+    ['Nächste 14 Tage',tasks.filter(t=>t.due_date&&t.due_date>today&&t.due_date<=soon)],
+    ['Ohne Termin / später',tasks.filter(t=>!t.due_date||t.due_date>soon)]
+  ];
+  document.getElementById('projectsMyScope').textContent=employeeId?projectEmployeeName(employeeId):'Alle offenen Aufgaben';
+  box.innerHTML=groups.map(([label,rows])=>'<section class="projects-my-group"><header><strong>'+label+'</strong><span>'+rows.length+'</span></header><div class="project-task-list">'+(rows.length?rows.map(projectTaskHtml).join(''):'<div class="empty-state">Keine Aufgaben</div>')+'</div></section>').join('');
 }
 function projectTaskHtml(t){
-  return '<article class="project-task-card priority-'+escapeHtml(t.priority||'medium')+'" data-project-task-id="'+t.id+'" draggable="'+(projectCanManage()?'true':'false')+'"><div class="project-task-head"><strong>'+escapeHtml(t.title)+'</strong><span class="project-task-status '+escapeHtml(t.status)+'">'+escapeHtml(projectTaskStatusLabel(t.status))+'</span></div><span>'+escapeHtml(projectName(t.project_id))+' · '+escapeHtml(projectEmployeeName(t.assignee_employee_id))+'</span><div class="project-meta"><span class="project-chip">'+escapeHtml(projectPriorityLabel(t.priority))+'</span>'+(t.due_date?'<span class="project-chip">bis '+escapeHtml(projectDateLabel(t.due_date))+'</span>':'')+(t.recurrence&&t.recurrence!=='none'?'<span class="project-chip">↻ '+escapeHtml(t.recurrence)+'</span>':'')+'</div></article>';
+  const conflict=projectTaskConflictInfo(t),check=projectChecklistProgress(t),overdue=projectIsOverdue(t),canDrag=projectCanManageTask(t);
+  return '<article class="project-task-card priority-'+escapeHtml(t.priority||'medium')+(overdue?' overdue':'')+'" data-project-task-id="'+t.id+'" draggable="'+(canDrag?'true':'false')+'"><div class="project-task-head"><strong>'+escapeHtml(t.title)+'</strong><span class="project-task-status '+escapeHtml(t.status)+'">'+escapeHtml(projectTaskStatusLabel(t.status))+'</span></div><span>'+escapeHtml(projectName(t.project_id))+' · '+escapeHtml(projectEmployeeName(t.assignee_employee_id))+'</span><div class="project-meta"><span class="project-chip">'+escapeHtml(projectPriorityLabel(t.priority))+'</span>'+(t.due_date?'<span class="project-chip '+(overdue?'project-chip-danger':'')+'">bis '+escapeHtml(projectDateLabel(t.due_date))+'</span>':'')+(t.recurrence&&t.recurrence!=='none'?'<span class="project-chip">↻ '+escapeHtml(t.recurrence)+'</span>':'')+(check.total?'<span class="project-chip">☑ '+check.done+'/'+check.total+'</span>':'')+(conflict?'<span class="project-chip project-chip-warning" title="'+escapeHtml(conflict)+'">⚠ Termin</span>':'')+'</div></article>';
 }
 function renderProjectMetrics(){
   const box=document.getElementById('projectsMetrics');if(!box)return;
@@ -2519,12 +2553,13 @@ function renderProjectModule(){
   if(!document.getElementById('projectsModule'))return;
   populateProjectControls();
   document.querySelectorAll('.project-manager-action').forEach(el=>el.classList.toggle('hidden',!projectCanManage()));
-  const views=['overview','roadmap','board','calendar','team','notes'];
+  const views=['overview','my','roadmap','board','calendar','team','notes'];
   views.forEach(v=>{
     document.getElementById('projects'+v[0].toUpperCase()+v.slice(1)+'View')?.classList.toggle('hidden',projectView!==v);
     document.getElementById('projects'+v[0].toUpperCase()+v.slice(1)+'Btn')?.classList.toggle('active',projectView===v);
   });
   if(projectView==='overview')renderProjectOverview();
+  if(projectView==='my')renderProjectMy();
   if(projectView==='roadmap')renderProjectRoadmap();
   if(projectView==='board')renderProjectKanban();
   if(projectView==='calendar')renderProjectCalendar();
