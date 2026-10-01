@@ -1830,9 +1830,109 @@ function renderTrainingEmployees(items){
       '<div class="training-employee-list">'+(rows.length?rows.slice(0,12).map(trainingEntryHtml).join(''):'<div class="empty-state">Keine Fortbildungen in '+trainingYear+'.</div>')+'</div></article>';
   }).join(''):'<div class="empty-state">Keine Mitarbeiter verfügbar.</div>';
 }
+function openTrainingPrefilled(empId,year=trainingYear,typeId=''){
+  if(!trainingCanManage())return;
+  openTraining();
+  document.getElementById('trainingEmployee').value=empId||state.employees[0]?.id||'';
+  document.getElementById('trainingYearOnly').checked=true;
+  document.getElementById('trainingOnlyYear').value=String(year);
+  if(typeId){
+    document.getElementById('trainingType').value=typeId;
+    applyTrainingTypeDefaults();
+    const type=trainingTypeById(typeId);
+    if(type?.interval_months){
+      document.getElementById('trainingRecurring').checked=true;
+      document.getElementById('trainingRecurrenceMonths').value=type.interval_months;
+    }
+  }
+  syncTrainingDateMode();syncTrainingRecurrenceMode();
+}
+async function quickCreateTrainingStatus(empId,typeId,year,status){
+  if(!trainingCanManage())return;
+  const type=trainingTypeById(typeId);if(!type){showToast('Fortbildungsart nicht gefunden');return}
+  const cfg=window.TEAMPLAN_CONFIG||{};
+  const recurring=!!type.interval_months;
+  const row={team_id:cfg.teamId,employee_id:empId,type_id:type.id,title:type.name,category:type.category||'Fortbildung',date_precision:'year',training_year:Number(year),start_date:null,end_date:null,recurring,recurrence_months:recurring?Number(type.interval_months):null,status,hours:Number(type.default_hours||0),cost:Number(type.default_cost||0),provider:'',valid_until:null,note:'',updated_at:new Date().toISOString()};
+  const {error}=await supabaseClient.from('teamplan_trainings').insert(row);
+  if(error){alert(error.message);return}
+  await loadTrainingData();showToast(status==='completed'?'Als absolviert erfasst':'Fortbildung vorgemerkt');
+}
+function hideTrainingContextMenu(){
+  document.getElementById('trainingContextMenu')?.classList.add('hidden');
+}
+function showTrainingContextMenu(x,y,{trainingId='',employeeId='',typeId='',year=trainingYear}={}){
+  if(!trainingCanManage())return;
+  const menu=document.getElementById('trainingContextMenu');if(!menu)return;
+  const item=trainingId?trainings.find(t=>t.id===trainingId):null;
+  const emp=state.employees.find(e=>e.id===employeeId)||state.employees.find(e=>e.id===item?.employee_id);
+  const resolvedEmp=employeeId||item?.employee_id||'';
+  const resolvedType=typeId||item?.type_id||'';
+  const resolvedYear=Number(year||item?.training_year||trainingYear);
+  menu.innerHTML='<div class="training-context-head"><strong>'+escapeHtml(emp?.name||'Fortbildung')+'</strong><span>'+(item?escapeHtml(item.title):escapeHtml(trainingTypeById(resolvedType)?.name||String(resolvedYear)))+'</span></div>'+
+    (item?'<button data-training-context-status="planned"><b>○</b><span>Auf Geplant setzen</span></button><button data-training-context-status="completed"><b>✓</b><span>Als absolviert markieren</span></button><button data-training-context-status="cancelled"><b>×</b><span>Als abgesagt markieren</span></button><div class="training-context-sep"></div><button data-training-context-edit="1"><b>✎</b><span>Fortbildung bearbeiten…</span></button>':
+      (resolvedType?'<button data-training-context-create="planned"><b>○</b><span>Geplant vormerken</span></button><button data-training-context-create="completed"><b>✓</b><span>Als absolviert erfassen</span></button><div class="training-context-sep"></div>':'')+
+      '<button data-training-context-new="1"><b>＋</b><span>Fortbildung detailliert anlegen…</span></button>')+
+    '<div class="training-context-sep"></div><button data-training-context-employee="1"><b>◎</b><span>Mitarbeiteransicht öffnen</span></button>';
+  menu.classList.remove('hidden');
+  menu.style.left=Math.min(x,window.innerWidth-menu.offsetWidth-8)+'px';
+  menu.style.top=Math.min(y,window.innerHeight-menu.offsetHeight-8)+'px';
+  menu.querySelectorAll('[data-training-context-status]').forEach(b=>b.addEventListener('click',()=>{hideTrainingContextMenu();updateTrainingStatusByDrop(item.id,b.dataset.trainingContextStatus)}));
+  menu.querySelectorAll('[data-training-context-create]').forEach(b=>b.addEventListener('click',()=>{hideTrainingContextMenu();quickCreateTrainingStatus(resolvedEmp,resolvedType,resolvedYear,b.dataset.trainingContextCreate)}));
+  menu.querySelector('[data-training-context-edit]')?.addEventListener('click',()=>{hideTrainingContextMenu();openTraining(item.id)});
+  menu.querySelector('[data-training-context-new]')?.addEventListener('click',()=>{hideTrainingContextMenu();openTrainingPrefilled(resolvedEmp,resolvedYear,resolvedType)});
+  menu.querySelector('[data-training-context-employee]')?.addEventListener('click',()=>{
+    hideTrainingContextMenu();
+    const f=document.getElementById('trainingEmployeeFilter');if(f&&!f.classList.contains('hidden'))f.value=resolvedEmp;
+    setTrainingView('employees');
+  });
+}
+function bindTrainingContextMenus(){
+  if(!trainingCanManage())return;
+  document.querySelectorAll('[data-training-id]').forEach(el=>el.addEventListener('contextmenu',e=>{
+    e.preventDefault();e.stopPropagation();
+    showTrainingContextMenu(e.clientX,e.clientY,{trainingId:el.dataset.trainingId,employeeId:el.dataset.trainingEmployee||''});
+  }));
+  document.querySelectorAll('.training-teamstatus-person').forEach(el=>el.addEventListener('contextmenu',e=>{
+    e.preventDefault();e.stopPropagation();
+    showTrainingContextMenu(e.clientX,e.clientY,{trainingId:el.dataset.trainingId||'',employeeId:el.dataset.trainingEmployee,typeId:el.dataset.trainingType,year:Number(el.dataset.trainingYear)});
+  }));
+  document.querySelectorAll('.training-person-action').forEach(btn=>btn.addEventListener('click',e=>{
+    e.stopPropagation();const row=btn.closest('.training-teamstatus-person'),r=btn.getBoundingClientRect();
+    showTrainingContextMenu(r.right-10,r.bottom+4,{trainingId:row.dataset.trainingId||'',employeeId:row.dataset.trainingEmployee,typeId:row.dataset.trainingType,year:Number(row.dataset.trainingYear)});
+  }));
+  document.querySelectorAll('.training-my-cell').forEach(el=>el.addEventListener('contextmenu',e=>{
+    if(e.target.closest('[data-training-id]'))return;
+    e.preventDefault();showTrainingContextMenu(e.clientX,e.clientY,{employeeId:el.dataset.employee,year:Number(el.dataset.year)});
+  }));
+}
+function bindTrainingMultiYearEvents(){
+  document.querySelectorAll('.training-my-add').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();openTrainingPrefilled(b.dataset.trainingAddEmployee,Number(b.dataset.trainingAddYear))}));
+  if(!trainingCanManage())return;
+  let dragEmp='';
+  document.querySelectorAll('[data-training-employee-row]').forEach(row=>{
+    row.addEventListener('dragstart',e=>{dragEmp=row.dataset.trainingEmployeeRow;e.dataTransfer.effectAllowed='move'});
+    row.addEventListener('dragover',e=>e.preventDefault());
+    row.addEventListener('drop',e=>{
+      e.preventDefault();const target=row.dataset.trainingEmployeeRow;if(!dragEmp||dragEmp===target)return;
+      const a=state.employees.find(x=>x.id===dragEmp),b=state.employees.find(x=>x.id===target);if(!a||!b)return;
+      const o=a.order;a.order=b.order;b.order=o;persist();renderTrainingModule();
+    });
+  });
+}
+function exportTrainingCsv(){
+  const rows=filteredTrainings().filter(t=>!t._virtual);
+  const cols=['Mitarbeiter','Titel','Kategorie','Von','Bis','Jahr','Wiederkehrend','Intervall Monate','Status','Stunden','Kosten','Anbieter'];
+  const q=v=>'"'+String(v??'').replaceAll('"','""')+'"';
+  const csv=[cols.map(q).join(';')].concat(rows.map(t=>[trainingEmployeeName(t.employee_id),t.title,t.category,t.start_date||'',t.end_date||'',t.training_year||'',t.recurring?'Ja':'Nein',t.recurrence_months||'',trainingStatusLabel(t),t.hours||0,t.cost||0,t.provider||''].map(q).join(';'))).join('\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='TeamPlan_Fortbildungen_'+trainingYear+'.csv';link.click();URL.revokeObjectURL(url);
+}
+function exportTrainingJson(){
+  const rows=filteredTrainings().filter(t=>!t._virtual),blob=new Blob([JSON.stringify(rows,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='TeamPlan_Fortbildungen_'+trainingYear+'.json';link.click();URL.revokeObjectURL(url);
+}
 function bindTrainingRenderedEvents(){
   if(trainingCanManage())document.querySelectorAll('[data-training-id]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();openTraining(el.dataset.trainingId)}));
   document.querySelectorAll('.training-budget-btn').forEach(b=>b.addEventListener('click',()=>openTrainingBudget(b.dataset.employee)));
+  bindTrainingContextMenus();bindTrainingMultiYearEvents();
 }
 function renderTrainingModule(){
   if(!document.getElementById('trainingModule'))return;
@@ -2027,12 +2127,21 @@ function initTrainingModuleUI(){
   document.getElementById('moduleTrainingBtn')?.addEventListener('click',()=>switchModule('training'));
   document.getElementById('trainingOverviewBtn')?.addEventListener('click',()=>setTrainingView('overview'));
   document.getElementById('trainingCalendarBtn')?.addEventListener('click',()=>setTrainingView('calendar'));
+  document.getElementById('trainingMultiYearBtn')?.addEventListener('click',()=>setTrainingView('multiyear'));
+  document.getElementById('trainingTeamStatusBtn')?.addEventListener('click',()=>setTrainingView('teamstatus'));
   document.getElementById('trainingEmployeesBtn')?.addEventListener('click',()=>setTrainingView('employees'));
   document.getElementById('trainingClassicBtn')?.addEventListener('click',()=>setTrainingView('classic'));
   document.getElementById('trainingPrevYear')?.addEventListener('click',()=>{trainingYear--;localStorage.setItem('teamplan-training-year',trainingYear);renderTrainingModule()});
   document.getElementById('trainingNextYear')?.addEventListener('click',()=>{trainingYear++;localStorage.setItem('teamplan-training-year',trainingYear);renderTrainingModule()});
   document.getElementById('trainingYearSelect')?.addEventListener('change',e=>{trainingYear=Number(e.target.value);localStorage.setItem('teamplan-training-year',trainingYear);renderTrainingModule()});
-  ['trainingSearchInput','trainingEmployeeFilter','trainingStatusFilter'].forEach(id=>document.getElementById(id)?.addEventListener(id==='trainingSearchInput'?'input':'change',renderTrainingModule));
+  ['trainingSearchInput','trainingEmployeeFilter','trainingTypeFilter','trainingCategoryFilter','trainingStatusFilter'].forEach(id=>document.getElementById(id)?.addEventListener(id==='trainingSearchInput'?'input':'change',renderTrainingModule));
+  document.getElementById('trainingClearFiltersBtn')?.addEventListener('click',()=>{['trainingSearchInput','trainingEmployeeFilter','trainingTypeFilter','trainingCategoryFilter','trainingStatusFilter'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});renderTrainingModule()});
+  document.getElementById('trainingMultiYearFrom')?.addEventListener('change',e=>{trainingMultiYearFrom=Math.max(2020,Number(e.target.value)||trainingYear-1);localStorage.setItem('teamplan-training-multiyear-from',trainingMultiYearFrom);renderTrainingModule()});
+  document.getElementById('trainingMultiYearTo')?.addEventListener('change',e=>{trainingMultiYearTo=Math.min(2100,Number(e.target.value)||trainingYear+5);localStorage.setItem('teamplan-training-multiyear-to',trainingMultiYearTo);renderTrainingModule()});
+  document.getElementById('trainingMultiYearFitBtn')?.addEventListener('click',()=>{const years=Math.abs(trainingMultiYearTo-trainingMultiYearFrom)+1;setTrainingZoom(Math.max(.7,Math.min(1,6/Math.max(1,years))));showToast('Mehrjahresansicht eingepasst')});
+  document.getElementById('trainingTeamStatusType')?.addEventListener('change',e=>{trainingTeamStatusTypeId=e.target.value;localStorage.setItem('teamplan-training-teamstatus-type',trainingTeamStatusTypeId);renderTrainingModule()});
+  document.getElementById('trainingTeamStatusYear')?.addEventListener('change',e=>{trainingTeamStatusYear=Number(e.target.value);localStorage.setItem('teamplan-training-teamstatus-year',trainingTeamStatusYear);renderTrainingModule()});
+  document.getElementById('trainingTeamStatusSort')?.addEventListener('change',e=>{trainingTeamStatusSort=e.target.value;localStorage.setItem('teamplan-training-teamstatus-sort',trainingTeamStatusSort);renderTrainingModule()});
   document.getElementById('addTrainingBtn')?.addEventListener('click',()=>openTraining());
   document.getElementById('trainingTypesBtn')?.addEventListener('click',()=>{if(!trainingCanManage())return;resetTrainingTypeForm();renderTrainingTypes();safeShowDialog('trainingTypesDialog')});
   document.getElementById('trainingFocusBtn')?.addEventListener('click',enterTrainingFocus);
@@ -2044,6 +2153,8 @@ function initTrainingModuleUI(){
   document.getElementById('trainingRecurring')?.addEventListener('change',syncTrainingRecurrenceMode);
   document.getElementById('trainingOnlyYear')?.addEventListener('input',updateTrainingVacationWarning);
   document.getElementById('trainingExportBtn')?.addEventListener('click',exportTrainingExcel);
+  document.getElementById('trainingCsvBtn')?.addEventListener('click',exportTrainingCsv);
+  document.getElementById('trainingJsonBtn')?.addEventListener('click',exportTrainingJson);
   document.getElementById('trainingForm')?.addEventListener('submit',e=>{e.preventDefault();saveTrainingFromForm()});
   document.getElementById('deleteTrainingBtn')?.addEventListener('click',deleteTraining);
   document.getElementById('trainingType')?.addEventListener('change',applyTrainingTypeDefaults);
@@ -2322,4 +2433,5 @@ document.addEventListener('click',e=>{if(!e.target.closest('#cellContextMenu'))h
 window.addEventListener('resize',hideCellContextMenu);
 document.getElementById('planner').addEventListener('scroll',hideCellContextMenu,{passive:true});
 
+document.addEventListener('pointerdown',e=>{if(!e.target.closest('#trainingContextMenu'))hideTrainingContextMenu()});
 initTrainingModuleUI();renderRoleControls();render();switchModule(currentModule,true);initRemote();
