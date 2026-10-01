@@ -592,3 +592,33 @@ test('Lang laufende Weiterbildung erzeugt keinen falschen Aufgaben-Tageskonflikt
   await page.locator('#projectTaskDue').fill('2026-10-16');
   await expect(page.locator('#projectTaskConflictWarning')).toBeHidden();
 });
+
+
+test('Projektübersicht zeigt Aufmerksamkeit und Projektfortschritt', async ({ page }) => {
+  await bootLocal(page);
+  await page.locator('#moduleProjectsBtn').click();
+
+  await page.locator('#addProjectBtn').click();
+  await page.locator('#projectName').fill('QA Fokusprojekt');
+  await page.locator('#projectForm button[type="submit"]').click();
+
+  await page.locator('#addTaskBtn').click();
+  await page.locator('#projectTaskTitle').fill('QA überfällige Aufgabe');
+  await page.locator('#projectTaskProject').selectOption({label:'QA Fokusprojekt'});
+  await page.locator('#projectTaskDue').fill('2025-01-15');
+  await page.locator('#projectTaskForm button[type="submit"]').click();
+
+  await page.locator('#projectsOverviewBtn').click();
+  await expect(page.locator('#projectsAttentionList')).toContainText('Überfällig');
+  await expect(page.locator('#projectsAttentionList')).toContainText('QA überfällige Aufgabe');
+  await expect(page.locator('#projectsAttentionList')).toContainText('Ohne Verantwortlichen');
+
+  const projectCard=page.locator('.project-card',{hasText:'QA Fokusprojekt'}).first();
+  await expect(projectCard).toBeVisible();
+  await expect(projectCard).toContainText('1 offen');
+
+  await projectCard.click();
+  await expect(page.locator('#projectDialogSummary')).toBeVisible();
+  await expect(page.locator('#projectSummaryOpen')).toHaveText('1');
+  await expect(page.locator('#projectSummaryOverdue')).toHaveText('1');
+});
