@@ -2412,6 +2412,19 @@ function projectCanManageTask(task){
 }
 function currentProjectEmployeeId(){return authMembership?.employee_id||sessionEmployeeId||''}
 function projectEmployeeName(id){return state.employees.find(e=>e.id===id)?.name||'Nicht zugewiesen'}
+function projectEmployeeInitials(id){
+  const name=projectEmployeeName(id);
+  if(name==='Nicht zugewiesen')return '?';
+  return name.split(/\s+/).filter(Boolean).map(x=>x[0]).join('').slice(0,2).toUpperCase();
+}
+function projectTeamAvatarHtml(projectId){
+  const ids=[...new Set(projectMembers.filter(m=>m.project_id===projectId).map(m=>m.employee_id))];
+  const p=projectProjects.find(x=>x.id===projectId);
+  if(p?.lead_employee_id&&!ids.includes(p.lead_employee_id))ids.unshift(p.lead_employee_id);
+  const shown=ids.slice(0,4);
+  return '<span class="project-mini-team">'+shown.map(id=>'<i title="'+escapeHtml(projectEmployeeName(id))+'">'+escapeHtml(projectEmployeeInitials(id))+'</i>').join('')+(ids.length>4?'<b>+'+(ids.length-4)+'</b>':'')+'</span>';
+}
+
 function projectName(id){return projectProjects.find(p=>p.id===id)?.name||'Ohne Projekt'}
 function projectStatusLabel(s){return s==='active'?'In Arbeit':s==='paused'?'Pausiert':s==='done'?'Erledigt':'In Planung'}
 function projectTaskStatusLabel(s){return s==='progress'?'In Arbeit':s==='waiting'?'Rückfrage':s==='done'?'Erledigt':'Offen'}
@@ -2493,9 +2506,9 @@ function filteredProjects(){
   return projectProjects.filter(p=>(!projectId||p.id===projectId)&&(!q||[p.name,p.description,projectEmployeeName(p.lead_employee_id)].join(' ').toLowerCase().includes(q)));
 }
 function projectCardHtml(p){
-  const tasks=projectTasks.filter(t=>t.project_id===p.id),done=tasks.filter(t=>t.status==='done').length,progress=tasks.length?Math.round(done/tasks.length*100):Number(p.progress||0);
+  const tasks=projectTasks.filter(t=>t.project_id===p.id),done=tasks.filter(t=>t.status==='done').length,open=tasks.filter(t=>t.status!=='done').length,progress=tasks.length?Math.round(done/tasks.length*100):Number(p.progress||0);
   const memberCount=new Set(projectMembers.filter(m=>m.project_id===p.id).map(m=>m.employee_id)).size;
-  return '<article class="project-card" data-project-id="'+p.id+'" draggable="'+(projectCanManageProject(p.id)?'true':'false')+'" style="--project-color:'+escapeHtml(p.color||'#d8891c')+';--progress:'+progress+'%"><div class="project-card-head"><div><strong>'+escapeHtml(p.name)+'</strong><span>'+escapeHtml(projectStatusLabel(p.status))+' '+projectRecencyBadge(p)+'</span></div><span>'+progress+' %</span></div><div class="project-progress"><i></i></div><div class="project-meta"><span class="project-chip">'+escapeHtml(projectPriorityLabel(p.priority))+'</span><span class="project-chip">Leitung: '+escapeHtml(projectEmployeeName(p.lead_employee_id))+'</span><span class="project-chip">'+memberCount+' im Team</span><span class="project-chip">'+done+'/'+tasks.length+' Aufgaben</span>'+(p.due_date?'<span class="project-chip">'+escapeHtml(projectDateLabel(p.due_date))+'</span>':'')+'</div></article>';
+  return '<article class="project-card" data-project-id="'+p.id+'" draggable="'+(projectCanManageProject(p.id)?'true':'false')+'" style="--project-color:'+escapeHtml(p.color||'#d8891c')+';--progress:'+progress+'%"><div class="project-card-head"><div><strong>'+escapeHtml(p.name)+'</strong><span>'+escapeHtml(projectStatusLabel(p.status))+' '+projectRecencyBadge(p)+'</span></div><span class="project-progress-number">'+progress+' %</span></div><div class="project-progress"><i></i></div><div class="project-card-teamrow"><span>'+projectTeamAvatarHtml(p.id)+'</span><small>'+memberCount+' im Team · '+open+' offen · '+done+' erledigt</small></div><div class="project-meta"><span class="project-chip">'+escapeHtml(projectPriorityLabel(p.priority))+'</span><span class="project-chip">Leitung: '+escapeHtml(projectEmployeeName(p.lead_employee_id))+'</span>'+(p.due_date?'<span class="project-chip">'+escapeHtml(projectDateLabel(p.due_date))+'</span>':'')+'</div></article>';
 }
 function projectTaskConflictInfo(task){
   if(!task?.assignee_employee_id||!task?.due_date)return null;
@@ -2531,18 +2544,49 @@ function renderProjectMy(){
   box.innerHTML=groups.map(([label,rows])=>'<section class="projects-my-group"><header><strong>'+label+'</strong><span>'+rows.length+'</span></header><div class="project-task-list">'+(rows.length?rows.map(projectTaskHtml).join(''):'<div class="empty-state">Keine Aufgaben</div>')+'</div></section>').join('');
 }
 function projectTaskHtml(t){
-  const conflict=projectTaskConflictInfo(t),check=projectChecklistProgress(t),overdue=projectIsOverdue(t),canDrag=projectCanManageTask(t);
-  return '<article class="project-task-card priority-'+escapeHtml(t.priority||'medium')+(overdue?' overdue':'')+'" data-project-task-id="'+t.id+'" draggable="'+(canDrag?'true':'false')+'"><div class="project-task-head"><strong>'+escapeHtml(t.title)+'</strong><span class="project-task-status '+escapeHtml(t.status)+'">'+escapeHtml(projectTaskStatusLabel(t.status))+'</span></div><span>'+escapeHtml(projectName(t.project_id))+' · '+escapeHtml(projectEmployeeName(t.assignee_employee_id))+' '+projectRecencyBadge(t)+'</span><div class="project-meta"><span class="project-chip">'+escapeHtml(projectPriorityLabel(t.priority))+'</span>'+(t.due_date?'<span class="project-chip '+(overdue?'project-chip-danger':'')+'">bis '+escapeHtml(projectDateLabel(t.due_date))+'</span>':'')+(t.recurrence&&t.recurrence!=='none'?'<span class="project-chip">↻ '+escapeHtml(t.recurrence)+'</span>':'')+(check.total?'<span class="project-chip">☑ '+check.done+'/'+check.total+'</span>':'')+(conflict?'<span class="project-chip project-chip-warning" title="'+escapeHtml(conflict)+'">⚠ Termin</span>':'')+'</div></article>';
+  const conflict=projectTaskConflictInfo(t),check=projectChecklistProgress(t),overdue=projectIsOverdue(t),canDrag=projectCanManageTask(t),assignee=t.assignee_employee_id?projectEmployeeName(t.assignee_employee_id):'Nicht zugewiesen';
+  return '<article class="project-task-card priority-'+escapeHtml(t.priority||'medium')+(overdue?' overdue':'')+'" data-project-task-id="'+t.id+'" draggable="'+(canDrag?'true':'false')+'"><div class="project-task-head"><strong>'+escapeHtml(t.title)+'</strong><span class="project-task-status '+escapeHtml(t.status)+'">'+escapeHtml(projectTaskStatusLabel(t.status))+'</span></div><div class="project-task-owner"><i>'+escapeHtml(projectEmployeeInitials(t.assignee_employee_id))+'</i><span>'+escapeHtml(assignee)+'</span><small>'+escapeHtml(projectName(t.project_id))+'</small>'+projectRecencyBadge(t)+'</div><div class="project-meta"><span class="project-chip">'+escapeHtml(projectPriorityLabel(t.priority))+'</span>'+(t.due_date?'<span class="project-chip '+(overdue?'project-chip-danger':'')+'">bis '+escapeHtml(projectDateLabel(t.due_date))+'</span>':'')+(t.recurrence&&t.recurrence!=='none'?'<span class="project-chip">↻ '+escapeHtml(t.recurrence)+'</span>':'')+(check.total?'<span class="project-chip">☑ '+check.done+'/'+check.total+'</span>':'')+(conflict?'<span class="project-chip project-chip-warning" title="'+escapeHtml(conflict)+'">⚠ Termin</span>':'')+'</div></article>';
+}
+function projectAttentionRows(){
+  const today=dateKey(new Date()),soon=dateKey(addDays(new Date(),7));
+  const rows=[];
+  projectTasks.filter(t=>t.status!=='done').forEach(t=>{
+    if(t.due_date&&t.due_date<today)rows.push({task:t,kind:'danger',label:'Überfällig',detail:'Fällig '+projectDateLabel(t.due_date)});
+    else if(t.due_date&&t.due_date>=today&&t.due_date<=soon)rows.push({task:t,kind:'soon',label:'Bald fällig',detail:'Bis '+projectDateLabel(t.due_date)});
+    if(t.status==='waiting')rows.push({task:t,kind:'waiting',label:'Rückfrage',detail:'Klärung erforderlich'});
+    if(!t.assignee_employee_id)rows.push({task:t,kind:'unassigned',label:'Ohne Verantwortlichen',detail:'Bitte zuweisen'});
+  });
+  const priority={danger:0,waiting:1,unassigned:2,soon:3};
+  return rows.sort((a,b)=>priority[a.kind]-priority[b.kind]||(a.task.due_date||'9999').localeCompare(b.task.due_date||'9999'));
+}
+function renderProjectAttention(){
+  const box=document.getElementById('projectsAttentionList'),count=document.getElementById('projectsAttentionCount');
+  if(!box)return;
+  const rows=projectAttentionRows();
+  if(count){count.textContent=String(rows.length);count.classList.toggle('project-chip-danger',rows.some(r=>r.kind==='danger'))}
+  box.innerHTML=rows.length?rows.slice(0,10).map(r=>'<button type="button" class="project-attention-row '+r.kind+'" data-project-task-id="'+r.task.id+'"><span class="project-attention-icon">'+(r.kind==='danger'?'!':r.kind==='waiting'?'?':r.kind==='unassigned'?'@':'•')+'</span><span><strong>'+escapeHtml(r.label)+'</strong><small>'+escapeHtml(r.task.title)+' · '+escapeHtml(r.detail)+'</small></span></button>').join(''):'<div class="empty-state">Aktuell kein besonderer Handlungsbedarf.</div>';
+}
+function renderProjectDialogSummary(projectId){
+  const wrap=document.getElementById('projectDialogSummary');if(!wrap)return;
+  wrap.classList.toggle('hidden',!projectId);
+  if(!projectId)return;
+  const rows=projectTasks.filter(t=>t.project_id===projectId),done=rows.filter(t=>t.status==='done').length,open=rows.filter(t=>t.status!=='done').length,waiting=rows.filter(t=>t.status==='waiting').length,overdue=rows.filter(projectIsOverdue).length,progress=rows.length?Math.round(done/rows.length*100):0;
+  document.getElementById('projectSummaryProgress').textContent=progress+' %';
+  document.getElementById('projectSummaryOpen').textContent=String(open);
+  document.getElementById('projectSummaryWaiting').textContent=String(waiting);
+  document.getElementById('projectSummaryOverdue').textContent=String(overdue);
+  document.getElementById('projectSummaryOverdue').closest('article')?.classList.toggle('metric-alert',overdue>0);
 }
 function renderProjectMetrics(){
   const box=document.getElementById('projectsMetrics');if(!box)return;
-  const active=projectProjects.filter(p=>p.status==='active').length,open=projectTasks.filter(t=>t.status!=='done').length,done=projectTasks.filter(t=>t.status==='done').length;
+  const active=projectProjects.filter(p=>p.status==='active').length,open=projectTasks.filter(t=>t.status!=='done').length,unassigned=projectTasks.filter(t=>t.status!=='done'&&!t.assignee_employee_id).length;
   const today=dateKey(new Date()),overdue=projectTasks.filter(t=>t.status!=='done'&&t.due_date&&t.due_date<today).length;
-  box.innerHTML='<article><span>Aktive Projekte</span><strong>'+active+'</strong><small>derzeit in Arbeit</small></article><article><span>Offene Aufgaben</span><strong>'+open+'</strong><small>im Team</small></article><article><span>Erledigt</span><strong>'+done+'</strong><small>Aufgaben abgeschlossen</small></article><article class="'+(overdue?'metric-alert':'')+'"><span>Überfällig</span><strong>'+overdue+'</strong><small>Handlungsbedarf</small></article>';
+  box.innerHTML='<article><span>Aktive Projekte</span><strong>'+active+'</strong><small>derzeit in Arbeit</small></article><article><span>Offene Aufgaben</span><strong>'+open+'</strong><small>im Team</small></article><article class="'+(unassigned?'metric-warn':'')+'"><span>Ohne Verantwortlichen</span><strong>'+unassigned+'</strong><small>noch zuzuweisen</small></article><article class="'+(overdue?'metric-alert':'')+'"><span>Überfällig</span><strong>'+overdue+'</strong><small>Handlungsbedarf</small></article>';
 }
 function renderProjectOverview(){
   renderProjectMetrics();
   const focus=document.getElementById('projectsFocusList'),next=document.getElementById('projectsNextTasks'),activity=document.getElementById('projectsRecentActivity');
+  renderProjectAttention();
   const projects=filteredProjects().filter(p=>p.status!=='done').slice(0,8);
   focus.innerHTML=projects.length?projects.map(projectCardHtml).join(''):'<div class="empty-state">Noch keine aktiven Projekte.</div>';
   let tasks=filteredProjectTasks().filter(t=>t.status!=='done').sort((a,b)=>(a.due_date||'9999').localeCompare(b.due_date||'9999'));
@@ -2754,6 +2798,7 @@ function openProject(id=null){
   document.getElementById('deleteProjectBtn').classList.toggle('hidden',!p||!projectCanManage());
   const memberSearch=document.getElementById('projectMemberSearch');if(memberSearch)memberSearch.value='';
   renderProjectMemberChoices(p?.id||'');
+  renderProjectDialogSummary(p?.id||'');
   renderProjectDialogTasks(p?.id||'');
   safeShowDialog('projectDialog');
 }
