@@ -2571,3 +2571,334 @@ body.dark-mode .training-context-menu>button:hover{background:#20372f}
 
 .training-day[draggable="true"]{cursor:grab!important}
 .training-day[draggable="true"].dragging{opacity:.38}
+
+
+/* =========================================================
+   Einheitliche Icon-Navigation & stabile globale Topbar
+   ========================================================= */
+.icon-sprite{position:absolute;width:0;height:0;overflow:hidden;pointer-events:none}
+.ui-icon{
+  width:15px;height:15px;
+  fill:none;stroke:currentColor;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round;
+  flex:0 0 15px
+}
+.icon-label-btn,
+.module-tool-btn,
+.top-tool{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center;
+  gap:5px!important
+}
+.top-tool .ui-icon{width:14px;height:14px}
+.module-tool-btn .ui-icon,.icon-label-btn .ui-icon{width:13px;height:13px}
+.module-tab-icon .ui-icon{width:16px;height:16px}
+
+.global-theme-control{
+  min-height:31px;
+  padding:3px 6px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  display:flex;
+  align-items:center;
+  gap:5px;
+  background:rgba(255,255,255,.46)
+}
+.global-theme-control>.ui-icon{width:13px;height:13px;color:var(--muted)}
+.global-theme-control .theme-switch{
+  margin:0!important;
+  transform:scale(.88);
+  transform-origin:center
+}
+body.dark-mode .global-theme-control{background:#172723;border-color:rgba(200,235,226,.12)}
+
+@media(min-width:1101px){
+  .topbar{
+    display:grid!important;
+    grid-template-columns:minmax(210px,1fr) 690px!important;
+    min-height:82px!important;
+    align-items:center!important;
+    gap:16px!important
+  }
+  .organized-actions{
+    width:690px!important;
+    min-width:690px!important;
+    display:grid!important;
+    grid-template-columns:360px 320px!important;
+    align-items:center!important;
+    gap:10px!important
+  }
+  .status-cluster{
+    width:360px!important;
+    min-width:360px!important;
+    display:grid!important;
+    grid-template-columns:76px 112px 74px 83px!important;
+    gap:5px!important;
+    justify-content:start!important
+  }
+  .action-groups{
+    width:320px!important;
+    min-width:320px!important;
+    display:grid!important;
+    grid-template-columns:105px 205px!important;
+    align-items:start!important;
+    gap:8px!important
+  }
+  .action-group[aria-label="Team"],
+  .action-group.account-group{
+    min-width:0!important;
+    width:auto!important
+  }
+  .account-group{
+    display:grid!important;
+    grid-template-columns:62px 72px 62px!important;
+    gap:4px!important
+  }
+  .account-group .action-group-label{
+    grid-column:1/-1
+  }
+  #roleEmployeeSelect{
+    position:absolute!important;
+    right:330px!important;
+    margin-top:39px!important;
+    width:142px!important
+  }
+}
+.topbar,.organized-actions,.status-cluster,.action-groups,.action-group{transition:none!important}
+
+/* Modulspezifische Werkzeuge liegen unterhalb der globalen Topbar */
+.vacation-module-actions{
+  margin-top:3px;
+  padding-top:7px;
+  border-top:1px solid var(--line);
+  gap:5px!important;
+  flex-wrap:wrap!important
+}
+.module-tools-label{
+  display:inline-flex;align-items:center;gap:5px;
+  margin-right:3px;
+  font-size:7px;font-weight:850;color:var(--green);
+  white-space:nowrap
+}
+.module-tools-label .ui-icon{width:12px;height:12px}
+.module-tool-btn{
+  position:relative;
+  height:28px!important;
+  min-height:28px!important;
+  padding:0 8px!important;
+  border-radius:8px!important;
+  font-size:7px!important
+}
+.module-tool-separator{
+  width:1px;height:21px;background:var(--line);margin:0 2px
+}
+
+/* Module als zwei klar erkennbare Apps, Helios bleibt Grundsprache */
+body.vacation-module-active{--module-accent:#087967;--module-soft:#e4f2ed}
+body.training-module-active{--module-accent:#3978b7;--module-soft:#e6eff9}
+.module-tab.vacation-tab.active{
+  color:#087967!important;
+  background:#e5f3ee!important;
+  border-color:rgba(8,121,103,.16)!important
+}
+.module-tab.training-tab.active{
+  color:#3978b7!important;
+  background:#e7effa!important;
+  border-color:rgba(57,120,183,.17)!important
+}
+.module-tab.vacation-tab .module-tab-icon{background:#def0e9;color:#087967}
+.module-tab.training-tab .module-tab-icon{background:#e2ecf9;color:#3978b7}
+body.vacation-module-active .planner-controls{
+  box-shadow:inset 3px 0 0 #0f8b78,var(--shadow)
+}
+body.training-module-active .training-toolbar{
+  box-shadow:inset 3px 0 0 #4b86bd,var(--shadow)
+}
+body.training-module-active .training-heading>.eyebrow,
+body.training-module-active .training-heading strong{
+  color:#356f9f
+}
+body.training-module-active .training-view-switch .segment.active{
+  background:#e4edf8!important;color:#356f9f!important
+}
+body.training-module-active .aurora-a{background:#7caee0}
+body.vacation-module-active .aurora-a{background:#55b7a5}
+body.dark-mode .module-tab.vacation-tab.active{background:#1c4338!important;color:#9de1ca!important}
+body.dark-mode .module-tab.training-tab.active{background:#233a51!important;color:#acd0ef!important}
+
+/* Move/Copy Drop Feedback */
+.training-my-cell.drag-over,
+.training-day.drag-over,
+.training-teamstatus-column.drag-over,
+.training-teamstatus-type-card.drag-over{
+  outline:2px solid rgba(57,120,183,.38)!important;
+  outline-offset:-2px;
+  background:#e8f1fb!important;
+  box-shadow:inset 0 0 0 1px rgba(57,120,183,.12)
+}
+.training-my-item[draggable="true"],
+.training-month-item[draggable="true"],
+.training-entry[draggable="true"],
+.training-classic-table tr[draggable="true"]{cursor:grab}
+body.dark-mode .training-my-cell.drag-over,
+body.dark-mode .training-day.drag-over,
+body.dark-mode .training-teamstatus-column.drag-over,
+body.dark-mode .training-teamstatus-type-card.drag-over{
+  background:#23384d!important
+}
+
+/* Teamstatus – Alle Fortbildungen */
+.training-teamstatus-board.all-mode{
+  display:grid!important;
+  grid-template-columns:210px 1fr!important;
+  gap:8px
+}
+.training-teamstatus-pool{
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:rgba(255,255,255,.48);
+  overflow:hidden
+}
+.training-teamstatus-pool>header{
+  padding:8px 9px;
+  border-bottom:1px solid var(--line)
+}
+.training-teamstatus-pool>header strong{display:block;font-size:9px}
+.training-teamstatus-pool>header span{display:block;margin-top:2px;font-size:6px;color:var(--muted)}
+.training-teamstatus-pool>div{
+  max-height:54vh;
+  overflow:auto;
+  padding:5px;
+  display:grid;
+  gap:4px
+}
+.training-employee-chip{
+  min-height:31px;padding:5px 6px;
+  display:grid;
+  grid-template-columns:22px 1fr 23px;
+  align-items:center;
+  gap:5px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:rgba(255,255,255,.68);
+  cursor:grab
+}
+.training-employee-chip>span{
+  width:22px;height:22px;border-radius:6px;
+  display:grid;place-items:center;
+  background:#e6eff9;color:#3978b7
+}
+.training-employee-chip>span .ui-icon{width:12px;height:12px}
+.training-employee-chip>b{
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:7px
+}
+.training-employee-edit-inline{
+  width:23px;height:23px;
+  border:0;border-radius:7px;
+  display:grid;place-items:center;
+  background:transparent;color:var(--muted);
+  cursor:pointer
+}
+.training-employee-edit-inline .ui-icon{width:12px;height:12px}
+.training-employee-edit-inline:hover{background:#e8f0f8;color:#3978b7}
+.training-teamstatus-all-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:7px;
+  align-content:start
+}
+.training-teamstatus-type-card{
+  min-height:118px;
+  padding:8px;
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:rgba(255,255,255,.52);
+  transition:.15s ease
+}
+.training-teamstatus-type-card>header{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:6px
+}
+.training-teamstatus-type-card>header strong{display:block;font-size:8.5px}
+.training-teamstatus-type-card>header span{display:block;margin-top:2px;font-size:5.8px;color:var(--muted)}
+.training-teamstatus-type-card>header>b{
+  padding:3px 5px;border-radius:999px;
+  background:#e7f3ef;color:#176e58;
+  font-size:6.5px
+}
+.training-type-card-stats{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-top:7px
+}
+.training-type-card-stats span{
+  padding:5px 3px;border-radius:6px;
+  background:#f1f5f4;text-align:center;
+  font-size:5.5px;color:var(--muted)
+}
+.training-type-card-stats b{display:block;color:var(--ink);font-size:7px}
+.training-type-drop-hint{
+  margin-top:6px;min-height:25px;
+  display:flex;align-items:center;justify-content:center;gap:4px;
+  border:1px dashed rgba(57,120,183,.25);
+  border-radius:7px;
+  color:#527da5;font-size:6px;font-weight:800
+}
+.training-type-drop-hint .ui-icon{width:11px;height:11px}
+.training-type-open-btn{
+  width:100%;margin-top:5px;
+  height:24px;border:0;border-radius:7px;
+  background:transparent;color:#3978b7;
+  font:800 6px Inter,sans-serif;cursor:pointer
+}
+.training-type-open-btn:hover{background:#e7effa}
+body.dark-mode .training-teamstatus-pool,
+body.dark-mode .training-teamstatus-type-card,
+body.dark-mode .training-employee-chip{background:#172723}
+body.dark-mode .training-type-card-stats span{background:#1c2e29}
+body.dark-mode .training-type-drop-hint{color:#a7c9e8;border-color:rgba(167,201,232,.22)}
+
+/* Teamstatus Mitarbeiteraktionen */
+.training-person-buttons{display:flex;align-items:center;gap:2px;flex:0 0 auto}
+.training-teamstatus-person[draggable="true"]{cursor:grab}
+.training-teamstatus-column[data-teamstatus-drop-state="planned"],
+.training-teamstatus-column[data-teamstatus-drop-state="completed"]{
+  transition:.15s ease
+}
+
+/* Kontextmenü mit Outline Icons */
+.training-context-menu>button .ui-icon{
+  width:15px;height:15px;
+  color:#3d718f;
+  flex:0 0 15px
+}
+.training-context-menu>button:hover .ui-icon{color:#176e58}
+
+/* Hilfstext Drag/Copy */
+.training-multiyear-legend::after{
+  content:"Ziehen = verschieben · ⌥ Option/Alt/Strg beim Ablegen = duplizieren";
+  margin-left:auto;
+  color:#557ca0;
+  font-weight:700
+}
+
+@media(max-width:1200px){
+  .training-teamstatus-all-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:1100px){
+  .topbar{min-height:auto!important}
+  .organized-actions{min-height:0!important}
+  .action-groups{min-width:0!important}
+  .status-cluster{min-width:0!important}
+}
+@media(max-width:800px){
+  .training-teamstatus-board.all-mode{grid-template-columns:1fr!important}
+  .training-teamstatus-pool>div{max-height:190px;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .training-teamstatus-all-grid{grid-template-columns:1fr}
+  .vacation-module-actions{overflow-x:auto;flex-wrap:nowrap!important}
+  .module-tools-label{display:none}
+  .module-tool-separator{flex:0 0 1px}
+}
+@media(max-width:560px){
+  .training-teamstatus-pool>div{grid-template-columns:1fr}
+  .global-theme-control{padding:2px 4px}
+}
