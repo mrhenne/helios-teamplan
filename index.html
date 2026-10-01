@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-46" />
+  <link rel="stylesheet" href="styles.css?v=20261001-38" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -68,6 +68,7 @@
       </div>
 
       <div class="topbar-actions" aria-label="Schnellzugriff">
+        <button id="addEmployeeBtn" class="top-tool global-employee-btn hidden" type="button" title="Mitarbeiter hinzufügen"><svg class="ui-icon"><use href="#i-plus"></use></svg><span>Mitarbeiter</span></button>
         <button id="usersBtn" class="top-tool hidden" type="button" title="Benutzer verwalten"><svg class="ui-icon"><use href="#i-users"></use></svg><span>Benutzerverwaltung</span></button>
         <button id="roleHelpBtn" class="top-tool" data-tool-action="roles" type="button" title="Rollen und Rechte erklären"><svg class="ui-icon"><use href="#i-role"></use></svg><span>Rollen & Rechte</span></button>
         <button id="themeBtn" class="top-tool top-theme-btn" type="button" title="Darstellung wechseln"><svg class="ui-icon"><use href="#i-sun"></use></svg><span>Darstellung: <b id="themeLabel">Hell</b></span></button>
@@ -84,7 +85,11 @@
 
     <section id="vacationToolbar" class="toolbar glass planner-controls">
   <div class="controls-row controls-primary">
-    <div class="calendar-heading"><strong id="monthLabel"></strong><span id="yearLabel"></span></div>
+    <div class="vacation-heading">
+      <span class="eyebrow">URLAUBSPLANER</span>
+      <div><strong>Urlaubsplanung</strong><span id="vacationHeadingSub">Teamübersicht</span></div>
+      <span id="monthLabel" class="hidden"></span><span id="yearLabel" class="hidden"></span>
+    </div>
     <div class="date-nav-block">
       <span class="control-caption">Monat</span>
       <button id="prevMonth" class="icon-btn" aria-label="Vorheriger Monat">‹</button>
@@ -125,7 +130,7 @@
     <div class="control-block vacation-mode-block"><span class="control-caption">Urlaub</span><div class="segmented vacation-mode" title="Gesamt: jedes gesetzte U zählt 1,0. Anteilig: jedes U wird mit dem Stellenanteil gewichtet, z. B. 80 % = 0,8 je U. Der Jahresanspruch bleibt unverändert."><button id="vacationFullBtn" class="segment" type="button">Gesamt</button><button id="vacationActualBtn" class="segment active" type="button">Anteilig</button></div></div>
     <div class="controls-spacer"></div>
     <input id="searchInput" class="search control-search compact-employee-search" placeholder="Mitarbeiter suchen…" />
-    <button id="addEmployeeBtn" class="btn primary icon-label-btn"><svg class="ui-icon"><use href="#i-plus"></use></svg><span>Mitarbeiter</span></button>
+
   </div>
     <div class="vacation-tools-head">
       <button id="vacationToolsToggle" class="btn ghost icon-label-btn" type="button" aria-expanded="false"><svg class="ui-icon"><use href="#i-grid"></use></svg><span>Werkzeuge</span><b class="vacation-tools-chevron">⌄</b></button>
@@ -1123,6 +1128,6 @@
       }, true);
     })();
   </script>
-  <script src="app.js?v=20261001-37"></script>
+  <script src="app.js?v=20261001-38"></script>
 </body>
 </html>
