@@ -131,10 +131,10 @@ function renderDiscussionList(){
   list.innerHTML=items.length?items.map(d=>{
     const emp=discussionEmployeeName(d.employee_id);
     return '<button type="button" class="discussion-item '+(d.id===activeDiscussionId?'active':'')+'" data-discussion-id="'+d.id+'">'+
-      '<div class="discussion-item-top"><strong>'+escapeHtml(d.title)+'</strong><span class="discussion-state '+d.status+'">'+(d.status==='open'?'Offen':'Erledigt')+'</span></div>'+
+      '<div class="discussion-item-top"><strong>'+escapeHtml(d.title)+'</strong><span class="discussion-state '+d.status+'">'+(d.status==='open'?'Aktiv':'Erledigt')+'</span></div>'+
       '<span>'+escapeHtml(formatDiscussionRange(d.start_date,d.end_date))+(emp?' · '+escapeHtml(emp):'')+'</span>'+
       '<small>'+escapeHtml(d.created_by_name||'Team')+'</small></button>';
-  }).join(''):'<div class="empty-state">'+(discussionFilter==='open'?'Keine offenen Abstimmungen.':'Noch keine Abstimmungen.')+'</div>';
+  }).join(''):'<div class="empty-state">'+(discussionFilter==='open'?'Keine aktiven Chats.':'Noch keine Chats.')+'</div>';
   list.querySelectorAll('.discussion-item').forEach(b=>b.addEventListener('click',()=>selectDiscussion(b.dataset.discussionId)));
 }
 async function loadDiscussionMessages(id){
@@ -806,12 +806,12 @@ function showCellContextMenu(event,empId,key){
     if(!state.entries[empId])state.entries[empId]={};
     const next={...old,plannerMarkers:[...set]};
     if((next.codes||[]).length||next.priority||next.note||next.plannerMarkers.length)state.entries[empId][key]=next;else delete state.entries[empId][key];
-    trackAction('Planer-Hinweis geändert',(emp?.name||'')+' · '+key+' · '+marker);
+    trackAction('Planungsstatus geändert',(emp?.name||'')+' · '+key+' · '+marker);
     persist();hideCellContextMenu();render();showToast(marker+' aktualisiert');
   }));
   menu.querySelector('[data-context-discussion]')?.addEventListener('click',()=>{
     hideCellContextMenu();
-    openNewDiscussion({date:key,employeeId:empId,title:'Abstimmung '+(emp?.name||'')+' · '+key});
+    openNewDiscussion({date:key,employeeId:empId,title:'Chat '+(emp?.name||'')+' · '+key});
   });
   menu.querySelector('[data-context-edit]').addEventListener('click',()=>{hideCellContextMenu();openCell(empId,key)});
   menu.querySelector('[data-context-delete]').addEventListener('click',()=>quickDeleteCell(empId,key));
@@ -1198,7 +1198,7 @@ function renderConflicts(){
   summary.innerHTML=`<div><strong>${items.length}</strong><span>gesamt</span></div><div><strong>${counts['Besetzung']||0}</strong><span>Besetzung</span></div><div><strong>${counts['Sperrzeit']||0}</strong><span>Sperrzeiten</span></div><div><strong>${counts['Offener Wunsch']||0}</strong><span>offene Wünsche</span></div>`;
   list.innerHTML=items.length?items.slice(0,500).map(x=>`<div class="management-item conflict-item" data-date="${x.key}" data-type="${escapeHtml(x.type)}"><button type="button" class="conflict-jump"><div><strong>${x.key} · ${escapeHtml(x.type)}</strong><span>${escapeHtml(x.text)}</span></div></button>${canDiscuss()?'<button type="button" class="btn ghost conflict-discuss">✉ Chat</button>':''}</div>`).join(''):'<div class="empty-state success-state">Keine Konflikte gefunden.</div>';
   list.querySelectorAll('.conflict-jump').forEach(btn=>btn.addEventListener('click',()=>{const item=btn.closest('.conflict-item'),d=new Date(item.dataset.date+'T12:00:00');viewDate=new Date(d.getFullYear(),d.getMonth(),1);currentView='month';document.getElementById('conflictsDialog').close();render()}));
-  list.querySelectorAll('.conflict-discuss').forEach(btn=>btn.addEventListener('click',()=>{const item=btn.closest('.conflict-item');document.getElementById('conflictsDialog').close();openNewDiscussion({date:item.dataset.date,title:item.dataset.type+' · '+item.dataset.date,message:'Bitte hierzu abstimmen.'})}));
+  list.querySelectorAll('.conflict-discuss').forEach(btn=>btn.addEventListener('click',()=>{const item=btn.closest('.conflict-item');document.getElementById('conflictsDialog').close();openNewDiscussion({date:item.dataset.date,title:item.dataset.type+' · '+item.dataset.date,message:'Bitte hierzu im Team abstimmen.'})}));
 }
 async function exportExcel(){
   if(!window.XLSX){alert('Excel-Export ist nicht verfügbar.');return}
