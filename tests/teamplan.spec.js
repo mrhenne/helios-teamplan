@@ -256,7 +256,7 @@ test('Projekt und Aufgabe können lokal angelegt und gespeichert werden', async 
   await page.locator('#projectPriority').selectOption('high');
   await page.locator('#projectForm button[type="submit"]').click();
 
-  await expect(page.getByText('QA Projekt', { exact:true }).first()).toBeVisible();
+  await expect(page.locator('.project-card strong', { hasText:'QA Projekt' }).first()).toBeVisible();
 
   await page.locator('#addTaskBtn').click();
   await expect(page.locator('#projectTaskDialog')).toBeVisible();
@@ -271,7 +271,7 @@ test('Projekt und Aufgabe können lokal angelegt und gespeichert werden', async 
 
   await page.reload();
   await page.locator('#moduleProjectsBtn').click();
-  await expect(page.getByText('QA Projekt', { exact:true }).first()).toBeVisible();
+  await expect(page.locator('.project-card strong', { hasText:'QA Projekt' }).first()).toBeVisible();
   await page.locator('#projectsBoardBtn').click();
   await expect(page.getByText('QA Aufgabe', { exact:true }).first()).toBeVisible();
 });
