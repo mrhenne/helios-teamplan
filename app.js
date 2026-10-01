@@ -2557,17 +2557,7 @@ function projectStatusLabel(s){return s==='active'?'In Arbeit':s==='paused'?'Pau
 function projectTaskStatusLabel(s){return s==='progress'?'In Arbeit':s==='waiting'?'Rückfrage':s==='done'?'Erledigt':'Offen'}
 function projectPriorityLabel(s){return s==='high'?'Hoch':s==='low'?'Niedrig':'Mittel'}
 function projectDateLabel(v){if(!v)return 'ohne Termin';const d=new Date(v+'T12:00:00');return d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'})}
-function projectRecencyBadge(item){
-  const stamp=item?.updated_at||item?.created_at;
-  if(!stamp)return '';
-  const d=new Date(stamp);
-  if(Number.isNaN(d.getTime()))return '';
-  const diff=Date.now()-d.getTime();
-  if(diff<0||diff>7*24*60*60*1000)return '';
-  const hours=Math.max(1,Math.round(diff/(60*60*1000)));
-  const label=hours<24?'vor '+hours+' h':'vor '+Math.max(1,Math.round(hours/24))+' T.';
-  return '<em class="project-recency-badge">'+escapeHtml(label)+'</em>';
-}
+
 function saveProjectLocal(){
   localStorage.setItem('teamplan-projects-local',JSON.stringify({projects:projectProjects,members:projectMembers,tasks:projectTasks,templates:projectTemplates,notes:projectNotes,comments:projectComments,activity:projectActivity}));
 }
@@ -2678,7 +2668,7 @@ function filteredProjects(){
 function projectCardHtml(p){
   const tasks=projectTasks.filter(t=>t.project_id===p.id),done=tasks.filter(t=>t.status==='done').length,open=tasks.filter(t=>t.status!=='done').length,progressInfo=projectProgressInfo(p.id,p.progress),progress=progressInfo.percent;
   const memberCount=new Set(projectMembers.filter(m=>m.project_id===p.id).map(m=>m.employee_id)).size,responsibleCount=new Set(projectMembers.filter(m=>m.project_id===p.id&&m.is_responsible).map(m=>m.employee_id)).size;
-  return '<article class="project-card" data-project-id="'+p.id+'" draggable="'+(projectCanManageProject(p.id)?'true':'false')+'" style="--project-color:'+escapeHtml(p.color||'#d8891c')+';--progress:'+progress+'%;--progress-color:'+projectProgressColor(progress)+'"><div class="project-card-head"><div><strong>'+escapeHtml(p.name)+'</strong><span>'+escapeHtml(projectStatusLabel(p.status))+' '+projectRecencyBadge(p)+'</span></div><span class="project-progress-number">'+progress+' %</span></div><div class="project-progress"><i></i></div><div class="project-card-teamrow"><span>'+projectTeamAvatarHtml(p.id)+'</span><small>'+memberCount+' im Team · '+open+' offen · '+done+' erledigt</small></div><div class="project-meta"><span class="project-chip">'+escapeHtml(projectPriorityLabel(p.priority))+'</span><span class="project-chip">Leitung: '+escapeHtml(projectEmployeeName(p.lead_employee_id))+'</span>'+(responsibleCount?'<span class="project-chip">'+responsibleCount+' weitere verantwortlich</span>':'')+(p.due_date?'<span class="project-chip">'+escapeHtml(projectDateLabel(p.due_date))+'</span>':'')+'</div></article>';
+  return '<article class="project-card" data-project-id="'+p.id+'" draggable="'+(projectCanManageProject(p.id)?'true':'false')+'" style="--project-color:'+escapeHtml(p.color||'#d8891c')+';--progress:'+progress+'%;--progress-color:'+projectProgressColor(progress)+'"><div class="project-card-head"><div><strong>'+escapeHtml(p.name)+'</strong><span>'+escapeHtml(projectStatusLabel(p.status))+' '+'</span></div><span class="project-progress-number">'+progress+' %</span></div><div class="project-progress"><i></i></div><div class="project-card-teamrow"><span>'+projectTeamAvatarHtml(p.id)+'</span><small>'+memberCount+' im Team · '+open+' offen · '+done+' erledigt</small></div><div class="project-meta"><span class="project-chip">'+escapeHtml(projectPriorityLabel(p.priority))+'</span><span class="project-chip">Leitung: '+escapeHtml(projectEmployeeName(p.lead_employee_id))+'</span>'+(responsibleCount?'<span class="project-chip">'+responsibleCount+' weitere verantwortlich</span>':'')+(p.due_date?'<span class="project-chip">'+escapeHtml(projectDateLabel(p.due_date))+'</span>':'')+'</div></article>';
 }
 function projectTaskConflictInfo(task){
   if(!task?.assignee_employee_id||!task?.due_date)return null;
@@ -2734,7 +2724,7 @@ function renderProjectMy(){
 }
 function projectTaskHtml(t){
   const conflict=projectTaskConflictInfo(t),check=projectChecklistProgress(t),overdue=projectIsOverdue(t),canDrag=projectCanManageTask(t),assignee=t.assignee_employee_id?projectEmployeeName(t.assignee_employee_id):'Nicht zugewiesen';
-  return '<article class="project-task-card priority-'+escapeHtml(t.priority||'medium')+(overdue?' overdue':'')+'" data-project-task-id="'+t.id+'" draggable="'+(canDrag?'true':'false')+'"><div class="project-task-head"><strong>'+escapeHtml(t.title)+'</strong><span class="project-task-status '+escapeHtml(t.status)+'">'+escapeHtml(projectTaskStatusLabel(t.status))+'</span></div><div class="project-task-owner"><i>'+escapeHtml(projectEmployeeInitials(t.assignee_employee_id))+'</i><span>'+escapeHtml(assignee)+'</span><small>'+escapeHtml(projectName(t.project_id))+'</small>'+projectRecencyBadge(t)+'</div><div class="project-meta"><span class="project-chip">'+escapeHtml(projectPriorityLabel(t.priority))+'</span>'+(t.due_date?'<span class="project-chip '+(overdue?'project-chip-danger':'')+'">bis '+escapeHtml(projectDateLabel(t.due_date))+'</span>':'')+(t.recurrence&&t.recurrence!=='none'?'<span class="project-chip">↻ '+escapeHtml(t.recurrence)+'</span>':'')+(check.total?'<span class="project-chip">☑ '+check.done+'/'+check.total+'</span>':'')+(conflict?'<span class="project-chip project-chip-warning" title="'+escapeHtml(conflict)+'">⚠ Termin</span>':'')+'</div></article>';
+  return '<article class="project-task-card priority-'+escapeHtml(t.priority||'medium')+(overdue?' overdue':'')+'" data-project-task-id="'+t.id+'" draggable="'+(canDrag?'true':'false')+'"><div class="project-task-head"><strong>'+escapeHtml(t.title)+'</strong><span class="project-task-status '+escapeHtml(t.status)+'">'+escapeHtml(projectTaskStatusLabel(t.status))+'</span></div><div class="project-task-owner"><i>'+escapeHtml(projectEmployeeInitials(t.assignee_employee_id))+'</i><span>'+escapeHtml(assignee)+'</span><small>'+escapeHtml(projectName(t.project_id))+'</small>'+'</div><div class="project-meta"><span class="project-chip">'+escapeHtml(projectPriorityLabel(t.priority))+'</span>'+(t.due_date?'<span class="project-chip '+(overdue?'project-chip-danger':'')+'">bis '+escapeHtml(projectDateLabel(t.due_date))+'</span>':'')+(t.recurrence&&t.recurrence!=='none'?'<span class="project-chip">↻ '+escapeHtml(t.recurrence)+'</span>':'')+(check.total?'<span class="project-chip">☑ '+check.done+'/'+check.total+'</span>':'')+(conflict?'<span class="project-chip project-chip-warning" title="'+escapeHtml(conflict)+'">⚠ Termin</span>':'')+'</div></article>';
 }
 function projectAttentionRows(){
   const today=dateKey(new Date()),soon=dateKey(addDays(new Date(),7));
