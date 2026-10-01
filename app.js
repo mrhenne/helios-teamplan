@@ -50,6 +50,8 @@ let authUser = null;
 let authMembership = null;
 let loginMode = 'login';
 let plannerScrollLeft = null;
+let presenceChannel = null;
+let onlinePresence = new Map();
 let focusPanMode = false;
 let focusPanning = false;
 let focusPanStartX = 0;
@@ -90,6 +92,57 @@ function canPlan(empId){return sessionRole==='admin'||sessionRole==='planner'||(
 function canApprove(){return sessionRole==='admin'||sessionRole==='planner'}
 function canManage(){return sessionRole==='admin'||sessionRole==='planner'}
 function canEditEmployees(){return sessionRole==='admin'||sessionRole==='planner'}
+function renderPresenceUI(){
+  const onlineEmployeeIds=new Set([...onlinePresence.values()].map(x=>x.employee_id).filter(Boolean));
+  document.querySelectorAll('.employee-row').forEach(row=>{
+    const online=onlineEmployeeIds.has(row.dataset.id);
+    row.classList.toggle('employee-online',online);
+    const dot=row.querySelector('.presence-dot');if(dot)dot.classList.toggle('online',online);
+  });
+  const pill=document.getElementById('onlinePill');
+  if(pill){
+    const people=[...onlinePresence.values()];
+    pill.classList.toggle('hidden',!authUser);
+    pill.textContent='● '+people.length+' online';
+    pill.title=people.length?'Online: '+people.map(x=>x.display_name||x.email||'Nutzer').join(', '):'Aktuell niemand online';
+  }
+}
+function syncPresenceState(){
+  if(!presenceChannel)return;
+  const raw=presenceChannel.presenceState()||{},next=new Map();
+  Object.entries(raw).forEach(([key,list])=>{
+    (list||[]).forEach(p=>{if(p?.user_id)next.set(p.user_id,p)});
+  });
+  onlinePresence=next;renderPresenceUI();
+}
+async function startPresence(){
+  if(!supabaseClient||!authUser||!authMembership)return;
+  if(presenceChannel){try{await presenceChannel.untrack()}catch{};try{await supabaseClient.removeChannel(presenceChannel)}catch{}}
+  const cfg=window.TEAMPLAN_CONFIG||{};
+  presenceChannel=supabaseClient.channel('teamplan-presence-'+cfg.teamId,{config:{presence:{key:authUser.id}}});
+  presenceChannel
+    .on('presence',{event:'sync'},syncPresenceState)
+    .on('presence',{event:'join'},syncPresenceState)
+    .on('presence',{event:'leave'},syncPresenceState)
+    .subscribe(async status=>{
+      if(status!=='SUBSCRIBED')return;
+      await presenceChannel.track({
+        user_id:authUser.id,
+        employee_id:authMembership.employee_id||null,
+        display_name:authMembership.display_name||authUser.email||'Nutzer',
+        email:authUser.email||'',
+        role:authMembership.role||'viewer',
+        online_at:new Date().toISOString()
+      });
+    });
+}
+async function stopPresence(){
+  if(!presenceChannel)return;
+  try{await presenceChannel.untrack()}catch{}
+  try{await supabaseClient.removeChannel(presenceChannel)}catch{}
+  presenceChannel=null;onlinePresence=new Map();renderPresenceUI();
+}
+
 function trackAction(label,detail=''){
   undoStack.push(structuredClone(state)); if(undoStack.length>20)undoStack.shift();
   state.audit.unshift({id:uid(),time:new Date().toISOString(),label,detail,actor:actorName()});
@@ -262,12 +315,12 @@ function render(){
   employees.forEach(e=>{
     const used=usedVacation(e),total=vacationEntitlement(e),remain=remainingVacation(e),xu=countCode(e,'XU'); const status=remain<0?'status-bad':remain<=3?'status-low':'status-good';
     const employeeFocusClass=sessionRole==='employee'?(e.id===sessionEmployeeId?'employee-own-row':'employee-muted-row'):'';
-    html+=`<tr class="employee-row ${employeeFocusClass}" draggable="true" data-id="${e.id}"><td class="employee-col employee-cell"><div class="employee-card"><span class="drag-handle">⠿</span><div class="employee-edit" data-id="${e.id}"><div class="employee-name">${escapeHtml(e.name)}</div><div class="employee-meta">${e.hours} h · ${e.percent}% · ${e.workdays} Tage/Woche · XU ${xu}</div></div><div class="employee-stats ${status}"><strong>${used}/${total}</strong><small>${remain} übrig</small></div></div></td>`;
+    html+=`<tr class="employee-row ${employeeFocusClass}" draggable="true" data-id="${e.id}"><td class="employee-col employee-cell"><div class="employee-card"><span class="drag-handle">⠿</span><div class="employee-edit" data-id="${e.id}"><div class="employee-name"><span class="presence-dot" title="Offline"></span>${escapeHtml(e.name)}</div><div class="employee-meta">${e.hours} h · ${e.percent}% · ${e.workdays} Tage/Woche · XU ${xu}</div></div><div class="employee-stats ${status}"><strong>${used}/${total}</strong><small>${remain} übrig</small></div></div></td>`;
     dates.forEach(d=>{const key=dateKey(d),v=entryFor(e.id,key),we=[0,6].includes(d.getDay()),nonwork=!isWorkday(e,d),conf=conflictLevel(key),school=schoolBreakForDate(d),monthTone=d.getMonth()%2===0?'month-even':'month-odd',blackout=blackoutForKey(key),status=v.status||'wish';const codes=(v.codes||[]).map(c=>{const d=codeDef(c);return `<span class="cell-code ${codeClassName(c)}"${d.color?` style="--code-color:${escapeHtml(d.color)}"`:''}>${c}</span>`}).join('');const warn=(conf.vacation&&entryIsActive(v)&&v.codes?.includes('U'))||(conf.total&&entryIsActive(v)&&v.codes?.some(c=>['U','XU','S'].includes(c)));html+=`<td class="day-cell ${we?'weekend':''} ${nonwork?'nonwork':''} ${school?'school-holiday-cell':''} ${monthTone} status-${status} ${blackout?'blackout-cell':''}" data-emp="${e.id}" data-date="${key}" title="${escapeHtml([v.note,blackout&&('Sperrzeit: '+blackout.name),school&&('NRW '+school),status&&('Status: '+status)].filter(Boolean).join(' · '))}"><div class="cell-codes">${codes}</div>${(v.codes||[]).length?`<span class="status-mark status-${status}"></span>`:''}${v.priority?`<span class="cell-priority p${v.priority}"></span>`:''}${v.note?'<span class="cell-note"></span>':''}${warn?'<span class="cell-warning-mark">!</span>':''}</td>`});
     html+='</tr>';
   });
   html+=summaryRow('Urlaub U','U',dates);html+=summaryRow('Wunschfrei XU','XU',dates);html+=summaryRow('Schule S','S',dates);html+=presenceRow(dates);html+=absenceNamesRow(dates);html+='</tbody></table>';
-  document.getElementById('planner').innerHTML=html; bindPlannerEvents(); renderMetrics(); syncViewControls(); applyAppearance(); renderDynamicCodes();
+  document.getElementById('planner').innerHTML=html; bindPlannerEvents(); renderMetrics(); syncViewControls(); applyAppearance(); renderDynamicCodes(); renderPresenceUI();
   if(currentView==='month') setupFlowingMonthScroll();
   if(currentView==='year') renderYearOverview();
 }
@@ -889,8 +942,8 @@ function renderRoleControls(){
   emp.value=sessionEmployeeId;
   role.classList.toggle('hidden',authMode);
   emp.classList.toggle('hidden',authMode||sessionRole!=='employee');
-  const pill=document.getElementById('authUserPill'),logout=document.getElementById('logoutBtn');
-  pill.classList.toggle('hidden',!authMode);logout.classList.toggle('hidden',!authMode);
+  const pill=document.getElementById('authUserPill'),logout=document.getElementById('logoutBtn'),onlinePill=document.getElementById('onlinePill');
+  pill.classList.toggle('hidden',!authMode);logout.classList.toggle('hidden',!authMode);if(onlinePill)onlinePill.classList.toggle('hidden',!authMode);
   if(authMode)pill.textContent=(authUser.email||'Angemeldet')+' · '+sessionRole;
   ['blackoutsBtn','addEmployeeBtn','importNamesBtn','planImportBtn'].forEach(id=>{const el=document.getElementById(id);if(el){el.disabled=!canManage();el.classList.toggle('hidden',!canManage())}});
   document.querySelectorAll('.manager-only').forEach(el=>el.classList.toggle('hidden',!canManage()));
@@ -1100,13 +1153,13 @@ async function initRemote(){
     if(!session){setSync('local','● Login erforderlich');showLogin()}
     else{
       const {data:{user},error:userError}=await supabaseClient.auth.getUser();if(userError)throw userError;
-      authUser=user;await loadAuthMembership();await loadRemotePlan();hideLogin();setSync('live','● Live synchron');
+      authUser=user;await loadAuthMembership();await loadRemotePlan();await startPresence();hideLogin();setSync('live','● Live synchron');
     }
     supabaseClient.auth.onAuthStateChange(async(event,session)=>{
-      if(event==='SIGNED_OUT'||!session){authUser=null;authMembership=null;renderRoleControls();setSync('local','● Abgemeldet');showLogin();return}
+      if(event==='SIGNED_OUT'||!session){await stopPresence();authUser=null;authMembership=null;renderRoleControls();setSync('local','● Abgemeldet');showLogin();return}
       if(event==='SIGNED_IN'||event==='TOKEN_REFRESHED'){
         const {data:{user}}=await supabaseClient.auth.getUser();authUser=user;
-        try{await loadAuthMembership();await loadRemotePlan();hideLogin();setSync('live','● Live synchron')}catch(err){console.error(err);document.getElementById('loginError').textContent=err.message;document.getElementById('loginError').classList.remove('hidden');showLogin()}
+        try{await loadAuthMembership();await loadRemotePlan();await startPresence();hideLogin();setSync('live','● Live synchron')}catch(err){console.error(err);document.getElementById('loginError').textContent=err.message;document.getElementById('loginError').classList.remove('hidden');showLogin()}
       }
     });
     supabaseClient.channel('teamplan-live').on('postgres_changes',{event:'*',schema:'public',table:'team_plans',filter:`team_id=eq.${cfg.teamId}`},payload=>{const remote=payload.new?.data;if(remote&&remote.updatedAt!==state.updatedAt){isApplyingRemote=true;state=normalizeState(remote);localStorage.setItem('helios-teamplan-v1',JSON.stringify(state));isApplyingRemote=false;render();showToast('Plan wurde aktualisiert')}}).subscribe();
