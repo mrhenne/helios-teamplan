@@ -1417,6 +1417,8 @@ function hideLogin(){const d=document.getElementById('loginDialog');if(d?.open)d
 function trainingCanManage(){return canManage()}
 function trainingEmployeeName(id){return state.employees.find(e=>e.id===id)?.name||'Unbekannter Mitarbeiter'}
 function trainingTypeById(id){return trainingTypes.find(t=>t.id===id)||null}
+function trainingCategoryFallbackColor(category=''){const c=String(category).toLowerCase();if(c.includes('weiterbildung'))return '#8b5cf6';if(c.includes('pflicht'))return '#e59f23';if(c.includes('training'))return '#0f8b78';return '#5b8def'}
+function trainingColor(t){const type=trainingTypeById(t?.type_id);return type?.color||trainingCategoryFallbackColor(t?.category)}
 function trainingBudgetFor(empId,year=trainingYear){return Number(trainingBudgets.find(b=>b.employee_id===empId&&Number(b.year)===Number(year))?.amount||0)}
 function trainingDate(d){return d?new Date(d+'T12:00:00'):null}
 function addMonthsISO(date,months){
@@ -1451,7 +1453,7 @@ function trainingStatusLabel(t){
   const due=trainingDueState(t);
   if(due==='overdue')return 'Überfällig';
   if(due==='due')return 'Bald fällig';
-  return t.status==='completed'?'Absolviert':t.status==='cancelled'?'Abgesagt':'Geplant';
+  return t.status==='completed'?'Absolviert':t.status==='in_progress'?'In Durchführung':t.status==='cancelled'?'Abgesagt':'Geplant';
 }
 function trainingVisibleEmployees(){
   if(sessionRole==='employee')return state.employees.filter(e=>e.id===sessionEmployeeId);
@@ -1665,6 +1667,7 @@ function trainingStatusDropzonesHtml(){
   if(!trainingCanManage())return '';
   return '<span>Hierher ziehen:</span>'+
     '<div class="training-status-dropzone planned" data-training-drop-status="planned">Geplant</div>'+
+    '<div class="training-status-dropzone in-progress" data-training-drop-status="in_progress">In Durchführung</div>'+
     '<div class="training-status-dropzone completed" data-training-drop-status="completed">Absolviert</div>'+
     '<div class="training-status-dropzone cancelled" data-training-drop-status="cancelled">Abgesagt</div>';
 }
@@ -1674,10 +1677,10 @@ function renderTrainingDropzones(){
   });
 }
 async function updateTrainingStatusByDrop(id,status){
-  if(!trainingCanManage()||!id||!['planned','completed','cancelled'].includes(status))return;
+  if(!trainingCanManage()||!id||!['planned','in_progress','completed','cancelled'].includes(status))return;
   const {error}=await supabaseClient.from('teamplan_trainings').update({status,updated_at:new Date().toISOString()}).eq('id',id);
   if(error){alert(error.message);return}
-  await loadTrainingData();showToast(status==='completed'?'Als absolviert markiert':status==='cancelled'?'Als abgesagt markiert':'Auf geplant gesetzt');
+  await loadTrainingData();showToast(status==='completed'?'Als absolviert markiert':status==='in_progress'?'Auf In Durchführung gesetzt':status==='cancelled'?'Als abgesagt markiert':'Auf geplant gesetzt');
 }
 function bindTrainingDragDrop(){
   if(!trainingCanManage())return;
