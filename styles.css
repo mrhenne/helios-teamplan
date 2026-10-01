@@ -6805,3 +6805,65 @@ body.dark-mode .project-export-options>label{
 .visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 @media(max-width:1100px){.zna-core-logo{width:210px}.zna-core-brand{min-width:205px}}
 @media(max-width:760px){.zna-core-logo{width:175px;max-width:52vw}.zna-core-brand{min-width:0}}
+
+
+/* === ZNA Core compact top navigation === */
+.topbar{
+  display:grid!important;
+  grid-template-columns:minmax(190px,260px) minmax(430px,1fr) auto auto;
+  align-items:center!important;
+  gap:12px!important;
+  padding:11px 14px!important;
+}
+.zna-core-brand{min-width:0!important}
+.zna-core-logo{
+  width:230px!important;
+  max-width:100%!important;
+  height:auto!important;
+}
+.topbar-module-switch{
+  margin:0!important;
+  padding:3px!important;
+  border-radius:12px!important;
+  width:100%!important;
+  max-width:610px!important;
+  background:rgba(236,243,240,.74)!important;
+  box-shadow:none!important;
+  border:1px solid var(--line)!important;
+  backdrop-filter:none!important;
+}
+.topbar-module-switch .module-tab{
+  min-width:0!important;
+  flex:1 1 0!important;
+  min-height:38px!important;
+  padding:5px 8px!important;
+}
+.topbar-module-switch .module-tab-icon{
+  width:25px!important;
+  height:25px!important;
+  flex-basis:25px!important;
+}
+.topbar-module-switch .module-tab b{font-size:8.5px!important}
+.topbar-module-switch .module-tab small{font-size:6px!important}
+.topbar-session{min-width:0}
+.topbar-actions{min-width:0}
+body.dark-mode .topbar-module-switch{background:#152821!important;border-color:rgba(200,235,226,.12)!important}
+
+@media(max-width:1380px){
+  .topbar{grid-template-columns:210px minmax(390px,1fr) auto!important}
+  .topbar-actions{grid-column:1/-1;justify-content:flex-end}
+  .zna-core-logo{width:200px!important}
+}
+@media(max-width:980px){
+  .topbar{grid-template-columns:1fr!important}
+  .zna-core-brand,.topbar-module-switch,.topbar-session,.topbar-actions{width:100%!important;max-width:none!important}
+  .zna-core-logo{width:210px!important}
+  .topbar-module-switch{order:2}
+  .topbar-session{order:3}
+  .topbar-actions{order:4;justify-content:flex-start}
+}
+@media(max-width:620px){
+  .zna-core-logo{width:175px!important}
+  .topbar-module-switch .module-tab{padding:5px!important}
+  .topbar-module-switch .module-tab small{display:none!important}
+}
