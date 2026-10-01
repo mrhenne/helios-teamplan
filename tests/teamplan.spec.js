@@ -53,10 +53,17 @@ test('Kopfzeile bleibt vollständig innerhalb ihrer Felder', async ({ page }) =>
   await expect(page.locator('#authUserPill')).toBeHidden();
   await expect(page.locator('#onlinePill')).toBeHidden();
 
-  await assertNoOverflow(page.locator('.top-status-item .sync-pill:visible, .top-status-item .role-select:visible'));
+  await assertNoOverflow(page.locator('.top-status-item .sync-pill:visible'));
   await assertNoOverflow(page.locator('.top-action-section .top-tool:visible, .global-theme-control:visible'));
 
   await expect(page.locator('#roleSelect')).toBeVisible();
+  const roleFits = await page.locator('#roleSelect').evaluate(node => {
+    const r=node.getBoundingClientRect();
+    const slot=node.closest('.role-slot')?.getBoundingClientRect();
+    if(!slot) return false;
+    return r.left >= slot.left-3 && r.right <= slot.right+3 && r.top >= slot.top-3 && r.bottom <= slot.bottom+3;
+  });
+  expect(roleFits).toBeTruthy();
   await expect(page.locator('#roleHelpBtn')).toBeVisible();
   await expect(page.locator('#settingsBtn')).toBeVisible();
 
