@@ -3917,3 +3917,18 @@ body .hidden:not(#teamplan-never-match){
     flex:0 0 10px!important;
   }
 }
+
+
+/* === 2026-10-01 ROLE GRID FINAL FIX === */
+/* Alte Header-Regeln legten #roleSelect auf Grid-Spalte 4.
+   Innerhalb des neuen role-stack Grids erzeugte das unsichtbare Zwischen-Spalten
+   und schob das Select technisch aus seinem Container. */
+.role-stack #roleSelect,
+.role-stack #roleEmployeeSelect{
+  grid-column:1!important;
+  grid-row:auto!important;
+  justify-self:stretch!important;
+  align-self:center!important;
+  width:100%!important;
+  max-width:100%!important;
+}
