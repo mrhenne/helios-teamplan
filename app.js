@@ -2317,8 +2317,9 @@ function syncTrainingRecurrenceMode(){
 function setCompactDrawer(buttonId,bodyId,open,storageKey){
   const btn=document.getElementById(buttonId),body=document.getElementById(bodyId);
   if(!btn||!body)return;
+  body.hidden=!open;
   body.classList.toggle('hidden',!open);
-  btn.setAttribute('aria-expanded',String(open));
+  btn.setAttribute('aria-expanded',open?'true':'false');
   if(storageKey)localStorage.setItem(storageKey,open?'1':'0');
 }
 function initCompactDrawer(buttonId,bodyId,storageKey){
@@ -2326,7 +2327,10 @@ function initCompactDrawer(buttonId,bodyId,storageKey){
   if(!btn||!body)return;
   const open=localStorage.getItem(storageKey)==='1';
   setCompactDrawer(buttonId,bodyId,open,storageKey);
-  btn.addEventListener('click',()=>setCompactDrawer(buttonId,bodyId,btn.getAttribute('aria-expanded')!=='true',storageKey));
+  btn.onclick=()=>{
+    const next=body.hidden;
+    setCompactDrawer(buttonId,bodyId,next,storageKey);
+  };
 }
 
 function initTrainingModuleUI(){
