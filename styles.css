@@ -4112,7 +4112,7 @@ body.dark-mode .project-note-card.info{background:#1c4439}
 
 
 /* === 2026-10-01 PROJECT MOBILE NAV FINAL === */
-@media(max-width:700px){
+@media(max-width:1000px){
   .projects-toolbar .projects-view-switch{
     display:grid!important;
     grid-template-columns:repeat(3,minmax(0,1fr))!important;
