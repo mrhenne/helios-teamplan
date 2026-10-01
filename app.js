@@ -1683,7 +1683,7 @@ function bindTrainingDragDrop(){
   if(!trainingCanManage())return;
   document.querySelectorAll('[draggable="true"][data-training-id]').forEach(el=>{
     el.addEventListener('dragstart',e=>{
-      e.dataTransfer.effectAllowed='move';
+      e.dataTransfer.effectAllowed='copyMove';
       e.dataTransfer.setData('text/training-id',el.dataset.trainingId);
       el.classList.add('dragging');
     });
@@ -1696,6 +1696,26 @@ function bindTrainingDragDrop(){
       e.preventDefault();zone.classList.remove('drag-over');
       const id=e.dataTransfer.getData('text/training-id');
       if(id)updateTrainingStatusByDrop(id,zone.dataset.trainingDropStatus);
+    });
+  });
+  document.querySelectorAll('.training-my-cell').forEach(cell=>{
+    cell.addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('text/training-id')){e.preventDefault();cell.classList.add('drag-over')}});
+    cell.addEventListener('dragleave',()=>cell.classList.remove('drag-over'));
+    cell.addEventListener('drop',e=>{
+      const id=e.dataTransfer.getData('text/training-id');if(!id)return;
+      e.preventDefault();e.stopPropagation();cell.classList.remove('drag-over');
+      const duplicate=!!(e.altKey||e.ctrlKey||e.metaKey);
+      moveOrDuplicateTraining(id,{employeeId:cell.dataset.employee,year:Number(cell.dataset.year)},duplicate);
+    });
+  });
+  document.querySelectorAll('.training-day').forEach(day=>{
+    day.addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('text/training-id')){e.preventDefault();day.classList.add('drag-over')}});
+    day.addEventListener('dragleave',()=>day.classList.remove('drag-over'));
+    day.addEventListener('drop',e=>{
+      const id=e.dataTransfer.getData('text/training-id');if(!id)return;
+      e.preventDefault();e.stopPropagation();day.classList.remove('drag-over');
+      const duplicate=!!(e.altKey||e.ctrlKey||e.metaKey);
+      moveOrDuplicateTraining(id,{date:day.dataset.date},duplicate);
     });
   });
 }
@@ -1771,7 +1791,7 @@ function renderTrainingMultiYear(){
         (trainingCanManage()?'<button type="button" class="training-my-add" data-training-add-employee="'+e.id+'" data-training-add-year="'+y+'">+ Fortbildung</button>':'')+
         rows.map(t=>{
           const recurrence=trainingRecurrenceLabel(t),multi=t.date_precision!=='year'&&t.start_date&&t.end_date&&t.start_date.slice(0,4)!==t.end_date.slice(0,4);
-          return '<button type="button" class="training-my-item '+t.status+(t._virtual?' virtual':'')+'" data-training-id="'+(t._sourceId||t.id)+'" data-training-virtual="'+(t._virtual?'1':'0')+'" data-training-employee="'+e.id+'" data-training-type="'+(t.type_id||'')+'" data-training-year="'+y+'"><b>'+(t._virtual?'◇ ':'● ')+escapeHtml(t.title)+'</b><small>'+escapeHtml(t._virtual?'voraussichtlich':trainingStatusLabel(t))+(recurrence?' · '+escapeHtml(recurrence):'')+(multi?' · ↔ mehrjährig':'')+'</small></button>';
+          return '<button type="button" class="training-my-item '+t.status+(t._virtual?' virtual':'')+'" data-training-id="'+(t._sourceId||t.id)+'" data-training-virtual="'+(t._virtual?'1':'0')+'" data-training-employee="'+e.id+'" data-training-type="'+(t.type_id||'')+'" data-training-year="'+y+'" '+(trainingCanManage()&&!t._virtual?'draggable="true"':'')+'><b>'+(t._virtual?'◇ ':'● ')+escapeHtml(t.title)+'</b><small>'+escapeHtml(t._virtual?'voraussichtlich':trainingStatusLabel(t))+(recurrence?' · '+escapeHtml(recurrence):'')+(multi?' · ↔ mehrjährig':'')+'</small></button>';
         }).join('')+
       '</div>';
     });
@@ -1955,22 +1975,25 @@ function showTrainingContextMenu(x,y,{trainingId='',employeeId='',typeId='',year
   const resolvedType=typeId||item?.type_id||'';
   const resolvedYear=Number(year||item?.training_year||trainingYear);
   menu.innerHTML='<div class="training-context-head"><strong>'+escapeHtml(emp?.name||'Fortbildung')+'</strong><span>'+(item?escapeHtml(item.title):escapeHtml(trainingTypeById(resolvedType)?.name||String(resolvedYear)))+'</span></div>'+
-    (item?'<button data-training-context-status="planned"><b>○</b><span>Auf Geplant setzen</span></button><button data-training-context-status="completed"><b>✓</b><span>Als absolviert markieren</span></button><button data-training-context-status="cancelled"><b>×</b><span>Als abgesagt markieren</span></button><div class="training-context-sep"></div><button data-training-context-edit="1"><b>✎</b><span>Fortbildung bearbeiten…</span></button>':
-      (resolvedType?'<button data-training-context-create="planned"><b>○</b><span>Geplant vormerken</span></button><button data-training-context-create="completed"><b>✓</b><span>Als absolviert erfassen</span></button><div class="training-context-sep"></div>':'')+
-      '<button data-training-context-new="1"><b>＋</b><span>Fortbildung detailliert anlegen…</span></button>')+
-    '<div class="training-context-sep"></div><button data-training-context-employee="1"><b>◎</b><span>Mitarbeiteransicht öffnen</span></button>';
+    (item?'<button data-training-context-status="planned">'+uiIcon('calendar')+'<span>Auf Geplant setzen</span></button><button data-training-context-status="completed">'+uiIcon('check')+'<span>Als absolviert markieren</span></button><button data-training-context-status="cancelled">'+uiIcon('x')+'<span>Als abgesagt markieren</span></button><div class="training-context-sep"></div><button data-training-context-edit="1">'+uiIcon('edit')+'<span>Fortbildung bearbeiten…</span></button><button data-training-context-copy="1">'+uiIcon('copy')+'<span>Fortbildung duplizieren…</span></button>':
+      (resolvedType?'<button data-training-context-create="planned">'+uiIcon('calendar')+'<span>Geplant vormerken</span></button><button data-training-context-create="completed">'+uiIcon('check')+'<span>Als absolviert erfassen</span></button><div class="training-context-sep"></div>':'')+
+      '<button data-training-context-new="1">'+uiIcon('plus')+'<span>Fortbildung detailliert anlegen…</span></button>')+
+    '<div class="training-context-sep"></div><button data-training-context-employee="1">'+uiIcon('users')+'<span>Mitarbeiteransicht öffnen</span></button>'+
+    (resolvedEmp&&canEditEmployees()?'<button data-training-context-edit-employee="1">'+uiIcon('edit')+'<span>Mitarbeiter bearbeiten…</span></button>':'');
   menu.classList.remove('hidden');
   menu.style.left=Math.min(x,window.innerWidth-menu.offsetWidth-8)+'px';
   menu.style.top=Math.min(y,window.innerHeight-menu.offsetHeight-8)+'px';
   menu.querySelectorAll('[data-training-context-status]').forEach(b=>b.addEventListener('click',()=>{hideTrainingContextMenu();updateTrainingStatusByDrop(item.id,b.dataset.trainingContextStatus)}));
   menu.querySelectorAll('[data-training-context-create]').forEach(b=>b.addEventListener('click',()=>{hideTrainingContextMenu();quickCreateTrainingStatus(resolvedEmp,resolvedType,resolvedYear,b.dataset.trainingContextCreate)}));
   menu.querySelector('[data-training-context-edit]')?.addEventListener('click',()=>{hideTrainingContextMenu();openTraining(item.id)});
+  menu.querySelector('[data-training-context-copy]')?.addEventListener('click',()=>{hideTrainingContextMenu();openTrainingDuplicate(item.id)});
   menu.querySelector('[data-training-context-new]')?.addEventListener('click',()=>{hideTrainingContextMenu();openTrainingPrefilled(resolvedEmp,resolvedYear,resolvedType)});
   menu.querySelector('[data-training-context-employee]')?.addEventListener('click',()=>{
     hideTrainingContextMenu();
     const f=document.getElementById('trainingEmployeeFilter');if(f&&!f.classList.contains('hidden'))f.value=resolvedEmp;
     setTrainingView('employees');
   });
+  menu.querySelector('[data-training-context-edit-employee]')?.addEventListener('click',()=>{hideTrainingContextMenu();openEmployee(resolvedEmp)});
 }
 function bindTrainingContextMenus(){
   if(!trainingCanManage())return;
@@ -1992,6 +2015,40 @@ function bindTrainingContextMenus(){
     if(e.target.closest('[data-training-id]'))return;
     e.preventDefault();showTrainingContextMenu(e.clientX,e.clientY,{employeeId:el.dataset.employee,year:Number(el.dataset.year)});
   }));
+}
+function bindTrainingTeamStatusEvents(){
+  if(!trainingCanManage())return;
+  document.querySelectorAll('[data-employee-edit]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();openEmployee(btn.dataset.employeeEdit)}));
+  document.querySelectorAll('[data-teamstatus-open-type]').forEach(btn=>btn.addEventListener('click',()=>{
+    trainingTeamStatusTypeId=btn.dataset.teamstatusOpenType;localStorage.setItem('teamplan-training-teamstatus-type',trainingTeamStatusTypeId);renderTrainingModule();
+  }));
+  document.querySelectorAll('[data-teamstatus-employee-drag]').forEach(el=>{
+    el.addEventListener('dragstart',e=>{
+      e.dataTransfer.effectAllowed='move';
+      e.dataTransfer.setData('text/employee-id',el.dataset.teamstatusEmployeeDrag);
+      el.classList.add('dragging');
+    });
+    el.addEventListener('dragend',()=>el.classList.remove('dragging'));
+  });
+  document.querySelectorAll('[data-teamstatus-drop-state]').forEach(zone=>{
+    if(zone.dataset.teamstatusDropState==='open')return;
+    zone.addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('text/employee-id')){e.preventDefault();zone.classList.add('drag-over')}});
+    zone.addEventListener('dragleave',()=>zone.classList.remove('drag-over'));
+    zone.addEventListener('drop',e=>{
+      const empId=e.dataTransfer.getData('text/employee-id');if(!empId)return;
+      e.preventDefault();zone.classList.remove('drag-over');
+      setTeamStatusEmployee(empId,zone.dataset.trainingType,Number(zone.dataset.trainingYear),zone.dataset.teamstatusDropState);
+    });
+  });
+  document.querySelectorAll('[data-teamstatus-type-drop]').forEach(card=>{
+    card.addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('text/employee-id')){e.preventDefault();card.classList.add('drag-over')}});
+    card.addEventListener('dragleave',()=>card.classList.remove('drag-over'));
+    card.addEventListener('drop',e=>{
+      const empId=e.dataTransfer.getData('text/employee-id');if(!empId)return;
+      e.preventDefault();card.classList.remove('drag-over');
+      setTeamStatusEmployee(empId,card.dataset.teamstatusTypeDrop,Number(card.dataset.teamstatusYear),'planned');
+    });
+  });
 }
 function bindTrainingMultiYearEvents(){
   document.querySelectorAll('.training-my-add').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();openTrainingPrefilled(b.dataset.trainingAddEmployee,Number(b.dataset.trainingAddYear))}));
@@ -2020,7 +2077,7 @@ function exportTrainingJson(){
 function bindTrainingRenderedEvents(){
   if(trainingCanManage())document.querySelectorAll('[data-training-id]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();openTraining(el.dataset.trainingId)}));
   document.querySelectorAll('.training-budget-btn').forEach(b=>b.addEventListener('click',()=>openTrainingBudget(b.dataset.employee)));
-  bindTrainingContextMenus();bindTrainingMultiYearEvents();
+  bindTrainingContextMenus();bindTrainingMultiYearEvents();bindTrainingTeamStatusEvents();
 }
 function renderTrainingModule(){
   if(!document.getElementById('trainingModule'))return;
