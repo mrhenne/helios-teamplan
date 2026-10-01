@@ -1118,3 +1118,80 @@ for each row execute function public.teamplan_create_next_recurring_task();
 
 do $$ begin alter publication supabase_realtime add table public.teamplan_task_comments; exception when duplicate_object then null; end $$;
 do $$ begin alter publication supabase_realtime add table public.teamplan_project_activity; exception when duplicate_object then null; end $$;
+
+
+-- =========================================================
+-- Projektmanagement Rechte-Härtung
+-- =========================================================
+create or replace function private.can_project_contribute(p_team_id text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, private
+as $$
+  select exists (
+    select 1 from public.team_members tm
+    where tm.team_id=p_team_id
+      and tm.user_id=(select auth.uid())
+      and tm.active=true
+      and tm.role in ('admin','planner','employee')
+  );
+$$;
+
+revoke all on function private.can_project_contribute(text) from public, anon;
+grant execute on function private.can_project_contribute(text) to authenticated;
+
+drop policy if exists "task comments team insert" on public.teamplan_task_comments;
+create policy "task comments team insert" on public.teamplan_task_comments for insert to authenticated
+with check ((select private.can_project_contribute(team_id)) and author_user_id=(select auth.uid()));
+
+drop policy if exists "project activity team insert" on public.teamplan_project_activity;
+create policy "project activity team insert" on public.teamplan_project_activity for insert to authenticated
+with check ((select private.can_project_contribute(team_id)) and actor_user_id=(select auth.uid()));
+
+create or replace function public.teamplan_protect_employee_task_update()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+declare
+  v_role text;
+  v_employee_id text;
+begin
+  select tm.role,tm.employee_id
+    into v_role,v_employee_id
+  from public.team_members tm
+  where tm.team_id=old.team_id
+    and tm.user_id=(select auth.uid())
+    and tm.active=true
+  limit 1;
+
+  if v_role='employee'
+     and v_employee_id=old.assignee_employee_id
+     and not coalesce((select private.is_project_lead(old.project_id)),false) then
+    new.team_id:=old.team_id;
+    new.project_id:=old.project_id;
+    new.title:=old.title;
+    new.description:=old.description;
+    new.priority:=old.priority;
+    new.start_date:=old.start_date;
+    new.due_date:=old.due_date;
+    new.assignee_employee_id:=old.assignee_employee_id;
+    new.template_id:=old.template_id;
+    new.recurrence:=old.recurrence;
+    new.sort_order:=old.sort_order;
+    new.created_by:=old.created_by;
+    new.recurrence_parent_id:=old.recurrence_parent_id;
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.teamplan_protect_employee_task_update() from public, anon, authenticated;
+
+drop trigger if exists trg_teamplan_protect_employee_task_update on public.teamplan_tasks;
+create trigger trg_teamplan_protect_employee_task_update
+before update on public.teamplan_tasks
+for each row execute function public.teamplan_protect_employee_task_update();
