@@ -68,6 +68,7 @@ let conflictSort = 'type';
 let currentModule = localStorage.getItem('teamplan-module') || 'vacation';
 let trainingView = localStorage.getItem('teamplan-training-view') || 'overview';
 let trainingYear = Number(localStorage.getItem('teamplan-training-year')) || new Date().getFullYear();
+let trainingZoom = Math.max(.7,Math.min(1.3,Number(localStorage.getItem('teamplan-training-zoom')||1)));
 let trainingTypes = [];
 let trainings = [];
 let trainingBudgets = [];
@@ -1420,10 +1421,19 @@ function addMonthsISO(date,months){
   const max=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(day,max));
   return dateKey(d);
 }
+function trainingRecurrenceMonths(t){
+  if(!t?.recurring)return 0;
+  return Number(t.recurrence_months||trainingTypeById(t.type_id)?.interval_months||0);
+}
+function trainingRecurrenceLabel(t){
+  const months=trainingRecurrenceMonths(t);if(!months)return '';
+  if(months%12===0)return '↻ alle '+(months/12)+(months===12?' Jahr':' Jahre');
+  return '↻ alle '+months+' Monate';
+}
 function trainingDueDate(t){
   if(t.valid_until)return t.valid_until;
-  const type=trainingTypeById(t.type_id);
-  return t.status==='completed'&&type?.interval_months?addMonthsISO(t.end_date,type.interval_months):null;
+  const months=trainingRecurrenceMonths(t)||Number(trainingTypeById(t.type_id)?.interval_months||0);
+  return t.status==='completed'&&months&&t.end_date?addMonthsISO(t.end_date,months):null;
 }
 function trainingDueState(t){
   const due=trainingDueDate(t);if(!due||t.status==='cancelled')return '';
@@ -1442,6 +1452,42 @@ function trainingVisibleEmployees(){
   if(sessionRole==='employee')return state.employees.filter(e=>e.id===sessionEmployeeId);
   return [...state.employees].sort((a,b)=>a.order-b.order);
 }
+function trainingProjectionForYear(t,year){
+  const months=trainingRecurrenceMonths(t);
+  if(!months||!t.recurring)return [];
+  const baseYear=Number(t.training_year||(t.start_date||'').slice(0,4));
+  if(!baseYear||year<=baseYear)return [];
+  const out=[];
+  if(t.date_precision==='year'){
+    let cursor=new Date(baseYear,0,1,12);
+    for(let i=0;i<240;i++){
+      cursor.setMonth(cursor.getMonth()+months);
+      const y=cursor.getFullYear();
+      if(y>year)break;
+      if(y===year){out.push({...t,id:'virtual:'+t.id+':'+y,_virtual:true,_sourceId:t.id,training_year:y,start_date:null,end_date:null,status:'planned'});break}
+    }
+  }else if(t.start_date&&t.end_date){
+    let start=t.start_date,end=t.end_date;
+    for(let i=0;i<240;i++){
+      start=addMonthsISO(start,months);end=addMonthsISO(end,months);
+      if(!start||!end)break;
+      const sy=Number(start.slice(0,4)),ey=Number(end.slice(0,4));
+      if(sy>year&&ey>year)break;
+      if(sy<=year&&ey>=year){out.push({...t,id:'virtual:'+t.id+':'+start,_virtual:true,_sourceId:t.id,start_date:start,end_date:end,training_year:Number(start.slice(0,4)),status:'planned'});break}
+    }
+  }
+  return out;
+}
+function trainingItemsWithProjections(year=trainingYear){
+  const real=[...trainings];
+  const projections=trainings.flatMap(t=>trainingProjectionForYear(t,year)).filter(v=>{
+    return !trainings.some(r=>r.employee_id===v.employee_id&&r.id!==v._sourceId&&(
+      (v.date_precision==='year'&&r.date_precision==='year'&&Number(r.training_year)===Number(v.training_year)&&r.title===v.title)
+      ||(v.date_precision!=='year'&&r.start_date===v.start_date&&r.title===v.title)
+    ));
+  });
+  return real.concat(projections);
+}
 function trainingIntersectsYear(t,year=trainingYear){
   const due=trainingDueDate(t);
   if(t.date_precision==='year')return Number(t.training_year)===Number(year)||(due&&due.startsWith(String(year)+'-'));
@@ -1452,7 +1498,7 @@ function filteredTrainings(){
   const search=(document.getElementById('trainingSearchInput')?.value||'').trim().toLowerCase();
   const empFilter=sessionRole==='employee'?sessionEmployeeId:(document.getElementById('trainingEmployeeFilter')?.value||'');
   const status=document.getElementById('trainingStatusFilter')?.value||'';
-  return trainings.filter(t=>{
+  return trainingItemsWithProjections(trainingYear).filter(t=>{
     if(!trainingIntersectsYear(t))return false;
     if(empFilter&&t.employee_id!==empFilter)return false;
     if(search&&!([t.title,t.category,t.provider,trainingEmployeeName(t.employee_id)].join(' ').toLowerCase().includes(search)))return false;
