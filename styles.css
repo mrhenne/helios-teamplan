@@ -1481,3 +1481,28 @@ body.dark-mode .vacation-preview-main strong{
     min-width:82px
   }
 }
+
+
+/* Urlaub Gesamt / Anteilig klar unterscheiden */
+.vacation-mode{padding:2px!important;border-radius:9px!important;background:rgba(112,137,128,.08)}
+.vacation-mode .segment{min-width:52px;height:25px!important;border-radius:7px!important;font-size:7.5px!important;font-weight:800!important}
+body.vacation-mode-full #vacationFullBtn.active{background:#dff1ea!important;color:#116a55!important}
+body.vacation-mode-actual #vacationActualBtn.active{background:#e5eff9!important;color:#3d668d!important}
+body.dark-mode.vacation-mode-full #vacationFullBtn.active{background:#1d493d!important;color:#9ce0c8!important}
+body.dark-mode.vacation-mode-actual #vacationActualBtn.active{background:#243b50!important;color:#a7c9e8!important}
+.vacation-stat-line{display:flex;align-items:center;justify-content:flex-end;gap:4px}
+.vacation-factor-badge{display:inline-flex;align-items:center;justify-content:center;min-height:14px;padding:0 4px;border-radius:999px;background:#e5eff9;color:#426b91;font-size:5.8px;font-weight:900}
+body.dark-mode .vacation-factor-badge{background:#243b50;color:#a7c9e8}
+.cell-code.weighted-u{position:relative;padding-right:13px!important;background:#dfeaf5!important;color:#315f88!important}
+.cell-code .u-weight{position:absolute;right:2px;top:2px;min-width:9px;height:9px;padding:0 1px;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.72);color:#315f88;font-size:4.4px!important;font-weight:900!important;line-height:1!important;margin:0!important}
+body.dark-mode .cell-code.weighted-u{background:#253d52!important;color:#b3d1ea!important}
+body.dark-mode .cell-code .u-weight{background:rgba(15,29,38,.72);color:#b3d1ea}
+.vacation-summary.full td{background:#edf6f2!important}
+.vacation-summary.actual td{background:#edf3fa!important;color:#355f85!important}
+.vacation-summary.actual .employee-col{color:#426b91!important}
+body.dark-mode .vacation-summary.full td{background:#183128!important}
+body.dark-mode .vacation-summary.actual td{background:#1d3043!important;color:#a7c9e8!important}
+body.dark-mode .vacation-summary.actual .employee-col{color:#a7c9e8!important}
+body.planner-zoom-small .cell-code.weighted-u{padding-right:9px!important}
+body.planner-zoom-small .cell-code .u-weight{right:1px;top:1px;transform:scale(.85);transform-origin:top right}
+body.planner-zoom-tiny .cell-code .u-weight,body.planner-zoom-tiny .vacation-factor-badge{display:none}
