@@ -4057,3 +4057,55 @@ body.dark-mode .project-note-card.info{background:#1c4439}
   .projects-calendar-body{overflow-x:auto}
   .projects-calendar-year{grid-template-columns:1fr}
 }
+
+
+/* === 2026-10-01 PROJECT MOBILE NAV HARDENING === */
+.projects-view-switch .segment{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:4px!important;
+}
+.projects-view-switch .segment .ui-icon{
+  width:11px!important;
+  height:11px!important;
+  flex:0 0 11px!important;
+}
+@media(max-width:700px){
+  .projects-view-switch{
+    width:100%!important;
+    max-width:100%!important;
+    display:grid!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:3px!important;
+    padding:2px!important;
+    overflow:visible!important;
+  }
+  .projects-view-switch .segment{
+    width:100%!important;
+    min-width:0!important;
+    height:30px!important;
+    padding:0 5px!important;
+    overflow:hidden!important;
+    white-space:nowrap!important;
+    position:static!important;
+    transform:none!important;
+  }
+  .projects-view-switch .segment span{
+    min-width:0!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+}
+@media(max-width:430px){
+  .projects-view-switch .segment{
+    font-size:7.5px!important;
+    gap:3px!important;
+  }
+  .projects-view-switch .segment .ui-icon{
+    width:10px!important;
+    height:10px!important;
+    flex:0 0 10px!important;
+  }
+}
