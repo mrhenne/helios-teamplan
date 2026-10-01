@@ -5671,7 +5671,7 @@ body.dark-mode .project-dialog-task{background:#172723}
 .topbar{
   box-sizing:border-box!important;
 }
-@media(min-width:1200px){
+@media(min-width:1500px){
   .topbar{
     display:flex!important;
     flex-direction:row!important;
@@ -5817,7 +5817,7 @@ body.dark-mode .project-dialog-task{background:#172723}
   }
 }
 
-@media(min-width:1000px) and (max-width:1199px){
+@media(min-width:1000px) and (max-width:1499px){
   .topbar{
     display:grid!important;
     grid-template-columns:minmax(0,1fr) auto!important;
