@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-7" />
+  <link rel="stylesheet" href="styles.css?v=20261001-8" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -67,13 +67,6 @@
         </div>
       </div>
     </header>
-
-    <section class="summary-grid">
-      <article class="metric glass"><span class="metric-label">Team</span><div class="metric-main"><strong id="metricEmployees">0</strong><small>Mitarbeitende</small></div></article>
-      <article class="metric glass"><span class="metric-label">Urlaub geplant</span><div class="metric-main"><strong id="metricVacation">0</strong><small>Tage gesamt</small></div></article>
-      <article class="metric glass"><span class="metric-label">XU geplant</span><div class="metric-main"><strong id="metricXU">0</strong><small>Wunsch-Wochenenden</small></div></article>
-      <article class="metric glass"><span class="metric-label">Konflikte</span><div class="metric-main"><strong id="metricConflicts">0</strong><small>aktuelle Ansicht</small></div></article>
-    </section>
 
     <section class="toolbar glass planner-controls">
   <div class="controls-row controls-primary">
@@ -396,6 +389,20 @@
     <div class="dialog-panel">
       <div class="dialog-head"><div><span class="eyebrow">PLANUNGSPRÜFUNG</span><h2>Konflikte & offene Punkte</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
       <div id="conflictsSummary" class="conflict-summary"></div>
+      <div class="conflict-tools">
+        <div class="segmented conflict-type-filter" aria-label="Konfliktart filtern">
+          <button type="button" class="segment active" data-conflict-filter="all">Alle</button>
+          <button type="button" class="segment" data-conflict-filter="Besetzung">Besetzung</button>
+          <button type="button" class="segment" data-conflict-filter="Sperrzeit">Sperrzeit</button>
+          <button type="button" class="segment" data-conflict-filter="Offener Wunsch">Offene Wünsche</button>
+        </div>
+        <label class="conflict-sort-label">Sortierung
+          <select id="conflictSort">
+            <option value="type">nach Art</option>
+            <option value="date">nach Datum</option>
+          </select>
+        </label>
+      </div>
       <div id="conflictsList" class="management-list conflict-list"></div>
     </div>
   </dialog>
@@ -547,6 +554,6 @@
 
   <div id="cellContextMenu" class="cell-context-menu hidden" role="menu" aria-label="Schnellaktionen"></div>
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20261001-7"></script>
+  <script src="app.js?v=20261001-8"></script>
 </body>
 </html>
