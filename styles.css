@@ -4152,3 +4152,436 @@ body.dark-mode .project-note-card.info{background:#1c4439}
   #projectsTeamBtn{grid-column:2!important;grid-row:2!important}
   #projectsNotesBtn{grid-column:3!important;grid-row:2!important}
 }
+
+
+/* === 2026-10-01 MANAGEMENT UI CLEANUP === */
+/* Projektmanagement: warme Amber/Orange-Familie als drittes Modul */
+:root{
+  --project-accent:#d8891c;
+  --project-accent-dark:#a9600b;
+  --project-soft:#fff0d7;
+  --project-soft-2:#f8dfb6;
+}
+.module-tab.projects-tab.active{
+  background:linear-gradient(135deg,#fff6e8,#ffe6bc)!important;
+  color:var(--project-accent-dark)!important;
+  border-color:rgba(216,137,28,.24)!important;
+}
+.projects-tab.active .module-tab-icon{
+  background:#f7d7a4!important;
+  color:var(--project-accent-dark)!important;
+}
+body.projects-module-active .projects-heading .eyebrow,
+body.projects-module-active .projects-heading strong{
+  color:var(--project-accent-dark)!important;
+}
+body.projects-module-active .projects-view-switch .segment.active{
+  background:var(--project-soft)!important;
+  color:var(--project-accent-dark)!important;
+}
+body.projects-module-active .aurora-a{background:#e9aa4e!important}
+body.dark-mode .module-tab.projects-tab.active{
+  background:#4b351b!important;
+  color:#ffd18e!important;
+}
+body.dark-mode.projects-module-active .projects-view-switch .segment.active{
+  background:#4b351b!important;
+  color:#ffd18e!important;
+}
+
+/* Kopfzeile Desktop: wirklich eine kompakte Zeile */
+@media(min-width:1101px){
+  .topbar{
+    min-height:52px!important;
+    height:52px!important;
+    padding:6px 9px!important;
+    gap:10px!important;
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    flex-wrap:nowrap!important;
+    overflow:visible!important;
+  }
+  .brand{
+    flex:0 0 auto!important;
+    min-width:0!important;
+    gap:8px!important;
+  }
+  .brand-mark{
+    width:32px!important;
+    height:32px!important;
+    border-radius:9px!important;
+    font-size:16px!important;
+  }
+  .brand-copy{min-width:104px!important}
+  .brand-copy .eyebrow{display:none!important}
+  .brand-copy h1{
+    font-size:12px!important;
+    line-height:1.05!important;
+    white-space:nowrap!important;
+  }
+  .top-global{
+    flex:1 1 auto!important;
+    min-width:0!important;
+    width:auto!important;
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    gap:6px!important;
+    overflow:visible!important;
+  }
+  .top-status-grid,
+  .top-action-grid{
+    display:flex!important;
+    grid-template-columns:none!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    width:auto!important;
+    min-width:0!important;
+    gap:5px!important;
+  }
+  .top-status-item,
+  .top-action-section{
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    min-width:0!important;
+    width:auto!important;
+    height:32px!important;
+    padding:0!important;
+    margin:0!important;
+    border:0!important;
+    background:transparent!important;
+  }
+  .top-slot-label{display:none!important}
+  .top-status-item .sync-pill{
+    height:30px!important;
+    min-height:30px!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    padding:0 8px!important;
+    border-radius:8px!important;
+    font-size:7.5px!important;
+    line-height:1!important;
+    white-space:nowrap!important;
+  }
+  #authUserPill{
+    max-width:180px!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  .role-stack{
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    width:auto!important;
+    min-width:0!important;
+  }
+  .role-stack .role-select{
+    width:92px!important;
+    min-width:92px!important;
+    max-width:92px!important;
+    height:30px!important;
+    padding:0 22px 0 8px!important;
+    border-radius:8px!important;
+    font-size:7.5px!important;
+  }
+  .top-action-row{
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    gap:4px!important;
+    width:auto!important;
+    min-width:0!important;
+  }
+  .top-tool,
+  .global-theme-control{
+    height:30px!important;
+    min-height:30px!important;
+    border-radius:8px!important;
+  }
+  .top-tool{
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+    padding:0 8px!important;
+    gap:4px!important;
+    font-size:7.5px!important;
+    white-space:nowrap!important;
+  }
+  .top-tool .ui-icon{width:11px!important;height:11px!important}
+  .global-theme-control{
+    min-width:74px!important;
+    width:auto!important;
+    padding:0 6px!important;
+    gap:4px!important;
+  }
+  .global-theme-control>.ui-icon{width:11px!important;height:11px!important}
+  .theme-switch{
+    min-width:48px!important;
+    height:22px!important;
+    font-size:7px!important;
+  }
+  .team-section,
+  .appearance-section,
+  .account-section{
+    width:auto!important;
+    min-width:0!important;
+  }
+}
+
+/* Tablet bleibt zweizeilig, aber deutlich kompakter */
+@media(max-width:1100px){
+  .topbar{padding:8px 10px!important;gap:7px!important}
+  .brand-mark{width:34px!important;height:34px!important}
+  .brand-copy h1{font-size:13px!important}
+  .top-global{gap:5px!important}
+  .top-status-grid,.top-action-grid{gap:5px!important}
+  .top-tool{min-height:30px!important}
+}
+
+/* Urlaubssteuerung: ruhige, kompakte Hierarchie */
+#vacationToolbar.planner-controls{
+  padding:8px!important;
+  gap:5px!important;
+  border-radius:14px!important;
+  margin-bottom:8px!important;
+}
+#vacationToolbar .controls-row{
+  min-height:31px!important;
+  gap:5px!important;
+  align-items:center!important;
+}
+#vacationToolbar .controls-primary{
+  display:flex!important;
+  flex-wrap:wrap!important;
+}
+#vacationToolbar .controls-secondary{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  padding-top:5px!important;
+  border-top:1px solid var(--line)!important;
+}
+#vacationToolbar .calendar-heading{
+  min-width:94px!important;
+  margin-right:2px!important;
+}
+#vacationToolbar .calendar-heading strong{font-size:11px!important}
+#vacationToolbar .calendar-heading span{font-size:7px!important}
+#vacationToolbar .control-caption{
+  font-size:6px!important;
+  letter-spacing:.05em!important;
+  margin:0 3px 0 0!important;
+  white-space:nowrap!important;
+}
+#vacationToolbar .date-nav-block,
+#vacationToolbar .control-block{
+  min-height:28px!important;
+  height:28px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:2px!important;
+  padding:0 3px!important;
+  border-radius:8px!important;
+}
+#vacationToolbar .date-select{
+  height:26px!important;
+  min-height:26px!important;
+  padding:0 20px 0 6px!important;
+  font-size:7.5px!important;
+  border-radius:7px!important;
+}
+#vacationToolbar .date-nav-block .icon-btn{
+  width:25px!important;
+  min-width:25px!important;
+  height:25px!important;
+  min-height:25px!important;
+  border-radius:7px!important;
+  font-size:14px!important;
+}
+#vacationToolbar .view-switch,
+#vacationToolbar .vacation-mode{
+  height:28px!important;
+  padding:2px!important;
+  border-radius:8px!important;
+}
+#vacationToolbar .view-switch .segment,
+#vacationToolbar .vacation-mode .segment{
+  height:23px!important;
+  min-height:23px!important;
+  padding:0 7px!important;
+  font-size:7px!important;
+  border-radius:6px!important;
+}
+#vacationToolbar .today-btn,
+#vacationToolbar .view-tool-btn,
+#vacationToolbar #addEmployeeBtn,
+#vacationToolbar #vacationToolsToggle{
+  height:28px!important;
+  min-height:28px!important;
+  padding:0 8px!important;
+  border-radius:8px!important;
+  font-size:7.5px!important;
+}
+#vacationToolbar .view-tool-btn .ui-icon,
+#vacationToolbar #addEmployeeBtn .ui-icon,
+#vacationToolbar #vacationToolsToggle .ui-icon{
+  width:11px!important;height:11px!important
+}
+#vacationToolbar .zoom-block{
+  gap:2px!important;
+  min-width:168px!important;
+}
+#vacationToolbar .zoom-block #zoomRange{
+  width:74px!important;
+  min-width:74px!important;
+  height:14px!important;
+  padding:0!important;
+}
+#vacationToolbar .zoom-btn{
+  min-width:23px!important;
+  width:23px!important;
+  height:23px!important;
+  font-size:13px!important;
+}
+#vacationToolbar #zoomLabel{
+  min-width:31px!important;
+  font-size:7px!important;
+  text-align:right!important;
+}
+#vacationToolbar .compact-employee-search{
+  width:150px!important;
+  min-width:120px!important;
+  height:28px!important;
+  padding:0 8px!important;
+  font-size:7.5px!important;
+  border-radius:8px!important;
+}
+#vacationToolbar #fitEmployeesBtn{padding:0 7px!important}
+.vacation-mode-block{min-width:auto!important}
+
+/* Werkzeuge standardmäßig eingeklappt */
+.vacation-tools-head{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  min-height:28px;
+  padding-top:4px;
+  border-top:1px solid var(--line);
+}
+.vacation-tools-hint{
+  font-size:6.5px;
+  color:var(--muted);
+}
+.vacation-tools-chevron{
+  font-size:9px;
+  transition:transform .18s ease;
+}
+#vacationToolsToggle[aria-expanded="true"] .vacation-tools-chevron{transform:rotate(180deg)}
+.vacation-tools-collapsed{display:none!important}
+#vacationToolsRow{
+  padding:5px 0 2px!important;
+  gap:4px!important;
+}
+#vacationToolsRow .module-tool-btn{
+  min-height:27px!important;
+  height:27px!important;
+  padding:0 7px!important;
+  border-radius:7px!important;
+  font-size:7px!important;
+}
+#vacationToolsRow .module-tools-label{
+  font-size:6.5px!important;
+}
+
+/* Mitarbeiterinformationen nach Bedarf */
+.employee-info-control{position:relative;display:inline-flex}
+.employee-info-menu{
+  position:absolute;
+  z-index:50;
+  top:34px;
+  left:0;
+  width:205px;
+  padding:9px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:rgba(251,253,252,.98);
+  box-shadow:0 12px 30px rgba(16,52,44,.16);
+}
+.employee-info-menu strong{
+  display:block;
+  margin-bottom:6px;
+  font-size:8px;
+}
+.employee-info-menu label{
+  display:flex!important;
+  grid-template-columns:none!important;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  font-size:7.5px;
+  font-weight:700;
+  cursor:pointer;
+}
+.employee-info-menu input{width:14px!important;height:14px!important;margin:0!important}
+body.dark-mode .employee-info-menu{
+  background:#172723;
+  border-color:rgba(200,235,226,.12);
+}
+.employee-meta{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  gap:3px 6px!important;
+}
+.employee-meta-part.hidden-info{display:none!important}
+.employee-stat-main.hidden-info,
+.employee-stat-remain.hidden-info{display:none!important}
+.employee-card.employee-info-minimal{
+  grid-template-columns:18px minmax(0,1fr)!important;
+}
+.employee-card.employee-info-minimal .employee-stats{display:none!important}
+
+/* Legende schmaler */
+#vacationToolbar .controls-legend{
+  min-height:24px!important;
+  padding-top:4px!important;
+  gap:6px!important;
+  border-top:1px solid var(--line)!important;
+}
+#vacationToolbar .controls-legend>span{
+  font-size:6.5px!important;
+  gap:3px!important;
+}
+#vacationToolbar .controls-legend .chip{
+  height:17px!important;
+  min-width:18px!important;
+  font-size:7px!important;
+  border-radius:5px!important;
+}
+
+/* Mobile und Tablet: logisch stapeln, keine wilden Skalierungen */
+@media(max-width:900px){
+  #vacationToolbar .controls-primary,
+  #vacationToolbar .controls-secondary{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:5px!important;
+  }
+  #vacationToolbar .calendar-heading,
+  #vacationToolbar .controls-spacer{display:none!important}
+  #vacationToolbar .date-nav-block,
+  #vacationToolbar .control-block,
+  #vacationToolbar .view-switch,
+  #vacationToolbar .today-btn,
+  #vacationToolbar .view-tool-btn,
+  #vacationToolbar .employee-info-control,
+  #vacationToolbar .compact-employee-search,
+  #vacationToolbar #addEmployeeBtn{
+    width:100%!important;
+    min-width:0!important;
+  }
+  #vacationToolbar .zoom-block #zoomRange{flex:1!important;width:auto!important;min-width:45px!important}
+  .employee-info-menu{left:auto;right:0}
+  .vacation-tools-hint{display:none}
+}
