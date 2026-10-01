@@ -751,3 +751,19 @@ body.planner-focus #planner.pan-mode.panning *{cursor:grabbing!important}
   .focus-zoom span{min-width:30px}
   .focus-zoom button{width:23px!important;height:25px!important}
 }
+
+/* Live-Präsenz */
+.online-pill{background:#e3f5ee!important;color:#126b56!important}
+.presence-dot{
+  display:inline-block;width:7px;height:7px;border-radius:50%;
+  margin-right:6px;vertical-align:1px;background:#c7d1cd;
+  box-shadow:0 0 0 2px rgba(140,158,152,.12)
+}
+.presence-dot.online{
+  background:#2fb77f;
+  box-shadow:0 0 0 2px rgba(47,183,127,.14),0 0 8px rgba(47,183,127,.42)
+}
+.employee-row.employee-online .employee-name{font-weight:800}
+body.dark-mode .online-pill{background:#1d4a3c!important;color:#9de1ca!important}
+body.dark-mode .presence-dot{background:#60736d}
+body.dark-mode .presence-dot.online{background:#5bd2a4}
