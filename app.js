@@ -58,6 +58,8 @@ let discussions = [];
 let activeDiscussionId = null;
 let discussionFilter = 'open';
 let unreadDiscussionIds = new Set();
+let conflictFilter = 'all';
+let conflictSort = 'type';
 let focusPanMode = false;
 let focusPanning = false;
 let focusPanStartX = 0;
@@ -515,7 +517,11 @@ function absenceNamesRow(dates){
   return s+'</tr>';
 }
 function renderMetrics(){
-  document.getElementById('metricEmployees').textContent=state.employees.length; document.getElementById('metricVacation').textContent=state.employees.reduce((a,e)=>a+usedVacation(e),0); document.getElementById('metricXU').textContent=state.employees.reduce((a,e)=>a+countCode(e,'XU'),0); document.getElementById('metricConflicts').textContent=activePlannerDates().filter(d=>{const c=conflictLevel(dateKey(d));return c.vacation||c.total}).length;
+  const employees=document.getElementById('metricEmployees');if(!employees)return;
+  employees.textContent=state.employees.length;
+  document.getElementById('metricVacation').textContent=state.employees.reduce((a,e)=>a+usedVacation(e),0);
+  document.getElementById('metricXU').textContent=state.employees.reduce((a,e)=>a+countCode(e,'XU'),0);
+  document.getElementById('metricConflicts').textContent=activePlannerDates().filter(d=>{const c=conflictLevel(dateKey(d));return c.vacation||c.total}).length;
 }
 
 function syncViewControls(){
@@ -1264,8 +1270,16 @@ function conflictItems(year=viewDate.getFullYear()){
 function renderConflicts(){
   const items=conflictItems(),summary=document.getElementById('conflictsSummary'),list=document.getElementById('conflictsList');
   const counts=items.reduce((a,x)=>(a[x.type]=(a[x.type]||0)+1,a),{});
-  summary.innerHTML=`<div><strong>${items.length}</strong><span>gesamt</span></div><div><strong>${counts['Besetzung']||0}</strong><span>Besetzung</span></div><div><strong>${counts['Sperrzeit']||0}</strong><span>Sperrzeiten</span></div><div><strong>${counts['Offener Wunsch']||0}</strong><span>offene Wünsche</span></div>`;
-  list.innerHTML=items.length?items.slice(0,500).map(x=>`<div class="management-item conflict-item" data-date="${x.key}" data-type="${escapeHtml(x.type)}"><button type="button" class="conflict-jump"><div><strong>${x.key} · ${escapeHtml(x.type)}</strong><span>${escapeHtml(x.text)}</span></div></button>${canDiscuss()?'<button type="button" class="btn ghost conflict-discuss">✉ Chat</button>':''}</div>`).join(''):'<div class="empty-state success-state">Keine Konflikte gefunden.</div>';
+  summary.innerHTML=`<button type="button" data-summary-filter="all" class="${conflictFilter==='all'?'active':''}"><strong>${items.length}</strong><span>gesamt</span></button><button type="button" data-summary-filter="Besetzung" class="${conflictFilter==='Besetzung'?'active':''}"><strong>${counts['Besetzung']||0}</strong><span>Besetzung</span></button><button type="button" data-summary-filter="Sperrzeit" class="${conflictFilter==='Sperrzeit'?'active':''}"><strong>${counts['Sperrzeit']||0}</strong><span>Sperrzeiten</span></button><button type="button" data-summary-filter="Offener Wunsch" class="${conflictFilter==='Offener Wunsch'?'active':''}"><strong>${counts['Offener Wunsch']||0}</strong><span>offene Wünsche</span></button>`;
+  document.querySelectorAll('[data-conflict-filter]').forEach(b=>b.classList.toggle('active',b.dataset.conflictFilter===conflictFilter));
+  const sortSelect=document.getElementById('conflictSort');if(sortSelect)sortSelect.value=conflictSort;
+  let visible=conflictFilter==='all'?[...items]:items.filter(x=>x.type===conflictFilter);
+  const order={'Besetzung':0,'Sperrzeit':1,'Offener Wunsch':2};
+  visible.sort((a,b)=>conflictSort==='date'
+    ? a.key.localeCompare(b.key)||(order[a.type]??9)-(order[b.type]??9)
+    : (order[a.type]??9)-(order[b.type]??9)||a.key.localeCompare(b.key));
+  list.innerHTML=visible.length?visible.slice(0,500).map(x=>`<div class="management-item conflict-item conflict-type-${x.type==='Besetzung'?'staffing':x.type==='Sperrzeit'?'blackout':'wish'}" data-date="${x.key}" data-type="${escapeHtml(x.type)}"><span class="conflict-kind">${escapeHtml(x.type)}</span><button type="button" class="conflict-jump"><div><strong>${x.key}</strong><span>${escapeHtml(x.text)}</span></div></button>${canDiscuss()?'<button type="button" class="btn ghost conflict-discuss">✉ Chat</button>':''}</div>`).join(''):'<div class="empty-state success-state">Keine Einträge für diesen Filter.</div>';
+  summary.querySelectorAll('[data-summary-filter]').forEach(btn=>btn.addEventListener('click',()=>{conflictFilter=btn.dataset.summaryFilter;renderConflicts()}));
   list.querySelectorAll('.conflict-jump').forEach(btn=>btn.addEventListener('click',()=>{const item=btn.closest('.conflict-item'),d=new Date(item.dataset.date+'T12:00:00');viewDate=new Date(d.getFullYear(),d.getMonth(),1);currentView='month';document.getElementById('conflictsDialog').close();render()}));
   list.querySelectorAll('.conflict-discuss').forEach(btn=>btn.addEventListener('click',()=>{const item=btn.closest('.conflict-item');document.getElementById('conflictsDialog').close();openNewDiscussion({date:item.dataset.date,title:item.dataset.type+' · '+item.dataset.date,message:'Bitte hierzu im Team abstimmen.'})}));
 }
@@ -1444,6 +1458,8 @@ document.getElementById('discussionMessageForm').addEventListener('submit',e=>{e
 document.getElementById('usersBtn').addEventListener('click',openUsersDialog);
 document.getElementById('accountSaveBtn').addEventListener('click',saveMyAccount);
 document.getElementById('undoBtn').addEventListener('click',undoLastAction);
+document.querySelectorAll('[data-conflict-filter]').forEach(btn=>btn.addEventListener('click',()=>{conflictFilter=btn.dataset.conflictFilter;renderConflicts()}));
+document.getElementById('conflictSort').addEventListener('change',e=>{conflictSort=e.target.value;renderConflicts()});
 document.addEventListener('click',e=>{const btn=e.target.closest('[data-tool-action]');if(btn){e.preventDefault();runToolAction(btn.dataset.toolAction)}});
 document.getElementById('userInviteForm').addEventListener('submit',async e=>{
   e.preventDefault();
