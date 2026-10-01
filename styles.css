@@ -1853,3 +1853,137 @@ body.dark-mode .training-chip{
   background:#253d52!important;
   color:#b3d1ea!important
 }
+
+
+/* Fortbildungsmodul strikt von der Urlaubsplanung trennen */
+body.training-module-active #vacationToolbar,
+body.training-module-active #monthView,
+body.training-module-active #yearView,
+body.training-module-active #vacationHint,
+body.training-module-active #plannerFocusControls{
+  display:none!important
+}
+
+/* Fortbildungs-Fokusmodus */
+body.training-focus{
+  overflow:hidden
+}
+body.training-focus .topbar,
+body.training-focus .module-switch,
+body.training-focus .training-filterbar,
+body.training-focus .training-hint{
+  display:none!important
+}
+body.training-focus .app-shell{
+  max-width:none!important;
+  width:100%!important;
+  height:100vh;
+  padding:7px!important;
+  box-sizing:border-box
+}
+body.training-focus #trainingModule{
+  display:grid!important;
+  height:calc(100vh - 14px);
+  grid-template-rows:auto 1fr;
+  gap:7px
+}
+body.training-focus .training-toolbar{
+  margin:0!important;
+  min-height:44px!important;
+  padding:7px 9px!important;
+  border-radius:11px!important
+}
+body.training-focus .training-view{
+  min-height:0;
+  overflow:auto
+}
+body.training-focus #trainingOverviewView{
+  display:grid;
+  grid-template-rows:auto 1fr;
+  gap:7px;
+  overflow:hidden
+}
+body.training-focus .training-content-grid{
+  min-height:0
+}
+body.training-focus .training-panel{
+  min-height:0;
+  display:flex;
+  flex-direction:column
+}
+body.training-focus .training-list{
+  flex:1;
+  max-height:none!important
+}
+body.training-focus #trainingCalendarView,
+body.training-focus #trainingEmployeesView{
+  overflow:auto;
+  padding-bottom:3px
+}
+body.training-focus #trainingFocusBtn{
+  display:none!important
+}
+body.training-focus #trainingExitFocusBtn{
+  display:inline-flex!important
+}
+
+/* Jahresplanung ohne konkreten Termin */
+.training-year-only-toggle{
+  padding:7px 8px;
+  border-radius:9px;
+  background:rgba(72,112,150,.07);
+  border:1px solid rgba(72,112,150,.12)
+}
+.training-year-only-toggle>span{
+  display:flex;align-items:center;gap:7px;
+  font-size:8px;font-weight:750;color:#45688d
+}
+.training-year-only-toggle input{
+  min-height:0!important;
+  width:14px;height:14px;padding:0!important
+}
+.training-entry.year-only .training-entry-date{
+  background:#edf0f6;color:#536a84;
+  border:1px dashed rgba(83,106,132,.22)
+}
+.training-entry.year-only .training-entry-date strong{
+  font-size:14px
+}
+.training-undated{
+  grid-column:1/-1;
+  padding:9px;
+  border-radius:13px;
+  border:1px dashed rgba(72,112,150,.28)!important;
+  background:rgba(232,239,247,.55)!important
+}
+.training-undated .training-month-items{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:4px
+}
+.training-month-item.undated{
+  border-left:3px solid #7897b5;
+  background:rgba(255,255,255,.7)
+}
+body.dark-mode .training-year-only-toggle{
+  background:#213544;border-color:rgba(150,190,220,.13)
+}
+body.dark-mode .training-year-only-toggle>span{color:#aecce6}
+body.dark-mode .training-entry.year-only .training-entry-date{
+  background:#263746;color:#b2cbe1;border-color:rgba(178,203,225,.18)
+}
+body.dark-mode .training-undated{
+  background:#182934!important;
+  border-color:rgba(150,190,220,.2)!important
+}
+body.dark-mode .training-month-item.undated{background:#172723}
+
+@media(max-width:1000px){
+  .training-undated .training-month-items{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:700px){
+  body.training-focus .app-shell{padding:4px!important}
+  body.training-focus #trainingModule{height:calc(100vh - 8px)}
+  body.training-focus .training-toolbar{padding:6px!important}
+  .training-undated .training-month-items{grid-template-columns:1fr}
+}
