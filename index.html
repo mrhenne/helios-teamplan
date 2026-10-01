@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-28" />
+  <link rel="stylesheet" href="styles.css?v=20261001-24" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -46,37 +46,68 @@
     <header class="topbar glass">
       <div class="brand">
         <div class="brand-mark">H</div>
-        <div>
+        <div class="brand-copy">
           <div class="eyebrow">HELIOS INSPIRED · TEAMPLAN</div>
           <h1 id="appTitle">TeamPlan ZNA</h1>
         </div>
       </div>
-      <div class="top-actions organized-actions">
-        <div class="status-cluster">
-          <div id="syncPill" class="sync-pill local">● Lokal</div>
-          <div id="authUserPill" class="sync-pill hidden"></div>
-          <div id="onlinePill" class="sync-pill online-pill hidden" title="Aktuell aktive Nutzer">● 0 online</div>
-          <div class="role-stack">
-            <select id="roleSelect" class="role-select" title="Arbeitsmodus">
-              <option value="admin">Admin</option>
-              <option value="planner">Planer</option>
-              <option value="employee">Mitarbeiter</option>
-              <option value="viewer">Nur Lesen</option>
-            </select>
-            <select id="roleEmployeeSelect" class="role-select hidden" title="Mitarbeiter auswählen"></select>
+
+      <div class="top-global">
+        <div class="top-status-grid">
+          <div class="top-status-item sync-slot">
+            <span class="top-slot-label">Status</span>
+            <div id="syncPill" class="sync-pill local">● Lokal</div>
+          </div>
+
+          <div class="top-status-item user-slot">
+            <span class="top-slot-label">Angemeldet</span>
+            <div id="authUserPill" class="sync-pill hidden"></div>
+          </div>
+
+          <div class="top-status-item online-slot">
+            <span class="top-slot-label">Online</span>
+            <div id="onlinePill" class="sync-pill online-pill hidden" title="Aktuell aktive Nutzer">● 0 online</div>
+          </div>
+
+          <div class="top-status-item role-slot">
+            <span class="top-slot-label">Rolle</span>
+            <div class="role-stack">
+              <select id="roleSelect" class="role-select" title="Arbeitsmodus">
+                <option value="admin">Admin</option>
+                <option value="planner">Planer</option>
+                <option value="employee">Mitarbeiter</option>
+                <option value="viewer">Nur Lesen</option>
+              </select>
+              <select id="roleEmployeeSelect" class="role-select hidden" title="Mitarbeiter auswählen"></select>
+            </div>
           </div>
         </div>
-        <div class="action-groups">
-          <div class="action-group" aria-label="Team">
-            <span class="action-group-label">Team</span>
-            <button id="usersBtn" class="top-tool hidden" title="Benutzer verwalten"><svg class="ui-icon"><use href="#i-users"></use></svg><span>Benutzer</span></button>
-            <button id="roleHelpBtn" class="top-tool" data-tool-action="roles" title="Rollen und Rechte"><svg class="ui-icon"><use href="#i-role"></use></svg><span>Rollen</span></button>
+
+        <div class="top-action-grid">
+          <div class="top-action-section team-section">
+            <span class="top-slot-label">Team</span>
+            <div class="top-action-row">
+              <button id="usersBtn" class="top-tool hidden" title="Benutzer verwalten"><svg class="ui-icon"><use href="#i-users"></use></svg><span>Benutzer</span></button>
+              <button id="roleHelpBtn" class="top-tool" data-tool-action="roles" title="Rollen und Rechte"><svg class="ui-icon"><use href="#i-role"></use></svg><span>Rollen</span></button>
+            </div>
           </div>
-          <div class="action-group account-group" aria-label="Konto">
-            <span class="action-group-label">Konto</span>
-            <div class="global-theme-control" title="Darstellung global ändern"><svg class="ui-icon"><use href="#i-sun"></use></svg><button id="themeBtn" class="theme-switch" type="button"><span class="theme-switch-knob"></span><b id="themeLabel">Hell</b></button></div>
-            <button id="settingsBtn" class="top-tool primary-tool" title="Einstellungen"><svg class="ui-icon"><use href="#i-settings"></use></svg><span>Einstellungen</span></button>
-            <button id="logoutBtn" class="top-tool hidden" title="Abmelden"><svg class="ui-icon"><use href="#i-logout"></use></svg><span>Abmelden</span></button>
+
+          <div class="top-action-section appearance-section">
+            <span class="top-slot-label">Darstellung</span>
+            <div class="top-action-row">
+              <div class="global-theme-control" title="Darstellung global ändern">
+                <svg class="ui-icon"><use href="#i-sun"></use></svg>
+                <button id="themeBtn" class="theme-switch" type="button"><span class="theme-switch-knob"></span><b id="themeLabel">Hell</b></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="top-action-section account-section">
+            <span class="top-slot-label">Konto</span>
+            <div class="top-action-row">
+              <button id="settingsBtn" class="top-tool primary-tool" title="Einstellungen"><svg class="ui-icon"><use href="#i-settings"></use></svg><span>Einstellungen</span></button>
+              <button id="logoutBtn" class="top-tool hidden" title="Abmelden"><svg class="ui-icon"><use href="#i-logout"></use></svg><span>Abmelden</span></button>
+            </div>
           </div>
         </div>
       </div>
@@ -771,6 +802,6 @@
 
   <div id="cellContextMenu" class="cell-context-menu hidden" role="menu" aria-label="Schnellaktionen"></div>
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20261001-28"></script>
+  <script src="app.js?v=20261001-24"></script>
 </body>
 </html>
