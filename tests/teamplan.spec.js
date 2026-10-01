@@ -236,7 +236,7 @@ test('Projektmanagement Modul funktioniert lokal', async ({ page }) => {
   await expect(page.locator('#vacationToolbar')).toBeHidden();
   await expect(page.locator('#trainingModule')).toBeHidden();
 
-  for (const id of ['projectsOverviewBtn','projectsRoadmapBtn','projectsBoardBtn','projectsCalendarBtn','projectsTeamBtn','projectsNotesBtn']) {
+  for (const id of ['projectsOverviewBtn','projectsMyBtn','projectsRoadmapBtn','projectsBoardBtn','projectsCalendarBtn','projectsTeamBtn','projectsNotesBtn']) {
     const btn=page.locator('#'+id);
     await expect(btn).toBeVisible();
     await btn.click();
@@ -353,4 +353,120 @@ test('Projekt Tabs überlappen auf kleinen Ansichten nicht', async ({ page }) =>
     return {boxes,overlaps};
   });
   expect(result.overlaps, JSON.stringify(result.boxes)).toEqual([]);
+});
+
+
+test('Urlaubssteuerung ist kompakt und Mitarbeiterinfos sind schaltbar', async ({ page }) => {
+  await bootLocal(page);
+
+  await expect(page.locator('#vacationToolsRow')).toBeHidden();
+  await page.locator('#vacationToolsToggle').click();
+  await expect(page.locator('#vacationToolsRow')).toBeVisible();
+  await page.locator('#vacationToolsToggle').click();
+  await expect(page.locator('#vacationToolsRow')).toBeHidden();
+
+  await page.locator('#employeeInfoToggle').click();
+  await expect(page.locator('#employeeInfoMenu')).toBeVisible();
+
+  await page.locator('#employeeInfoWork').check();
+  await expect(page.locator('.employee-meta-part').first()).not.toHaveClass(/hidden-info/);
+
+  await page.locator('#employeeInfoVacation').uncheck();
+  const stats = page.locator('.employee-stats').first();
+  if (await stats.count()) await expect(stats).toHaveClass(/hidden-info/);
+
+  await page.reload();
+  await page.locator('#employeeInfoToggle').click();
+  await expect(page.locator('#employeeInfoWork')).toBeChecked();
+  await expect(page.locator('#employeeInfoVacation')).not.toBeChecked();
+});
+
+test('Desktop Kopfzeile ist eine kompakte Reihe', async ({ page }) => {
+  await bootLocal(page);
+  const viewport=page.viewportSize();
+  if (!viewport || viewport.width < 1101) return;
+
+  const geometry=await page.locator('.topbar').evaluate(node=>{
+    const bar=node.getBoundingClientRect();
+    const visible=[...node.querySelectorAll('.brand,.top-status-item,.top-action-section')]
+      .filter(el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return s.display!=='none'&&r.width>0&&r.height>0})
+      .map(el=>{const r=el.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right}});
+    return {height:bar.height,top:bar.top,bottom:bar.bottom,visible};
+  });
+  expect(geometry.height).toBeLessThanOrEqual(60);
+  for(const r of geometry.visible){
+    expect(r.top).toBeGreaterThanOrEqual(geometry.top-1);
+    expect(r.bottom).toBeLessThanOrEqual(geometry.bottom+1);
+  }
+});
+
+test('Projektaufgaben unterstützen Checkliste, Kommentare und Meine Aufgaben', async ({ page }) => {
+  await bootLocal(page);
+  await page.locator('#moduleProjectsBtn').click();
+
+  await page.locator('#addProjectBtn').click();
+  await page.locator('#projectName').fill('QA Zusammenarbeit');
+  await page.locator('#projectForm button[type="submit"]').click();
+
+  await page.locator('#addTaskBtn').click();
+  await page.locator('#projectTaskTitle').fill('QA Checklistenaufgabe');
+  await page.locator('#projectTaskProject').selectOption({label:'QA Zusammenarbeit'});
+  await page.locator('#projectTaskDue').fill('2026-10-10');
+  await page.locator('#projectTaskAddChecklist').click();
+  await page.locator('#projectTaskChecklist .project-check-text').fill('Medikamente prüfen');
+  await page.locator('#projectTaskForm button[type="submit"]').click();
+
+  await page.locator('#projectsBoardBtn').click();
+  const card=page.locator('#projectsKanban .project-task-card', {hasText:'QA Checklistenaufgabe'}).first();
+  await expect(card).toBeVisible();
+  await expect(card).toContainText('0/1');
+
+  await card.click();
+  await expect(page.locator('#projectTaskChecklist .project-check-text')).toHaveValue('Medikamente prüfen');
+  await expect(page.locator('#projectTaskCollaboration')).toBeVisible();
+  await page.locator('#projectTaskCommentInput').fill('Bitte bis Freitag abschließen.');
+  await page.locator('#projectTaskCommentAdd').click();
+  await expect(page.locator('#projectTaskComments')).toContainText('Bitte bis Freitag abschließen.');
+  await page.locator('#projectTaskDialog .close-dialog').first().click();
+
+  await page.locator('#projectsMyBtn').click();
+  await expect(page.locator('#projectsMyView')).toBeVisible();
+});
+
+test('Aufgabenvorlagen lassen sich verwalten', async ({ page }) => {
+  await bootLocal(page);
+  await page.locator('#moduleProjectsBtn').click();
+  await page.locator('#projectsTemplatesBtn').click();
+  await expect(page.locator('#projectTemplatesDialog')).toBeVisible();
+
+  await page.locator('#projectTemplateName').fill('QA Monatskontrolle');
+  await page.locator('#projectTemplateDescription').fill('Wiederkehrende QA Vorlage');
+  await page.locator('#projectTemplateRecurrence').selectOption('monthly');
+  await page.locator('#projectTemplateForm button[type="submit"]').click();
+  await expect(page.locator('#projectTemplatesList')).toContainText('QA Monatskontrolle');
+
+  await page.locator('#projectTemplatesDialog .close-dialog').first().click();
+  await expect(page.locator('#projectsTemplateSelect option')).toContainText(['QA Monatskontrolle']);
+});
+
+test('Wiederkehrende Aufgaben erzeugen lokal den nächsten Termin', async ({ page }) => {
+  await bootLocal(page);
+  await page.locator('#moduleProjectsBtn').click();
+
+  await page.locator('#addProjectBtn').click();
+  await page.locator('#projectName').fill('QA Wiederholung');
+  await page.locator('#projectForm button[type="submit"]').click();
+
+  await page.locator('#addTaskBtn').click();
+  await page.locator('#projectTaskTitle').fill('QA Monatsaufgabe');
+  await page.locator('#projectTaskProject').selectOption({label:'QA Wiederholung'});
+  await page.locator('#projectTaskDue').fill('2026-10-15');
+  await page.locator('#projectTaskRecurrence').selectOption('monthly');
+  await page.locator('#projectTaskStatus').selectOption('done');
+  await page.locator('#projectTaskForm button[type="submit"]').click();
+
+  await page.locator('#projectsBoardBtn').click();
+  const matches=page.locator('#projectsKanban .project-task-card', {hasText:'QA Monatsaufgabe'});
+  await expect(matches).toHaveCount(2);
+  await expect(page.locator('#projectsKanban .kanban-column[data-task-drop-status="open"]')).toContainText('QA Monatsaufgabe');
 });
