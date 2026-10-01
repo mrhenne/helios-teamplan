@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-41" />
+  <link rel="stylesheet" href="styles.css?v=20261001-42" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -67,23 +67,12 @@
         </div>
       </div>
 
-      <div class="topbar-actions">
-        <div class="topbar-action-group">
-          <span class="topbar-group-title">Team</span>
-          <button id="usersBtn" class="top-tool hidden" type="button" title="Benutzer verwalten"><svg class="ui-icon"><use href="#i-users"></use></svg><span>Benutzer</span></button>
-          <button id="roleHelpBtn" class="top-tool" data-tool-action="roles" type="button" title="Rollen und Rechte erklären"><svg class="ui-icon"><use href="#i-role"></use></svg><span>Rollen & Rechte</span></button>
-        </div>
-
-        <div class="topbar-action-group">
-          <span class="topbar-group-title">Darstellung</span>
-          <button id="themeBtn" class="top-tool top-theme-btn" type="button" title="Hell/Dunkel wechseln"><svg class="ui-icon"><use href="#i-sun"></use></svg><span id="themeLabel">Hell</span></button>
-        </div>
-
-        <div class="topbar-action-group">
-          <span class="topbar-group-title">Konto</span>
-          <button id="settingsBtn" class="top-tool primary-tool" type="button" title="Einstellungen öffnen"><svg class="ui-icon"><use href="#i-settings"></use></svg><span>Einstellungen</span></button>
-          <button id="logoutBtn" class="top-tool hidden" type="button" title="Abmelden"><svg class="ui-icon"><use href="#i-logout"></use></svg><span>Abmelden</span></button>
-        </div>
+      <div class="topbar-actions" aria-label="Schnellzugriff">
+        <button id="usersBtn" class="top-tool hidden" type="button" title="Benutzer verwalten"><svg class="ui-icon"><use href="#i-users"></use></svg><span>Benutzerverwaltung</span></button>
+        <button id="roleHelpBtn" class="top-tool" data-tool-action="roles" type="button" title="Rollen und Rechte erklären"><svg class="ui-icon"><use href="#i-role"></use></svg><span>Rollen & Rechte</span></button>
+        <button id="themeBtn" class="top-tool top-theme-btn" type="button" title="Darstellung wechseln"><svg class="ui-icon"><use href="#i-sun"></use></svg><span>Darstellung: <b id="themeLabel">Hell</b></span></button>
+        <button id="settingsBtn" class="top-tool primary-tool" type="button" title="Einstellungen öffnen"><svg class="ui-icon"><use href="#i-settings"></use></svg><span>Einstellungen</span></button>
+        <button id="logoutBtn" class="top-tool hidden" type="button" title="Abmelden"><svg class="ui-icon"><use href="#i-logout"></use></svg><span>Abmelden</span></button>
       </div>
     </header>
 
