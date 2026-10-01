@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-38" />
+  <link rel="stylesheet" href="styles.css?v=20261001-39" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -230,11 +230,13 @@
           <span class="eyebrow">FORTBILDUNGSPLANER</span>
           <div><strong id="trainingHeadingTitle">Fortbildungen</strong><span id="trainingHeadingSub">Teamübersicht</span></div>
         </div>
+
         <div class="training-year-nav">
           <button id="trainingPrevYear" class="icon-btn" type="button" aria-label="Vorheriges Jahr">‹</button>
           <select id="trainingYearSelect" class="date-select" aria-label="Fortbildungsjahr"></select>
           <button id="trainingNextYear" class="icon-btn" type="button" aria-label="Nächstes Jahr">›</button>
         </div>
+
         <div class="segmented training-view-switch">
           <button id="trainingOverviewBtn" class="segment active" type="button"><svg class="ui-icon"><use href="#i-grid"></use></svg><span>Übersicht</span></button>
           <button id="trainingCalendarBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-calendar"></use></svg><span>Jahr</span></button>
@@ -243,37 +245,60 @@
           <button id="trainingEmployeesBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-role"></use></svg><span>Mitarbeiter</span></button>
           <button id="trainingClassicBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-list"></use></svg><span>Liste</span></button>
         </div>
-        <div class="training-zoom-control">
-          <button id="trainingZoomOutBtn" type="button" aria-label="Fortbildungsansicht verkleinern">−</button>
-          <input id="trainingZoomRange" type="range" min="70" max="130" step="5" value="100" aria-label="Zoom Fortbildungsplanung">
-          <button id="trainingZoomInBtn" type="button" aria-label="Fortbildungsansicht vergrößern">+</button>
-          <strong id="trainingZoomLabel">100%</strong>
-        </div>
+
         <div class="controls-spacer"></div>
-        <button id="trainingFocusBtn" class="btn ghost icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-focus"></use></svg><span>Fokusmodus</span></button>
-        <button id="trainingExitFocusBtn" class="btn ghost hidden icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-x"></use></svg><span>Fokus beenden</span></button>
-        <button id="trainingExportBtn" class="btn ghost training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-table"></use></svg><span>Excel</span></button>
-        <button id="trainingCsvBtn" class="btn ghost training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>CSV</span></button>
-        <button id="trainingJsonBtn" class="btn ghost training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>JSON</span></button>
-        <button id="trainingTypesBtn" class="btn ghost training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-book"></use></svg><span>Katalog</span></button>
+        <button id="trainingToolsToggle" class="btn ghost icon-label-btn" type="button" aria-expanded="false"><svg class="ui-icon"><use href="#i-settings"></use></svg><span>Werkzeuge</span><b class="drawer-chevron">⌄</b></button>
         <button id="addTrainingBtn" class="btn primary training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-plus"></use></svg><span>Fortbildung</span></button>
       </section>
 
-      <section class="training-filterbar glass">
-        <input id="trainingSearchInput" class="search" type="search" placeholder="Fortbildung suchen…">
-        <select id="trainingEmployeeFilter" class="training-manager-filter"><option value="">Alle Mitarbeiter</option></select>
-        <select id="trainingTypeFilter"><option value="">Alle Fortbildungen</option></select>
-        <select id="trainingCategoryFilter"><option value="">Alle Arten</option></select>
-        <select id="trainingStatusFilter">
-          <option value="">Alle Status</option>
-          <option value="planned">Geplant</option>
-          <option value="in_progress">In Durchführung</option>
-          <option value="completed">Absolviert</option>
-          <option value="due">Bald fällig</option>
-          <option value="overdue">Überfällig</option>
-        </select>
-        <button id="trainingClearFiltersBtn" type="button" class="btn ghost">Filter löschen</button>
-        <div id="trainingOwnScope" class="training-own-scope hidden">Nur meine Fortbildungen</div>
+      <section id="trainingToolsPanel" class="training-tools-panel glass hidden">
+        <div class="training-tools-group">
+          <span class="training-tools-label">Ansicht</span>
+          <div class="training-zoom-control">
+            <button id="trainingZoomOutBtn" type="button" aria-label="Fortbildungsansicht verkleinern">−</button>
+            <input id="trainingZoomRange" type="range" min="70" max="130" step="5" value="100" aria-label="Zoom Fortbildungsplanung">
+            <button id="trainingZoomInBtn" type="button" aria-label="Fortbildungsansicht vergrößern">+</button>
+            <strong id="trainingZoomLabel">100%</strong>
+          </div>
+          <button id="trainingFocusBtn" class="btn ghost icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-focus"></use></svg><span>Fokus</span></button>
+          <button id="trainingExitFocusBtn" class="btn ghost hidden icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-x"></use></svg><span>Fokus beenden</span></button>
+        </div>
+
+        <div class="training-tools-group training-manager-action">
+          <span class="training-tools-label">Verwaltung</span>
+          <button id="trainingTypesBtn" class="btn ghost training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-book"></use></svg><span>Katalog</span></button>
+        </div>
+
+        <div class="training-tools-group training-manager-action">
+          <span class="training-tools-label">Export</span>
+          <button id="trainingExportBtn" class="btn ghost training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-table"></use></svg><span>Excel</span></button>
+          <button id="trainingCsvBtn" class="btn ghost training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>CSV</span></button>
+          <button id="trainingJsonBtn" class="btn ghost training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>JSON</span></button>
+        </div>
+      </section>
+
+      <section class="training-filter-shell glass">
+        <button id="trainingFilterToggle" class="compact-drawer-toggle" type="button" aria-expanded="false">
+          <svg class="ui-icon"><use href="#i-search"></use></svg>
+          <span>Suche & Filter</span>
+          <b class="drawer-chevron">⌄</b>
+        </button>
+        <div id="trainingFilterBar" class="training-filterbar compact-drawer-body hidden">
+          <input id="trainingSearchInput" class="search" type="search" placeholder="Fortbildung suchen…">
+          <select id="trainingEmployeeFilter" class="training-manager-filter"><option value="">Alle Mitarbeiter</option></select>
+          <select id="trainingTypeFilter"><option value="">Alle Fortbildungen</option></select>
+          <select id="trainingCategoryFilter"><option value="">Alle Arten</option></select>
+          <select id="trainingStatusFilter">
+            <option value="">Alle Status</option>
+            <option value="planned">Geplant</option>
+            <option value="in_progress">In Durchführung</option>
+            <option value="completed">Absolviert</option>
+            <option value="due">Bald fällig</option>
+            <option value="overdue">Überfällig</option>
+          </select>
+          <button id="trainingClearFiltersBtn" type="button" class="btn ghost">Filter löschen</button>
+          <div id="trainingOwnScope" class="training-own-scope hidden">Nur meine Fortbildungen</div>
+        </div>
       </section>
 
       <section id="trainingOverviewView" class="training-view">
@@ -371,7 +396,13 @@
         <button id="addNoteBtn" class="btn ghost icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>Notiz</span></button>
       </section>
 
-      <section class="projects-filterbar glass">
+      <section class="projects-filter-shell glass">
+        <button id="projectsFilterToggle" class="compact-drawer-toggle" type="button" aria-expanded="false">
+          <svg class="ui-icon"><use href="#i-search"></use></svg>
+          <span>Suche & Filter</span>
+          <b class="drawer-chevron">⌄</b>
+        </button>
+        <div id="projectsFilterBar" class="projects-filterbar compact-drawer-body hidden">
         <input id="projectsSearchInput" class="search" type="search" placeholder="Projekte und Aufgaben suchen…">
         <select id="projectsProjectFilter"><option value="">Alle Projekte</option></select>
         <select id="projectsAssigneeFilter"><option value="">Alle Mitarbeiter</option></select>
@@ -383,6 +414,7 @@
           <option value="done">Erledigt</option>
         </select>
         <select id="projectsTemplateSelect" class="project-manager-action"><option value="">Schnellaufgabe aus Vorlage…</option></select>
+        </div>
       </section>
 
       <section id="projectsOverviewView" class="projects-view">
