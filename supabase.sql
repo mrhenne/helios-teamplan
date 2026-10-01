@@ -1016,6 +1016,7 @@ as $$
     where p.id=p_project_id
       and tm.user_id=(select auth.uid())
       and tm.active=true
+      and tm.role='employee'
       and tm.employee_id is not null
       and tm.employee_id=p.lead_employee_id
   );
