@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-29" />
+  <link rel="stylesheet" href="styles.css?v=20261001-30" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -116,6 +116,7 @@
     <nav class="module-switch glass" aria-label="Modul wechseln">
       <button id="moduleVacationBtn" type="button" class="module-tab vacation-tab active"><span class="module-tab-icon"><svg class="ui-icon"><use href="#i-calendar"></use></svg></span><span><b>Urlaubsplanung</b><small>Kalender & Abwesenheiten</small></span></button>
       <button id="moduleTrainingBtn" type="button" class="module-tab training-tab"><span class="module-tab-icon"><svg class="ui-icon"><use href="#i-training"></use></svg></span><span><b>Fortbildungen</b><small>Planung & Nachweise</small></span></button>
+      <button id="moduleProjectsBtn" type="button" class="module-tab projects-tab"><span class="module-tab-icon"><svg class="ui-icon"><use href="#i-grid"></use></svg></span><span><b>Projekte</b><small>Aufgaben & Teamarbeit</small></span></button>
     </nav>
 
     <section id="vacationToolbar" class="toolbar glass planner-controls">
@@ -334,8 +335,138 @@
         <strong>Fortbildungen:</strong> Pflichttermine, wiederkehrende Intervalle, mehrjährige Weiterbildungen, Stunden, Kosten und Jahresbudgets werden getrennt von der Urlaubsplanung verwaltet.
       </section>
     </section>
+
+    <section id="projectsModule" class="projects-module hidden">
+      <section class="toolbar glass projects-toolbar">
+        <div class="projects-heading">
+          <span class="eyebrow">PROJEKTMANAGEMENT</span>
+          <div><strong>TeamPlan Projekte</strong><span id="projectsHeadingSub">ZNA Management</span></div>
+        </div>
+        <div class="segmented projects-view-switch">
+          <button id="projectsOverviewBtn" class="segment active" type="button"><svg class="ui-icon"><use href="#i-grid"></use></svg><span>Übersicht</span></button>
+          <button id="projectsRoadmapBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-list"></use></svg><span>Roadmap</span></button>
+          <button id="projectsBoardBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-table"></use></svg><span>Aufgaben</span></button>
+          <button id="projectsCalendarBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-calendar"></use></svg><span>Kalender</span></button>
+          <button id="projectsTeamBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-users"></use></svg><span>Team</span></button>
+          <button id="projectsNotesBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>Notizen</span></button>
+        </div>
+        <div class="controls-spacer"></div>
+        <button id="addProjectBtn" class="btn ghost project-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-plus"></use></svg><span>Projekt</span></button>
+        <button id="addTaskBtn" class="btn primary project-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-plus"></use></svg><span>Aufgabe</span></button>
+        <button id="addNoteBtn" class="btn ghost icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>Notiz</span></button>
+      </section>
+
+      <section class="projects-filterbar glass">
+        <input id="projectsSearchInput" class="search" type="search" placeholder="Projekte und Aufgaben suchen…">
+        <select id="projectsProjectFilter"><option value="">Alle Projekte</option></select>
+        <select id="projectsAssigneeFilter"><option value="">Alle Mitarbeiter</option></select>
+        <select id="projectsStatusFilter">
+          <option value="">Alle Status</option>
+          <option value="open">Offen</option>
+          <option value="progress">In Arbeit</option>
+          <option value="waiting">Rückfrage</option>
+          <option value="done">Erledigt</option>
+        </select>
+        <select id="projectsTemplateSelect" class="project-manager-action"><option value="">Schnellaufgabe aus Vorlage…</option></select>
+      </section>
+
+      <section id="projectsOverviewView" class="projects-view">
+        <div id="projectsMetrics" class="projects-metrics"></div>
+        <div class="projects-overview-grid">
+          <section class="glass project-panel"><header><div><span class="eyebrow">AKTUELLE PROJEKTE</span><h2>Im Fokus</h2></div></header><div id="projectsFocusList" class="project-card-list"></div></section>
+          <section class="glass project-panel"><header><div><span class="eyebrow">MEINE / OFFENE AUFGABEN</span><h2>Als Nächstes</h2></div></header><div id="projectsNextTasks" class="project-task-list"></div></section>
+        </div>
+      </section>
+
+      <section id="projectsRoadmapView" class="projects-view hidden">
+        <div id="projectsRoadmapBoard" class="projects-roadmap"></div>
+      </section>
+
+      <section id="projectsBoardView" class="projects-view hidden">
+        <div id="projectsKanban" class="projects-kanban"></div>
+      </section>
+
+      <section id="projectsCalendarView" class="projects-view hidden">
+        <div class="projects-calendar-tools glass">
+          <button id="projectsCalendarPrev" class="icon-btn" type="button">‹</button>
+          <strong id="projectsCalendarLabel"></strong>
+          <button id="projectsCalendarNext" class="icon-btn" type="button">›</button>
+          <div class="segmented">
+            <button id="projectsCalendarMonthBtn" class="segment active" type="button">Monat</button>
+            <button id="projectsCalendarYearBtn" class="segment" type="button">Jahr</button>
+          </div>
+          <button id="projectsCalendarToday" class="btn ghost" type="button">Heute</button>
+        </div>
+        <div id="projectsCalendarBody" class="projects-calendar-body"></div>
+      </section>
+
+      <section id="projectsTeamView" class="projects-view hidden">
+        <div id="projectsTeamGrid" class="projects-team-grid"></div>
+      </section>
+
+      <section id="projectsNotesView" class="projects-view hidden">
+        <div id="projectsNotesBoard" class="projects-notes-board"></div>
+      </section>
+
+      <section class="hint glass projects-hint">
+        <strong>Projektmanagement:</strong> Projekte, Aufgaben, Verantwortlichkeiten, Notizen und Termine werden gemeinsam verwaltet. Aufgaben und Projekte können per Drag & Drop zwischen Status und Kalendertagen verschoben werden.
+      </section>
+    </section>
+
   </main>
 
+
+
+  <dialog id="projectDialog" class="dialog glass-solid">
+    <form id="projectForm">
+      <div class="dialog-head"><div><span class="eyebrow">PROJEKT</span><h2 id="projectDialogTitle">Projekt anlegen</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <input id="projectId" type="hidden">
+      <label>Name<input id="projectName" required maxlength="120"></label>
+      <label>Beschreibung<textarea id="projectDescription" rows="3"></textarea></label>
+      <div class="form-grid">
+        <label>Status<select id="projectStatus"><option value="planned">In Planung</option><option value="active">In Arbeit</option><option value="paused">Pausiert</option><option value="done">Erledigt</option></select></label>
+        <label>Priorität<select id="projectPriority"><option value="low">Niedrig</option><option value="medium">Mittel</option><option value="high">Hoch</option></select></label>
+        <label>Start<input id="projectStart" type="date"></label>
+        <label>Zieltermin<input id="projectDue" type="date"></label>
+        <label>Projektleitung<select id="projectLead"></select></label>
+        <label>Farbe<input id="projectColor" type="color" value="#0f8b78"></label>
+      </div>
+      <div class="dialog-actions"><button id="deleteProjectBtn" type="button" class="btn danger hidden">Löschen</button><div class="controls-spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">Speichern</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="projectTaskDialog" class="dialog glass-solid">
+    <form id="projectTaskForm">
+      <div class="dialog-head"><div><span class="eyebrow">AUFGABE</span><h2 id="projectTaskDialogTitle">Aufgabe anlegen</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <input id="projectTaskId" type="hidden">
+      <label>Titel<input id="projectTaskTitle" required maxlength="160"></label>
+      <label>Beschreibung<textarea id="projectTaskDescription" rows="3"></textarea></label>
+      <div class="form-grid">
+        <label>Projekt<select id="projectTaskProject"></select></label>
+        <label>Verantwortlich<select id="projectTaskAssignee"></select></label>
+        <label>Status<select id="projectTaskStatus"><option value="open">Offen</option><option value="progress">In Arbeit</option><option value="waiting">Rückfrage</option><option value="done">Erledigt</option></select></label>
+        <label>Priorität<select id="projectTaskPriority"><option value="low">Niedrig</option><option value="medium">Mittel</option><option value="high">Hoch</option></select></label>
+        <label>Start<input id="projectTaskStart" type="date"></label>
+        <label>Fällig<input id="projectTaskDue" type="date"></label>
+        <label>Wiederholung<select id="projectTaskRecurrence"><option value="none">Keine</option><option value="weekly">Wöchentlich</option><option value="monthly">Monatlich</option><option value="quarterly">Quartalsweise</option><option value="halfyear">Halbjährlich</option><option value="yearly">Jährlich</option></select></label>
+      </div>
+      <div class="dialog-actions"><button id="deleteProjectTaskBtn" type="button" class="btn danger hidden">Löschen</button><div class="controls-spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">Speichern</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="projectNoteDialog" class="dialog glass-solid compact">
+    <form id="projectNoteForm">
+      <div class="dialog-head"><div><span class="eyebrow">NOTIZBOARD</span><h2 id="projectNoteDialogTitle">Notiz hinzufügen</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <input id="projectNoteId" type="hidden">
+      <label>Titel<input id="projectNoteTitle" maxlength="100"></label>
+      <label>Notiz<textarea id="projectNoteBody" rows="5" required maxlength="2000"></textarea></label>
+      <div class="form-grid">
+        <label>Kategorie<select id="projectNoteCategory"><option value="info">Info</option><option value="idea">Idee</option><option value="important">Wichtig</option><option value="problem">Problem</option></select></label>
+        <label>Projekt<select id="projectNoteProject"></select></label>
+      </div>
+      <div class="dialog-actions"><button id="deleteProjectNoteBtn" type="button" class="btn danger hidden">Löschen</button><div class="controls-spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">Speichern</button></div>
+    </form>
+  </dialog>
 
   <div id="trainingContextMenu" class="training-context-menu hidden" role="menu" aria-label="Fortbildungs-Schnellaktionen"></div>
 
