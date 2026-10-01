@@ -137,10 +137,12 @@ test('Rollen schalten die erlaubten Werkzeuge korrekt', async ({ page }) => {
 
   await role.selectOption('admin');
   await expect(page.locator('#addEmployeeBtn')).toBeVisible();
+  if (await page.locator('#vacationToolsRow').isHidden()) await page.locator('#vacationToolsToggle').click();
   await expect(page.locator('#blackoutsBtn')).toBeVisible();
 
   await role.selectOption('planner');
   await expect(page.locator('#addEmployeeBtn')).toBeVisible();
+  if (await page.locator('#vacationToolsRow').isHidden()) await page.locator('#vacationToolsToggle').click();
   await expect(page.locator('#blackoutsBtn')).toBeVisible();
   await expect(page.locator('#usersBtn')).toBeHidden();
 
@@ -172,6 +174,8 @@ test('Backup enthält den Zustand und Import stellt ihn wieder her', async ({ pa
   await page.locator('#employeeForm button[type="submit"]').click();
   await expect(page.locator('.employee-name', { hasText: 'Backup Testperson' })).toBeVisible();
 
+  if (await page.locator('#vacationToolsRow').isHidden()) await page.locator('#vacationToolsToggle').click();
+  await expect(page.locator('#exportBtn')).toBeVisible();
   await page.evaluate(() => { try { Object.defineProperty(window, 'showSaveFilePicker', { value: undefined, configurable: true }); } catch {} });
   const [download] = await Promise.all([
     page.waitForEvent('download'),
