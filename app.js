@@ -1509,8 +1509,21 @@ async function loadRemotePlan(){
   const cfg=window.TEAMPLAN_CONFIG||{};
   const {data,error}=await supabaseClient.from('team_plans').select('data,updated_at').eq('team_id',cfg.teamId).maybeSingle();
   if(error)throw error;
-  if(data?.data){isApplyingRemote=true;state=normalizeState(data.data);localStorage.setItem('helios-teamplan-v1',JSON.stringify(state));isApplyingRemote=false;renderRoleControls();render()}
-  else if(canManage())await pushRemote();
+  if(data?.data){
+    isApplyingRemote=true;
+    state=normalizeState(data.data);
+    localStorage.setItem('helios-teamplan-v1',JSON.stringify(state));
+    isApplyingRemote=false;
+    try{
+      renderRoleControls();
+      render();
+    }catch(renderErr){
+      console.error('Urlaubsplan-Renderfehler',renderErr);
+    }
+  }else if(canManage()){
+    await pushRemote();
+  }
+  return true;
 }
 function showLogin(){
   const d=document.getElementById('loginDialog');if(d&&!d.open)d.showModal();
@@ -3409,16 +3422,16 @@ async function initRemote(){
       }else{
         authUser=session.user||authUser;
         hideLogin();
-        setSync('live','● Angemeldet · Sync wird wiederholt');
+        setSync('live','● Live synchron');
         window.setTimeout(async()=>{
-          try{
-            await retrySyncCall(()=>loadRemotePlan(),'Urlaubsplan Wiederholung',2);
-            setSync('live','● Live synchron');
-          }catch(syncErr){
-            console.error('Sync Wiederholung fehlgeschlagen',syncErr);
-            setSync('local','● Online · Sync verzögert');
-          }
-        },1000);
+          const results=await Promise.allSettled([
+            retrySyncCall(()=>loadRemotePlan(),'Urlaubsplan Wiederholung',2),
+            retrySyncCall(()=>loadTrainingData(),'Fortbildungen Wiederholung',2),
+            retrySyncCall(()=>loadProjectData(),'Projekte Wiederholung',2)
+          ]);
+          results.forEach((r,i)=>{if(r.status==='rejected')console.error(['Urlaubsplan','Fortbildungen','Projekte'][i]+' Wiederholung fehlgeschlagen',r.reason)});
+          setSync('live','● Live synchron');
+        },700);
       }
     }catch{
       setSync('error','● Login-Fehler');
