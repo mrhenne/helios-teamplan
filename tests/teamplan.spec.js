@@ -677,3 +677,94 @@ test('Projekt Jahreskalender ist kompakt und Projektarbeit priorisiert Aufgaben'
   await expect(page.locator('#projectDialog')).toBeHidden();
   await expect(page.locator('#projectsOverviewView')).toBeVisible();
 });
+
+
+test('mehrere Projektverantwortliche und gewichteten Fortschritt', async ({ page }) => {
+  await bootLocal(page);
+
+  for (const name of ['QA Leitung','QA Verantwortlich','QA Team']) {
+    await page.locator('#addEmployeeBtn').click();
+    await page.locator('#employeeName').fill(name);
+    await page.locator('#employeeForm button[type="submit"]').click();
+  }
+
+  await page.locator('#moduleProjectsBtn').click();
+  await page.locator('#addProjectBtn').click();
+  await page.locator('#projectName').fill('QA Fortschrittsprojekt');
+  await page.locator('#projectLead').selectOption({label:'QA Leitung'});
+  await page.locator('#projectTeamToggle').click();
+
+  await page.locator('#projectMemberSearch').fill('QA Verantwortlich');
+  const responsibleRow=page.locator('.project-member-row',{hasText:'QA Verantwortlich'});
+  await responsibleRow.locator('.project-member-responsible').check();
+  await expect(responsibleRow.locator('.project-member-active')).toBeChecked();
+
+  await page.locator('#projectMemberSearch').fill('QA Team');
+  const teamRow=page.locator('.project-member-row',{hasText:'QA Team'});
+  await teamRow.locator('.project-member-active').check();
+
+  await page.locator('#projectMemberSearch').fill('');
+  await expect(page.locator('#projectMemberCount')).toContainText('3 im Team');
+  await expect(page.locator('#projectMemberCount')).toContainText('1 zusätzlich verantwortlich');
+  await page.locator('#projectForm button[type="submit"]').click();
+
+  const card=page.locator('.project-card',{hasText:'QA Fortschrittsprojekt'}).first();
+  await expect(card).toContainText('1 weitere verantwortlich');
+
+  await card.click();
+  await page.locator('#projectAddTaskBtn').click();
+  await page.locator('#projectTaskTitle').fill('QA Aufgabe mit Checkliste');
+  await page.locator('#projectTaskAssignee').selectOption({label:'QA Verantwortlich'});
+  await page.locator('#projectTaskAddChecklist').click();
+  await page.locator('#projectTaskAddChecklist').click();
+  const rows=page.locator('#projectTaskChecklist .project-checklist-row');
+  await rows.nth(0).locator('.project-check-text').fill('Teil 1');
+  await rows.nth(1).locator('.project-check-text').fill('Teil 2');
+  await rows.nth(0).locator('.project-check-done').check();
+  await page.locator('#projectTaskForm button[type="submit"]').click();
+
+  await card.click();
+  await expect(page.locator('#projectSummaryProgress')).toHaveText('50 %');
+  const progressStyle=await page.locator('#projectDialogProgress').evaluate(el=>({
+    progress:getComputedStyle(el).getPropertyValue('--progress').trim(),
+    color:getComputedStyle(el).getPropertyValue('--progress-color').trim()
+  }));
+  expect(progressStyle.progress).toBe('50%');
+  expect(progressStyle.color).toContain('hsl');
+
+  await page.locator('.project-task-quickcheck').click();
+  await expect(page.locator('#projectSummaryProgress')).toHaveText('100 %');
+  await expect(page.locator('.project-dialog-task')).toHaveClass(/done/);
+});
+
+test('Projekt Sicherung und selektiver PDF Export sind verfügbar', async ({ page }) => {
+  await bootLocal(page);
+  await page.locator('#moduleProjectsBtn').click();
+
+  await expect(page.locator('#projectsSaveBtn')).toBeVisible();
+  await expect(page.locator('#projectsPdfBtn')).toBeVisible();
+
+  await page.locator('#projectsPdfBtn').click();
+  await expect(page.locator('#projectExportDialog')).toBeVisible();
+  await expect(page.locator('#projectExportProjects')).toBeChecked();
+  await expect(page.locator('#projectExportTasks')).toBeChecked();
+  await expect(page.locator('#projectExportMonth')).not.toBeChecked();
+  await expect(page.locator('#projectExportYear')).not.toBeChecked();
+
+  const html=await page.evaluate(() => buildProjectPdfHtml({
+    projects:true,tasks:true,month:true,year:true,team:true,notes:true
+  }));
+  expect(html).toContain('Aktuelle Projekte');
+  expect(html).toContain('Aufgaben & Status');
+  expect(html).toContain('Monatsübersicht');
+  expect(html).toContain('Jahresübersicht');
+  expect(html).toContain('Projektteams');
+  expect(html).toContain('Notizen');
+
+  await page.locator('#projectExportDialog .close-dialog').first().click();
+
+  const downloadPromise=page.waitForEvent('download');
+  await page.locator('#projectsSaveBtn').click();
+  const download=await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^TeamPlan-Projekte-\d{4}-\d{2}-\d{2}\.json$/);
+});
