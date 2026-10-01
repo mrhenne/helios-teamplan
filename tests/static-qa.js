@@ -37,7 +37,7 @@ const sqlFuncs=new Set([...sql.matchAll(/create\s+or\s+replace\s+function\s+(?:p
 const missingRpc=rpcs.filter(x=>!sqlFuncs.has(x));
 if(missingRpc.length) fail('Im JS verwendete RPC Funktionen fehlen im SQL: '+missingRpc.join(', '));
 
-for(const table of ['team_plans','team_members','teamplan_discussions','teamplan_messages','teamplan_discussion_reads','teamplan_training_types','teamplan_trainings','teamplan_training_budgets','teamplan_projects','teamplan_project_members','teamplan_task_templates','teamplan_tasks','teamplan_notes']){
+for(const table of ['team_plans','team_members','teamplan_discussions','teamplan_messages','teamplan_discussion_reads','teamplan_training_types','teamplan_trainings','teamplan_training_budgets','teamplan_projects','teamplan_project_members','teamplan_task_templates','teamplan_tasks','teamplan_notes','teamplan_task_comments','teamplan_project_activity']){
   const re=new RegExp('alter\\s+table\\s+public\\.'+table+'\\s+enable\\s+row\\s+level\\s+security','i');
   if(!re.test(sql)) fail('RLS fehlt für '+table);
 }
