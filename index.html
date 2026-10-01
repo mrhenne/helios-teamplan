@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260930-17" />
+  <link rel="stylesheet" href="styles.css?v=20261001-1" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -119,7 +119,21 @@
     </section>
     <div id="plannerFocusControls" class="planner-focus-controls">
       <div class="focus-period"><strong id="focusPeriodMonth"></strong><span id="focusPeriodYear"></span></div>
+      <div class="focus-nav">
+        <button id="focusPrevMonthBtn" type="button" title="Vorheriger Monat">‹</button>
+        <select id="focusMonthSelect" title="Zu Monat springen">
+          <option value="0">Januar</option><option value="1">Februar</option><option value="2">März</option><option value="3">April</option>
+          <option value="4">Mai</option><option value="5">Juni</option><option value="6">Juli</option><option value="7">August</option>
+          <option value="8">September</option><option value="9">Oktober</option><option value="10">November</option><option value="11">Dezember</option>
+        </select>
+        <button id="focusNextMonthBtn" type="button" title="Nächster Monat">›</button>
+      </div>
+      <div id="focusSearchWrap" class="focus-search-wrap">
+        <input id="focusSearchInput" type="search" placeholder="Mitarbeiter suchen…" autocomplete="off">
+      </div>
       <div class="focus-actions">
+        <button id="focusSearchBtn" type="button" title="Mitarbeiter suchen" aria-label="Mitarbeiter suchen">⌕</button>
+        <button id="focusPanBtn" type="button" title="Handmodus: Kalender mit gedrückter Maus verschieben" aria-pressed="false">✋</button>
         <button id="focusFitBtn" type="button" title="Alle Mitarbeiter einpassen">↕</button>
         <button id="exitFocusBtn" type="button" title="Fokusmodus verlassen">✕</button>
       </div>
@@ -463,6 +477,6 @@
 
   <div id="cellContextMenu" class="cell-context-menu hidden" role="menu" aria-label="Schnellaktionen"></div>
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20260930-17"></script>
+  <script src="app.js?v=20261001-1"></script>
 </body>
 </html>
