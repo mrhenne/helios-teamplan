@@ -1838,3 +1838,18 @@ body.planner-zoom-tiny .cell-training-mark{width:6px;height:6px;font-size:0;bord
   .training-metrics article{min-height:56px;padding:7px}
   .training-metrics article strong{font-size:14px}
 }
+
+
+/* Fortbildungsmodul: urlaubsspezifische Kopfwerkzeuge ausblenden */
+body.training-module-active .action-group[aria-label="Planung"],
+body.training-module-active .action-group[aria-label="Daten"]{
+  display:none!important
+}
+.training-chip{
+  background:#dfeaf5!important;
+  color:#315f88!important
+}
+body.dark-mode .training-chip{
+  background:#253d52!important;
+  color:#b3d1ea!important
+}
