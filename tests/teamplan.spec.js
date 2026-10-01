@@ -267,13 +267,13 @@ test('Projekt und Aufgabe können lokal angelegt und gespeichert werden', async 
   await page.locator('#projectTaskForm button[type="submit"]').click();
 
   await page.locator('#projectsBoardBtn').click();
-  await expect(page.getByText('QA Aufgabe', { exact:true }).first()).toBeVisible();
+  await expect(page.locator('#projectsKanban .project-task-card strong', { hasText:'QA Aufgabe' }).first()).toBeVisible();
 
   await page.reload();
   await page.locator('#moduleProjectsBtn').click();
   await expect(page.locator('.project-card strong', { hasText:'QA Projekt' }).first()).toBeVisible();
   await page.locator('#projectsBoardBtn').click();
-  await expect(page.getByText('QA Aufgabe', { exact:true }).first()).toBeVisible();
+  await expect(page.locator('#projectsKanban .project-task-card strong', { hasText:'QA Aufgabe' }).first()).toBeVisible();
 });
 
 test('Schnellaufgaben Vorlagen und Notizboard funktionieren lokal', async ({ page }) => {
