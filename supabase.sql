@@ -1244,3 +1244,76 @@ $$;
 
 revoke all on function private.is_project_lead(uuid) from public, anon;
 grant execute on function private.is_project_lead(uuid) to authenticated;
+
+
+-- === 2026-10-01 FIX RESPONSIBLE RLS RECURSION ===
+-- Wichtig: is_project_lead darf NICHT teamplan_project_members lesen,
+-- weil die Membership-Policies selbst diese Funktion verwenden.
+create or replace function private.is_project_lead(p_project_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, private
+as $$
+  select exists (
+    select 1
+    from public.teamplan_projects p
+    join public.team_members tm on tm.team_id=p.team_id
+    where p.id=p_project_id
+      and tm.user_id=(select auth.uid())
+      and tm.active=true
+      and tm.role='employee'
+      and tm.employee_id is not null
+      and tm.employee_id=p.lead_employee_id
+  );
+$$;
+
+create or replace function private.is_project_responsible(p_project_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, private
+as $$
+  select exists (
+    select 1
+    from public.teamplan_projects p
+    join public.team_members tm on tm.team_id=p.team_id
+    join public.teamplan_project_members pm
+      on pm.project_id=p.id
+     and pm.employee_id=tm.employee_id
+    where p.id=p_project_id
+      and tm.user_id=(select auth.uid())
+      and tm.active=true
+      and tm.role='employee'
+      and tm.employee_id is not null
+      and pm.is_responsible=true
+  );
+$$;
+
+revoke all on function private.is_project_lead(uuid) from public, anon;
+grant execute on function private.is_project_lead(uuid) to authenticated;
+revoke all on function private.is_project_responsible(uuid) from public, anon;
+grant execute on function private.is_project_responsible(uuid) to authenticated;
+
+drop policy if exists "projects lead update" on public.teamplan_projects;
+create policy "projects lead update" on public.teamplan_projects for update to authenticated
+using ((select private.is_project_lead(id)) or (select private.is_project_responsible(id)))
+with check ((select private.is_project_lead(id)) or (select private.is_project_responsible(id)));
+
+drop policy if exists "project members lead manage" on public.teamplan_project_members;
+create policy "project members lead manage" on public.teamplan_project_members for all to authenticated
+using ((select private.is_project_lead(project_id)))
+with check ((select private.is_project_lead(project_id)));
+
+drop policy if exists "tasks project lead manage" on public.teamplan_tasks;
+create policy "tasks project lead manage" on public.teamplan_tasks for all to authenticated
+using (
+  project_id is not null
+  and ((select private.is_project_lead(project_id)) or (select private.is_project_responsible(project_id)))
+)
+with check (
+  project_id is not null
+  and ((select private.is_project_lead(project_id)) or (select private.is_project_responsible(project_id)))
+);
