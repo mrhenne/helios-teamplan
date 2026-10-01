@@ -2406,8 +2406,7 @@ function projectIsLead(projectId){
   if(sessionRole!=='employee')return false;
   const p=projectProjects.find(x=>x.id===projectId);
   const employeeId=authMembership?.employee_id||sessionEmployeeId;
-  if(!p||!employeeId)return false;
-  return p.lead_employee_id===employeeId||projectMembers.some(m=>m.project_id===projectId&&m.employee_id===employeeId&&m.is_responsible===true);
+  return !!(p&&employeeId&&p.lead_employee_id===employeeId);
 }
 function projectCanManageProject(projectId){return projectCanManage()||projectIsLead(projectId)}
 function projectCanManageTask(task){
