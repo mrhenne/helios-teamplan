@@ -3149,3 +3149,12 @@ body.dark-mode .training-teamstatus-column.in_progress>header b{
     flex-wrap:wrap
   }
 }
+
+.training-day.has-training.in-progress{
+  background:#eee8fb!important;
+  color:#7049a8!important
+}
+body.dark-mode .training-day.has-training.in-progress{
+  background:#392f50!important;
+  color:#cbb7ef!important
+}
