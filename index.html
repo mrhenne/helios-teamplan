@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-34" />
+  <link rel="stylesheet" href="styles.css?v=20261001-35" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -357,6 +357,7 @@
         </div>
         <div class="segmented projects-view-switch">
           <button id="projectsOverviewBtn" class="segment active" type="button"><svg class="ui-icon"><use href="#i-grid"></use></svg><span>Übersicht</span></button>
+          <button id="projectsMyBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-check"></use></svg><span>Meine Aufgaben</span></button>
           <button id="projectsRoadmapBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-list"></use></svg><span>Roadmap</span></button>
           <button id="projectsBoardBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-table"></use></svg><span>Aufgaben</span></button>
           <button id="projectsCalendarBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-calendar"></use></svg><span>Kalender</span></button>
@@ -364,6 +365,7 @@
           <button id="projectsNotesBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>Notizen</span></button>
         </div>
         <div class="controls-spacer"></div>
+        <button id="projectsTemplatesBtn" class="btn ghost project-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-copy"></use></svg><span>Vorlagen</span></button>
         <button id="addProjectBtn" class="btn ghost project-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-plus"></use></svg><span>Projekt</span></button>
         <button id="addTaskBtn" class="btn primary project-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-plus"></use></svg><span>Aufgabe</span></button>
         <button id="addNoteBtn" class="btn ghost icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>Notiz</span></button>
@@ -388,6 +390,13 @@
         <div class="projects-overview-grid">
           <section class="glass project-panel"><header><div><span class="eyebrow">AKTUELLE PROJEKTE</span><h2>Im Fokus</h2></div></header><div id="projectsFocusList" class="project-card-list"></div></section>
           <section class="glass project-panel"><header><div><span class="eyebrow">MEINE / OFFENE AUFGABEN</span><h2>Als Nächstes</h2></div></header><div id="projectsNextTasks" class="project-task-list"></div></section>
+        </div>
+      </section>
+
+      <section id="projectsMyView" class="projects-view hidden">
+        <div class="glass project-panel projects-my-panel">
+          <header><div><span class="eyebrow">PERSÖNLICHER BEREICH</span><h2>Meine Aufgaben</h2></div><span id="projectsMyScope" class="project-chip"></span></header>
+          <div id="projectsMyTasks" class="projects-my-groups"></div>
         </div>
       </section>
 
@@ -442,7 +451,11 @@
         <label>Start<input id="projectStart" type="date"></label>
         <label>Zieltermin<input id="projectDue" type="date"></label>
         <label>Projektleitung<select id="projectLead"></select></label>
-        <label>Farbe<input id="projectColor" type="color" value="#0f8b78"></label>
+        <label>Farbe<input id="projectColor" type="color" value="#d8891c"></label>
+      </div>
+      <div class="project-members-box">
+        <div class="project-section-title"><strong>Projektteam</strong><span>Mehrere Beteiligte auswählen</span></div>
+        <div id="projectMembersList" class="project-members-list"></div>
       </div>
       <div class="dialog-actions"><button id="deleteProjectBtn" type="button" class="btn danger hidden">Löschen</button><div class="controls-spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">Speichern</button></div>
     </form>
@@ -463,8 +476,40 @@
         <label>Fällig<input id="projectTaskDue" type="date"></label>
         <label>Wiederholung<select id="projectTaskRecurrence"><option value="none">Keine</option><option value="weekly">Wöchentlich</option><option value="monthly">Monatlich</option><option value="quarterly">Quartalsweise</option><option value="halfyear">Halbjährlich</option><option value="yearly">Jährlich</option></select></label>
       </div>
+      <div id="projectTaskConflictWarning" class="inline-warning hidden"></div>
+      <section class="project-task-detail-section">
+        <div class="project-section-title"><strong>Checkliste</strong><button id="projectTaskAddChecklist" type="button" class="btn ghost">+ Punkt</button></div>
+        <div id="projectTaskChecklist" class="project-checklist-editor"></div>
+      </section>
+      <section id="projectTaskCollaboration" class="project-task-detail-section hidden">
+        <div class="project-section-title"><strong>Kommentare</strong><span id="projectTaskCommentCount"></span></div>
+        <div id="projectTaskComments" class="project-comments-list"></div>
+        <div class="project-comment-compose"><input id="projectTaskCommentInput" maxlength="1000" placeholder="Kommentar schreiben…"><button id="projectTaskCommentAdd" type="button" class="btn ghost">Senden</button></div>
+      </section>
+      <section id="projectTaskActivitySection" class="project-task-detail-section hidden">
+        <div class="project-section-title"><strong>Aktivität</strong></div>
+        <div id="projectTaskActivity" class="project-activity-list"></div>
+      </section>
       <div class="dialog-actions"><button id="deleteProjectTaskBtn" type="button" class="btn danger hidden">Löschen</button><div class="controls-spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">Speichern</button></div>
     </form>
+  </dialog>
+
+  <dialog id="projectTemplatesDialog" class="dialog glass-solid wide-dialog">
+    <div class="dialog-panel">
+      <div class="dialog-head"><div><span class="eyebrow">AUFGABENVORLAGEN</span><h2>Wiederkehrende Aufgaben</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <div id="projectTemplatesList" class="management-list"></div>
+      <form id="projectTemplateForm">
+        <input id="projectTemplateId" type="hidden">
+        <div class="form-grid two">
+          <label>Name<input id="projectTemplateName" required maxlength="120"></label>
+          <label>Priorität<select id="projectTemplatePriority"><option value="low">Niedrig</option><option value="medium">Mittel</option><option value="high">Hoch</option></select></label>
+          <label class="span-two">Beschreibung<textarea id="projectTemplateDescription" rows="2"></textarea></label>
+          <label>Wiederholung<select id="projectTemplateRecurrence"><option value="none">Keine</option><option value="weekly">Wöchentlich</option><option value="monthly">Monatlich</option><option value="quarterly">Quartalsweise</option><option value="halfyear">Halbjährlich</option><option value="yearly">Jährlich</option></select></label>
+          <label>Sortierung<input id="projectTemplateSort" type="number" min="0" step="10" value="100"></label>
+        </div>
+        <div class="dialog-actions"><button id="deleteProjectTemplateBtn" type="button" class="btn danger hidden">Löschen</button><div class="controls-spacer"></div><button id="resetProjectTemplateBtn" type="button" class="btn ghost">Neu</button><button type="submit" class="btn primary">Speichern</button></div>
+      </form>
+    </div>
   </dialog>
 
   <dialog id="projectNoteDialog" class="dialog glass-solid compact">
