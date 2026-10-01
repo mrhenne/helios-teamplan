@@ -57,6 +57,7 @@ let discussionChannel = null;
 let discussions = [];
 let activeDiscussionId = null;
 let discussionFilter = 'open';
+let unreadDiscussionIds = new Set();
 let focusPanMode = false;
 let focusPanning = false;
 let focusPanStartX = 0;
@@ -98,6 +99,53 @@ function canApprove(){return sessionRole==='admin'||sessionRole==='planner'}
 function canManage(){return sessionRole==='admin'||sessionRole==='planner'}
 function canEditEmployees(){return sessionRole==='admin'||sessionRole==='planner'}
 function canDiscuss(){return !!authUser&&sessionRole!=='viewer'}
+function renderUnreadMessageBadge(){
+  document.querySelectorAll('.employee-message-badge').forEach(el=>el.remove());
+  document.querySelectorAll('.employee-row').forEach(row=>row.classList.remove('employee-has-message'));
+  const employeeId=authMembership?.employee_id;
+  if(!employeeId||!unreadDiscussionIds.size)return;
+  const name=document.querySelector('.employee-row[data-id="'+employeeId+'"] .employee-name');
+  const row=document.querySelector('.employee-row[data-id="'+employeeId+'"]');
+  if(!name)return;
+  const badge=document.createElement('span');
+  badge.className='employee-message-badge';
+  badge.textContent=unreadDiscussionIds.size>9?'9+':String(unreadDiscussionIds.size);
+  badge.title=unreadDiscussionIds.size+' neue '+(unreadDiscussionIds.size===1?'Nachricht/Unterhaltung':'Nachrichten/Unterhaltungen');
+  name.appendChild(badge);
+  row?.classList.add('employee-has-message');
+}
+async function loadUnreadDiscussionState(){
+  unreadDiscussionIds=new Set();
+  if(!supabaseClient||!authUser||!authMembership?.employee_id){renderUnreadMessageBadge();return}
+  const target=discussions.filter(d=>d.employee_id===authMembership.employee_id);
+  if(!target.length){renderUnreadMessageBadge();return}
+  const ids=target.map(d=>d.id),cfg=window.TEAMPLAN_CONFIG||{};
+  const [readsRes,msgRes]=await Promise.all([
+    supabaseClient.from('teamplan_discussion_reads').select('discussion_id,last_read_at').eq('team_id',cfg.teamId).eq('user_id',authUser.id).in('discussion_id',ids),
+    supabaseClient.from('teamplan_messages').select('discussion_id,user_id,created_at').eq('team_id',cfg.teamId).in('discussion_id',ids).neq('user_id',authUser.id).order('created_at',{ascending:false})
+  ]);
+  if(readsRes.error){console.error(readsRes.error);renderUnreadMessageBadge();return}
+  if(msgRes.error){console.error(msgRes.error);renderUnreadMessageBadge();return}
+  const readMap=new Map((readsRes.data||[]).map(r=>[r.discussion_id,new Date(r.last_read_at).getTime()]));
+  const latest=new Map();
+  (msgRes.data||[]).forEach(m=>{if(!latest.has(m.discussion_id))latest.set(m.discussion_id,new Date(m.created_at).getTime())});
+  target.forEach(d=>{
+    const last=latest.get(d.id);if(!last)return;
+    const read=readMap.get(d.id)||0;
+    if(last>read)unreadDiscussionIds.add(d.id);
+  });
+  renderUnreadMessageBadge();
+}
+async function markDiscussionRead(id){
+  if(!supabaseClient||!authUser||!id)return;
+  const cfg=window.TEAMPLAN_CONFIG||{};
+  const {error}=await supabaseClient.from('teamplan_discussion_reads').upsert({
+    team_id:cfg.teamId,discussion_id:id,user_id:authUser.id,last_read_at:new Date().toISOString()
+  },{onConflict:'team_id,discussion_id,user_id'});
+  if(error){console.error(error);return}
+  unreadDiscussionIds.delete(id);renderUnreadMessageBadge();
+}
+
 function discussionEmployeeName(id){return id?(state.employees.find(e=>e.id===id)?.name||'Mitarbeiter'):''}
 function formatDiscussionRange(start,end){
   const a=new Date(start+'T12:00:00'),b=new Date(end+'T12:00:00');
@@ -121,7 +169,7 @@ async function loadDiscussions(){
   const cfg=window.TEAMPLAN_CONFIG||{};
   const {data,error}=await supabaseClient.from('teamplan_discussions').select('*').eq('team_id',cfg.teamId).order('updated_at',{ascending:false}).limit(250);
   if(error){console.error(error);return}
-  discussions=data||[];updateDiscussionBadge();renderDiscussionList();
+  discussions=data||[];updateDiscussionBadge();renderDiscussionList();await loadUnreadDiscussionState();
 }
 function renderDiscussionList(){
   const list=document.getElementById('discussionList');if(!list)return;
@@ -159,6 +207,7 @@ async function selectDiscussion(id){
   const form=document.getElementById('discussionMessageForm');
   form.classList.toggle('hidden',!canDiscuss());
   await loadDiscussionMessages(id);
+  await markDiscussionRead(id);
 }
 async function openDiscussionsDialog(){
   if(!authUser){showToast('Bitte anmelden, um Abstimmungen zu nutzen');return}
@@ -208,13 +257,17 @@ async function startDiscussionRealtime(){
   const cfg=window.TEAMPLAN_CONFIG||{};
   discussionChannel=supabaseClient.channel('teamplan-discussions-live-'+cfg.teamId)
     .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_discussions',filter:'team_id=eq.'+cfg.teamId},async()=>{await loadDiscussions();if(activeDiscussionId)await selectDiscussion(activeDiscussionId)})
-    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_messages',filter:'team_id=eq.'+cfg.teamId},async payload=>{if(activeDiscussionId&&payload.new?.discussion_id===activeDiscussionId)await loadDiscussionMessages(activeDiscussionId)})
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_messages',filter:'team_id=eq.'+cfg.teamId},async payload=>{
+      if(activeDiscussionId&&payload.new?.discussion_id===activeDiscussionId&&document.getElementById('discussionsDialog')?.open){
+        await loadDiscussionMessages(activeDiscussionId);await markDiscussionRead(activeDiscussionId);
+      }else await loadUnreadDiscussionState();
+    })
     .subscribe();
   await loadDiscussions();
 }
 async function stopDiscussionRealtime(){
   if(discussionChannel){try{await supabaseClient.removeChannel(discussionChannel)}catch{}}
-  discussionChannel=null;discussions=[];activeDiscussionId=null;updateDiscussionBadge();
+  discussionChannel=null;discussions=[];activeDiscussionId=null;unreadDiscussionIds=new Set();updateDiscussionBadge();renderUnreadMessageBadge();
 }
 
 function renderPresenceUI(){
@@ -441,11 +494,11 @@ function render(){
     const used=usedVacation(e),total=vacationEntitlement(e),remain=remainingVacation(e),xu=countCode(e,'XU'); const status=remain<0?'status-bad':remain<=3?'status-low':'status-good';
     const employeeFocusClass=sessionRole==='employee'?(e.id===sessionEmployeeId?'employee-own-row':'employee-muted-row'):'';
     html+=`<tr class="employee-row ${employeeFocusClass}" draggable="true" data-id="${e.id}"><td class="employee-col employee-cell"><div class="employee-card"><span class="drag-handle">⠿</span><div class="employee-edit" data-id="${e.id}"><div class="employee-name"><span class="presence-dot" title="Offline"></span>${escapeHtml(e.name)}</div><div class="employee-meta">${e.hours} h · ${e.percent}% · ${e.workdays} Tage/Woche · XU ${xu}</div></div><div class="employee-stats ${status}"><strong>${used}/${total}</strong><small>${remain} übrig</small></div></div></td>`;
-    dates.forEach(d=>{const key=dateKey(d),v=entryFor(e.id,key),we=[0,6].includes(d.getDay()),nonwork=!isWorkday(e,d),conf=conflictLevel(key),school=schoolBreakForDate(d),monthTone=d.getMonth()%2===0?'month-even':'month-odd',blackout=blackoutForKey(key),status=v.status||'wish';const codes=(v.codes||[]).map(c=>{const d=codeDef(c);return `<span class="cell-code ${codeClassName(c)}"${d.color?` style="--code-color:${escapeHtml(d.color)}"`:''}>${c}</span>`}).join('');const plannerMarkers=(v.plannerMarkers||[]).map(m=>`<span class="planner-marker marker-${m==='V?'?'v':m==='T?'?'t':'k'}">${escapeHtml(m)}</span>`).join('');const warn=(conf.vacation&&entryIsActive(v)&&v.codes?.includes('U'))||(conf.total&&entryIsActive(v)&&v.codes?.some(c=>['U','XU','S'].includes(c)));html+=`<td class="day-cell ${we?'weekend':''} ${nonwork?'nonwork':''} ${school?'school-holiday-cell':''} ${monthTone} status-${status} ${blackout?'blackout-cell':''}" data-emp="${e.id}" data-date="${key}" title="${escapeHtml([v.note,blackout&&('Sperrzeit: '+blackout.name),school&&('NRW '+school),status&&('Status: '+status),(v.plannerMarkers||[]).length&&('Planer: '+v.plannerMarkers.join(', '))].filter(Boolean).join(' · '))}"><div class="cell-codes">${codes}</div><div class="planner-markers">${plannerMarkers}</div>${(v.codes||[]).length?`<span class="status-mark status-${status}"></span>`:''}${v.priority?`<span class="cell-priority p${v.priority}"></span>`:''}${v.note?'<span class="cell-note"></span>':''}${warn?'<span class="cell-warning-mark">!</span>':''}</td>`});
+    dates.forEach(d=>{const key=dateKey(d),v=entryFor(e.id,key),we=[0,6].includes(d.getDay()),nonwork=!isWorkday(e,d),conf=conflictLevel(key),school=schoolBreakForDate(d),monthTone=d.getMonth()%2===0?'month-even':'month-odd',blackout=blackoutForKey(key),status=v.status||'wish';const codes=(v.codes||[]).map(c=>{const d=codeDef(c);return `<span class="cell-code ${codeClassName(c)}"${d.color?` style="--code-color:${escapeHtml(d.color)}"`:''}>${c}</span>`}).join('');const plannerMarkers=(v.plannerMarkers||[]).map(m=>`<span class="planner-marker marker-${m==='V?'?'v':m==='T?'?'t':'k'}">${escapeHtml(m)}</span>`).join('');const warn=(conf.vacation&&entryIsActive(v)&&v.codes?.includes('U'))||(conf.total&&entryIsActive(v)&&v.codes?.some(c=>['U','XU','S'].includes(c)));html+=`<td class="day-cell ${we?'weekend':''} ${nonwork?'nonwork':''} ${school?'school-holiday-cell':''} ${monthTone} status-${status} ${blackout?'blackout-cell':''}" data-emp="${e.id}" data-date="${key}" title="${escapeHtml([v.note,blackout&&('Sperrzeit: '+blackout.name),school&&('NRW '+school),status&&('Status: '+status),(v.plannerMarkers||[]).length&&('Planer: '+v.plannerMarkers.join(', '))].filter(Boolean).join(' · '))}"><div class="cell-codes">${codes}</div><div class="planner-markers">${plannerMarkers}</div>${(v.codes||[]).length?`<span class="status-mark status-${status}"></span>`:''}${v.priority?`<span class="cell-priority p${v.priority}"></span>`:''}${v.note?`<span class="cell-note-preview" title="${escapeHtml(v.note)}">${escapeHtml(String(v.note).trim().slice(0,14))}</span>`:''}${warn?'<span class="cell-warning-mark">!</span>':''}</td>`});
     html+='</tr>';
   });
   html+=summaryRow('Urlaub U','U',dates);html+=summaryRow('Wunschfrei XU','XU',dates);html+=summaryRow('Schule S','S',dates);html+=presenceRow(dates);html+=absenceNamesRow(dates);html+='</tbody></table>';
-  document.getElementById('planner').innerHTML=html; bindPlannerEvents(); renderMetrics(); syncViewControls(); applyAppearance(); renderDynamicCodes(); renderPresenceUI();
+  document.getElementById('planner').innerHTML=html; bindPlannerEvents(); renderMetrics(); syncViewControls(); applyAppearance(); renderDynamicCodes(); renderPresenceUI(); renderUnreadMessageBadge();
   if(currentView==='month') setupFlowingMonthScroll();
   if(currentView==='year') renderYearOverview();
 }
@@ -769,6 +822,20 @@ function quickCellCode(empId,key,code,status=null){
   persist();saveRemoteEntry(empId,key,state.entries[empId][key]);hideCellContextMenu();render();
   showToast(code+(status==='approved'?' genehmigt':'')+' eingetragen');
 }
+function quickEditCellNote(empId,key){
+  if(!canPlan(empId)){showToast('Keine Bearbeitungsrechte');return}
+  const old=entryFor(empId,key),current=old.note||'';
+  const value=prompt(current?'Notiz bearbeiten':'Notiz hinzufügen',current);
+  if(value===null)return;
+  const note=value.trim();
+  if(!state.entries[empId])state.entries[empId]={};
+  const next={...old,note,status:sessionRole==='employee'?'wish':(old.status||'wish'),plannerMarkers:old.plannerMarkers||[]};
+  trackAction(note?'Notiz geändert':'Notiz entfernt',(state.employees.find(e=>e.id===empId)?.name||'')+' · '+key);
+  if((next.codes||[]).length||next.priority||note||(next.plannerMarkers||[]).length)state.entries[empId][key]=next;
+  else delete state.entries[empId][key];
+  persist();saveRemoteEntry(empId,key,state.entries[empId]?.[key]??null);hideCellContextMenu();render();
+  showToast(note?'Notiz gespeichert':'Notiz entfernt');
+}
 function quickDeleteCell(empId,key){
   if(!canPlan(empId)){showToast('Keine Bearbeitungsrechte');return}
   if(!state.entries[empId]?.[key]){hideCellContextMenu();return}
@@ -795,6 +862,7 @@ function showCellContextMenu(event,empId,key){
     markerButtons+
     '<div class="context-separator"></div>'+
     (canDiscuss()?'<button type="button" class="context-action discussion-context" data-context-discussion="1"><b>◌</b><span>Team-Chat starten…</span></button>':'')+
+    '<button type="button" class="context-action note-context" data-context-note="1"><b>≡</b><span>'+(entry.note?'Notiz bearbeiten…':'Notiz hinzufügen…')+'</span></button>'+
     '<button type="button" class="context-action" data-context-edit="1"><b>✎</b><span>Vollständig bearbeiten…</span></button>'+
     '<button type="button" class="context-action danger-context" data-context-delete="1"><b>⌫</b><span>Eintrag löschen</span></button>';
   menu.querySelectorAll('[data-context-code]').forEach(b=>b.addEventListener('click',()=>quickCellCode(empId,key,b.dataset.contextCode)));
@@ -813,6 +881,7 @@ function showCellContextMenu(event,empId,key){
     hideCellContextMenu();
     openNewDiscussion({date:key,employeeId:empId,title:'Chat '+(emp?.name||'')+' · '+key});
   });
+  menu.querySelector('[data-context-note]').addEventListener('click',()=>quickEditCellNote(empId,key));
   menu.querySelector('[data-context-edit]').addEventListener('click',()=>{hideCellContextMenu();openCell(empId,key)});
   menu.querySelector('[data-context-delete]').addEventListener('click',()=>quickDeleteCell(empId,key));
   menu.classList.remove('hidden');
