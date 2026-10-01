@@ -3162,15 +3162,40 @@ function initProjectModuleUI(){
 async function completeSignedIn(user){
   if(!user)throw new Error('Anmeldung erfolgreich, aber kein Benutzerkonto wurde zurückgegeben.');
   authUser=user;
+
+  // Only authentication-critical data may block the login screen.
   await loadAuthMembership();
-  await loadRemotePlan();
-  await loadTrainingData();
-  await loadProjectData();
-  await startPresence();
-  await startDiscussionRealtime();
-  await startTrainingRealtime();
-  await startProjectRealtime();
   hideLogin();
+  setSync('live','● Angemeldet');
+
+  // Core vacation plan remains part of the initial app load.
+  try{
+    await loadRemotePlan();
+  }catch(err){
+    console.error('Urlaubsplan konnte nicht geladen werden',err);
+    showToast('Angemeldet · Urlaubsplan derzeit nicht synchron');
+  }
+
+  // Optional modules must never throw the user back to the login dialog.
+  const safeModuleLoad=async(label,fn)=>{
+    try{await fn()}
+    catch(err){
+      console.error(label+' konnte nicht geladen werden',err);
+      showToast(label+' konnte nicht geladen werden');
+    }
+  };
+
+  await Promise.allSettled([
+    safeModuleLoad('Fortbildungen',loadTrainingData),
+    safeModuleLoad('Projekte',loadProjectData),
+    safeModuleLoad('Online-Status',startPresence),
+    safeModuleLoad('Team-Chat',startDiscussionRealtime)
+  ]);
+
+  // Realtime subscriptions are non-critical and are started independently.
+  startTrainingRealtime().catch(err=>console.error('Fortbildungs-Realtime',err));
+  startProjectRealtime().catch(err=>console.error('Projekt-Realtime',err));
+
   setSync('live','● Live synchron');
   switchModule(currentModule,true);
 }
@@ -3219,7 +3244,21 @@ async function initRemote(){
       },0);
     });
     supabaseClient.channel('teamplan-live').on('postgres_changes',{event:'*',schema:'public',table:'team_plans',filter:`team_id=eq.${cfg.teamId}`},payload=>{const remote=payload.new?.data;if(remote&&remote.updatedAt!==state.updatedAt){isApplyingRemote=true;state=normalizeState(remote);localStorage.setItem('helios-teamplan-v1',JSON.stringify(state));isApplyingRemote=false;render();showToast('Plan wurde aktualisiert')}}).subscribe();
-  }catch(err){console.error(err);setSync('error','● Login/Sync-Fehler');showLogin()}
+  }catch(err){
+    console.error(err);
+    setSync('error','● Login/Sync-Fehler');
+    try{
+      const {data:{session}}=supabaseClient?await supabaseClient.auth.getSession():{data:{session:null}};
+      if(!session)showLogin();
+      else{
+        authUser=session.user||authUser;
+        hideLogin();
+        const errEl=document.getElementById('loginError');
+        if(errEl){errEl.textContent='Angemeldet, aber Teile der Daten konnten nicht geladen werden.';errEl.classList.add('hidden')}
+        showToast('Angemeldet · Datenfehler wird separat behandelt');
+      }
+    }catch{showLogin()}
+  }
 }
 async function pushRemote(){
   if(!supabaseClient||!authUser||!canManage())return;
