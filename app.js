@@ -69,6 +69,10 @@ let currentModule = localStorage.getItem('teamplan-module') || 'vacation';
 let employeeInfoPrefs = (()=>{try{return {...{work:false,vacation:true,xu:false},...JSON.parse(localStorage.getItem('teamplan-employee-info')||'{}')}}catch{return {work:false,vacation:true,xu:false}}})();
 let vacationToolsOpen = localStorage.getItem('teamplan-vacation-tools-open') === '1';
 let projectView = localStorage.getItem('teamplan-project-view') || 'overview';
+if(!['overview','my','roadmap','board','calendar','team','notes'].includes(projectView)){
+  projectView='overview';
+  localStorage.setItem('teamplan-project-view',projectView);
+}
 let projectCalendarMode = localStorage.getItem('teamplan-project-calendar-mode') || 'month';
 let projectCalendarDate = (()=>{const r=localStorage.getItem('teamplan-project-calendar-date');const d=r?new Date(r+'T12:00:00'):new Date();return isNaN(d)?new Date():d})();
 let projectProjects = [];
@@ -79,6 +83,8 @@ let projectNotes = [];
 let projectComments = [];
 let projectActivity = [];
 let projectChannel = null;
+let projectLoadPromise = null;
+let projectReloadTimer = null;
 let projectDialogReturnProjectId = null;
 let projectMemberDraft = new Map();
 let trainingView = localStorage.getItem('teamplan-training-view') || 'overview';
@@ -2533,36 +2539,68 @@ function loadProjectLocal(){
   }
 }
 async function loadProjectData(){
-  if(!supabaseClient||!authUser){loadProjectLocal();renderProjectModule();return}
-  const cfg=window.TEAMPLAN_CONFIG||{};
-  const [p,m,t,tt,n,c,a]=await Promise.all([
-    supabaseClient.from('teamplan_projects').select('*').eq('team_id',cfg.teamId).order('created_at'),
-    supabaseClient.from('teamplan_project_members').select('*').eq('team_id',cfg.teamId),
-    supabaseClient.from('teamplan_tasks').select('*').eq('team_id',cfg.teamId).order('sort_order').order('created_at'),
-    supabaseClient.from('teamplan_task_templates').select('*').eq('team_id',cfg.teamId).eq('active',true).order('sort_order'),
-    supabaseClient.from('teamplan_notes').select('*').eq('team_id',cfg.teamId).order('created_at',{ascending:false}),
-    supabaseClient.from('teamplan_task_comments').select('*').eq('team_id',cfg.teamId).order('created_at'),
-    supabaseClient.from('teamplan_project_activity').select('*').eq('team_id',cfg.teamId).order('created_at',{ascending:false}).limit(300)
-  ]);
-  for(const r of [p,m,t,tt,n,c,a])if(r.error)throw r.error;
-  projectProjects=p.data||[];projectMembers=m.data||[];projectTasks=t.data||[];projectTemplates=tt.data||[];projectNotes=n.data||[];projectComments=c.data||[];projectActivity=a.data||[];
-  renderProjectModule();
+  if(projectLoadPromise)return projectLoadPromise;
+  projectLoadPromise=(async()=>{
+    if(!supabaseClient||!authUser){
+      loadProjectLocal();
+      try{renderProjectModule()}catch(err){console.error('Projekt-Renderfehler lokal',err)}
+      return;
+    }
+    const cfg=window.TEAMPLAN_CONFIG||{};
+    const [p,m,t,tt,n,c,a]=await Promise.all([
+      supabaseClient.from('teamplan_projects').select('*').eq('team_id',cfg.teamId).order('created_at'),
+      supabaseClient.from('teamplan_project_members').select('*').eq('team_id',cfg.teamId),
+      supabaseClient.from('teamplan_tasks').select('*').eq('team_id',cfg.teamId).order('sort_order').order('created_at'),
+      supabaseClient.from('teamplan_task_templates').select('*').eq('team_id',cfg.teamId).eq('active',true).order('sort_order'),
+      supabaseClient.from('teamplan_notes').select('*').eq('team_id',cfg.teamId).order('created_at',{ascending:false}),
+      supabaseClient.from('teamplan_task_comments').select('*').eq('team_id',cfg.teamId).order('created_at'),
+      supabaseClient.from('teamplan_project_activity').select('*').eq('team_id',cfg.teamId).order('created_at',{ascending:false}).limit(300)
+    ]);
+    for(const r of [p,m,t,tt,n,c,a])if(r.error)throw r.error;
+    projectProjects=p.data||[];
+    projectMembers=m.data||[];
+    projectTasks=t.data||[];
+    projectTemplates=tt.data||[];
+    projectNotes=n.data||[];
+    projectComments=c.data||[];
+    projectActivity=a.data||[];
+    try{
+      renderProjectModule();
+    }catch(err){
+      console.error('Projekt-Renderfehler',err);
+      projectView='overview';
+      localStorage.setItem('teamplan-project-view','overview');
+      try{renderProjectModule()}catch(secondErr){console.error('Projekt-Fallback-Renderfehler',secondErr)}
+    }
+  })().finally(()=>{projectLoadPromise=null});
+  return projectLoadPromise;
+}
+function scheduleProjectReload(){
+  if(projectReloadTimer)clearTimeout(projectReloadTimer);
+  projectReloadTimer=setTimeout(()=>{
+    projectReloadTimer=null;
+    loadProjectData().catch(err=>{
+      console.error('Projekt-Realtime-Reload',err);
+      showToast('Projekt-Sync konnte nicht aktualisiert werden');
+    });
+  },220);
 }
 async function startProjectRealtime(){
   if(!supabaseClient||!authUser)return;
   if(projectChannel){try{await supabaseClient.removeChannel(projectChannel)}catch{}}
   const cfg=window.TEAMPLAN_CONFIG||{};
   projectChannel=supabaseClient.channel('teamplan-projects-live-'+cfg.teamId)
-    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_projects'},loadProjectData)
-    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_project_members'},loadProjectData)
-    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_tasks'},loadProjectData)
-    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_task_templates'},loadProjectData)
-    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_notes'},loadProjectData)
-    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_task_comments'},loadProjectData)
-    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_project_activity'},loadProjectData)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_projects'},scheduleProjectReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_project_members'},scheduleProjectReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_tasks'},scheduleProjectReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_task_templates'},scheduleProjectReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_notes'},scheduleProjectReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_task_comments'},scheduleProjectReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_project_activity'},scheduleProjectReload)
     .subscribe();
 }
 async function stopProjectRealtime(){
+  if(projectReloadTimer){clearTimeout(projectReloadTimer);projectReloadTimer=null}
   if(projectChannel){try{await supabaseClient.removeChannel(projectChannel)}catch{}}
   projectChannel=null;projectProjects=[];projectMembers=[];projectTasks=[];projectNotes=[];projectTemplates=[];projectComments=[];projectActivity=[];renderProjectModule();
 }
@@ -2757,6 +2795,7 @@ function renderProjectNotes(){
 }
 function renderProjectModule(){
   if(!document.getElementById('projectsModule'))return;
+  if(!['overview','my','roadmap','board','calendar','team','notes'].includes(projectView))projectView='overview';
   populateProjectControls();
   const canCreateTask=projectCanManage()||projectProjects.some(p=>projectIsLead(p.id));
   document.getElementById('addProjectBtn')?.classList.toggle('hidden',!projectCanManage());
@@ -3357,7 +3396,7 @@ async function initRemote(){
             setSync('live','● Live synchron');
           }catch(syncErr){
             console.error('Sync Wiederholung fehlgeschlagen',syncErr);
-            setSync('error','● Sync gestört');
+            setSync('local','● Online · Sync verzögert');
           }
         },1000);
       }
