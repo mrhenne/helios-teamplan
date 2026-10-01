@@ -2314,6 +2314,21 @@ function syncTrainingRecurrenceMode(){
     input.value=Number(type?.interval_months||12);
   }
 }
+function setCompactDrawer(buttonId,bodyId,open,storageKey){
+  const btn=document.getElementById(buttonId),body=document.getElementById(bodyId);
+  if(!btn||!body)return;
+  body.classList.toggle('hidden',!open);
+  btn.setAttribute('aria-expanded',String(open));
+  if(storageKey)localStorage.setItem(storageKey,open?'1':'0');
+}
+function initCompactDrawer(buttonId,bodyId,storageKey){
+  const btn=document.getElementById(buttonId),body=document.getElementById(bodyId);
+  if(!btn||!body)return;
+  const open=localStorage.getItem(storageKey)==='1';
+  setCompactDrawer(buttonId,bodyId,open,storageKey);
+  btn.addEventListener('click',()=>setCompactDrawer(buttonId,bodyId,btn.getAttribute('aria-expanded')!=='true',storageKey));
+}
+
 function initTrainingModuleUI(){
   document.getElementById('moduleVacationBtn')?.addEventListener('click',()=>switchModule('vacation'));
   document.getElementById('moduleTrainingBtn')?.addEventListener('click',()=>switchModule('training'));
@@ -2354,6 +2369,8 @@ function initTrainingModuleUI(){
   document.getElementById('trainingTypeForm')?.addEventListener('submit',e=>{e.preventDefault();saveTrainingType()});
   document.getElementById('trainingTypeResetBtn')?.addEventListener('click',resetTrainingTypeForm);
   document.getElementById('trainingBudgetForm')?.addEventListener('submit',e=>{e.preventDefault();saveTrainingBudget()});
+  initCompactDrawer('trainingToolsToggle','trainingToolsPanel','teamplan-training-tools-open');
+  initCompactDrawer('trainingFilterToggle','trainingFilterBar','teamplan-training-filter-open');
   populateTrainingControls();applyTrainingRoleUI();applyTrainingZoom();
 }
 
@@ -2902,6 +2919,7 @@ function initProjectModuleUI(){
   document.getElementById('projectsCalendarToday')?.addEventListener('click',()=>{projectCalendarDate=new Date();localStorage.setItem('teamplan-project-calendar-date',dateKey(projectCalendarDate));renderProjectCalendar();bindProjectRenderedEvents()});
   document.getElementById('projectsCalendarMonthBtn')?.addEventListener('click',()=>{projectCalendarMode='month';localStorage.setItem('teamplan-project-calendar-mode',projectCalendarMode);renderProjectCalendar();bindProjectRenderedEvents()});
   document.getElementById('projectsCalendarYearBtn')?.addEventListener('click',()=>{projectCalendarMode='year';localStorage.setItem('teamplan-project-calendar-mode',projectCalendarMode);renderProjectCalendar();bindProjectRenderedEvents()});
+  initCompactDrawer('projectsFilterToggle','projectsFilterBar','teamplan-project-filter-open');
   loadProjectLocal();renderProjectModule();
 }
 
