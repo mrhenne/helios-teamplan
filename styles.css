@@ -3845,3 +3845,20 @@ body.dark-mode .top-action-section{
 .top-status-item select{
   max-width:100%!important;
 }
+
+
+/* === 2026-10-01 ROLE BUTTON MICROFIX === */
+/* Der Team-Bereich bekommt etwas mehr Luft, damit "Rollen" niemals abgeschnitten wird. */
+@media(min-width:1001px){
+  .team-section{width:190px!important}
+  .team-section #usersBtn,
+  .team-section #roleHelpBtn{
+    min-width:0!important;
+    overflow:hidden!important;
+  }
+  .team-section #usersBtn span,
+  .team-section #roleHelpBtn span{
+    overflow:visible!important;
+    text-overflow:clip!important;
+  }
+}
