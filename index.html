@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-40" />
+  <link rel="stylesheet" href="styles.css?v=20261001-41" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -44,71 +44,45 @@
   <div class="aurora aurora-b"></div>
   <main class="app-shell">
     <header class="topbar glass">
-      <div class="brand">
+      <div class="topbar-brand">
         <div class="brand-mark">ZNA</div>
         <div class="brand-copy">
-          <div class="eyebrow">HELIOS INSPIRED · TEAMPLAN</div>
           <h1 id="appTitle">TeamPlan ZNA Management Plattform</h1>
+          <span>Urlaub · Fortbildung · Projekte</span>
         </div>
       </div>
 
-      <div class="top-global">
-        <div class="top-status-grid">
-          <div class="top-status-item sync-slot">
-            <span class="top-slot-label">Status</span>
-            <div id="syncPill" class="sync-pill local">● Lokal</div>
-          </div>
+      <div class="topbar-session" aria-label="Sitzungsstatus">
+        <div id="syncPill" class="sync-pill local">● Lokal</div>
+        <div id="authUserPill" class="topbar-user hidden"></div>
+        <div id="onlinePill" class="topbar-online hidden" title="Aktuell aktive Nutzer">● 0 online</div>
+        <div class="role-stack">
+          <select id="roleSelect" class="role-select" title="Arbeitsmodus">
+            <option value="admin">Admin</option>
+            <option value="planner">Planer</option>
+            <option value="employee">Mitarbeiter</option>
+            <option value="viewer">Nur Lesen</option>
+          </select>
+          <select id="roleEmployeeSelect" class="role-select hidden" title="Mitarbeiter auswählen"></select>
+        </div>
+      </div>
 
-          <div class="top-status-item user-slot">
-            <span class="top-slot-label">Angemeldet</span>
-            <div id="authUserPill" class="sync-pill hidden"></div>
-          </div>
-
-          <div class="top-status-item online-slot">
-            <span class="top-slot-label">Online</span>
-            <div id="onlinePill" class="sync-pill online-pill hidden" title="Aktuell aktive Nutzer">● 0 online</div>
-          </div>
-
-          <div class="top-status-item role-slot">
-            <span class="top-slot-label">Rolle</span>
-            <div class="role-stack">
-              <select id="roleSelect" class="role-select" title="Arbeitsmodus">
-                <option value="admin">Admin</option>
-                <option value="planner">Planer</option>
-                <option value="employee">Mitarbeiter</option>
-                <option value="viewer">Nur Lesen</option>
-              </select>
-              <select id="roleEmployeeSelect" class="role-select hidden" title="Mitarbeiter auswählen"></select>
-            </div>
-          </div>
+      <div class="topbar-actions">
+        <div class="topbar-action-group">
+          <span class="topbar-group-title">Team</span>
+          <button id="usersBtn" class="top-tool hidden" type="button" title="Benutzer verwalten"><svg class="ui-icon"><use href="#i-users"></use></svg><span>Benutzer</span></button>
+          <button id="roleHelpBtn" class="top-tool" data-tool-action="roles" type="button" title="Rollen und Rechte erklären"><svg class="ui-icon"><use href="#i-role"></use></svg><span>Rollen & Rechte</span></button>
         </div>
 
-        <div class="top-action-grid">
-          <div class="top-action-section team-section">
-            <span class="top-slot-label">Team</span>
-            <div class="top-action-row">
-              <button id="usersBtn" class="top-tool hidden" title="Benutzer verwalten"><svg class="ui-icon"><use href="#i-users"></use></svg><span>Benutzer verwalten</span></button>
-              <button id="roleHelpBtn" class="top-tool" data-tool-action="roles" title="Rollen und Rechte"><svg class="ui-icon"><use href="#i-role"></use></svg><span>Rollen & Rechte</span></button>
-            </div>
-          </div>
+        <div class="topbar-action-group">
+          <span class="topbar-group-title">Darstellung</span>
+          <button id="themeBtn" class="top-tool top-theme-btn" type="button" title="Hell/Dunkel wechseln"><svg class="ui-icon"><use href="#i-sun"></use></svg><span id="themeLabel">Hell</span></button>
+        </div>
 
-          <div class="top-action-section appearance-section">
-            <span class="top-slot-label">Darstellung</span>
-            <div class="top-action-row">
-              <div class="global-theme-control" title="Darstellung global ändern">
-                <svg class="ui-icon"><use href="#i-sun"></use></svg>
-                <button id="themeBtn" class="theme-switch" type="button"><span class="theme-switch-knob"></span><b id="themeLabel">Hell</b></button>
-              </div>
-            </div>
-          </div>
-
-          <div class="top-action-section account-section">
-            <span class="top-slot-label">Konto</span>
-            <div class="top-action-row">
-              <button id="settingsBtn" class="top-tool primary-tool" title="Einstellungen"><svg class="ui-icon"><use href="#i-settings"></use></svg><span>Einstellungen</span></button>
-              <button id="logoutBtn" class="top-tool hidden" title="Abmelden"><svg class="ui-icon"><use href="#i-logout"></use></svg><span>Abmelden</span></button>
-            </div>
-          </div>
+        <div class="topbar-action-group">
+          <span class="topbar-group-title">Konto</span>
+          <button id="settingsBtn" class="top-tool primary-tool" type="button" title="Einstellungen öffnen"><svg class="ui-icon"><use href="#i-settings"></use></svg><span>Einstellungen</span></button>
+          <button id="logoutBtn" class="top-tool hidden" type="button" title="Abmelden"><svg class="ui-icon"><use href="#i-logout"></use></svg><span>Abmelden</span></button>
         </div>
       </div>
     </header>
@@ -422,6 +396,7 @@
         <div class="projects-overview-grid">
           <section class="glass project-panel"><header><div><span class="eyebrow">AKTUELLE PROJEKTE</span><h2>Im Fokus</h2></div></header><div id="projectsFocusList" class="project-card-list"></div></section>
           <section class="glass project-panel"><header><div><span class="eyebrow">MEINE / OFFENE AUFGABEN</span><h2>Als Nächstes</h2></div></header><div id="projectsNextTasks" class="project-task-list"></div></section>
+          <section class="glass project-panel project-activity-panel"><header><div><span class="eyebrow">FORTSCHRITT</span><h2>Letzte Änderungen</h2></div><span class="project-chip">Live</span></header><div id="projectsRecentActivity" class="project-recent-activity"></div></section>
         </div>
       </section>
 
@@ -486,8 +461,22 @@
         <label>Farbe<input id="projectColor" type="color" value="#d8891c"></label>
       </div>
       <div class="project-members-box">
-        <div class="project-section-title"><strong>Projektteam</strong><span>Mehrere Beteiligte auswählen</span></div>
+        <div class="project-section-title">
+          <div><strong>Projektteam</strong><span id="projectMemberCount">0 Mitarbeitende ausgewählt</span></div>
+          <div class="project-member-actions">
+            <button id="projectMembersAllBtn" type="button" class="btn ghost">Alle</button>
+            <button id="projectMembersNoneBtn" type="button" class="btn ghost">Keine</button>
+          </div>
+        </div>
+        <input id="projectMemberSearch" class="project-member-search" type="search" placeholder="Mitarbeitende suchen…">
         <div id="projectMembersList" class="project-members-list"></div>
+      </div>
+      <div id="projectTasksBox" class="project-members-box hidden">
+        <div class="project-section-title">
+          <div><strong>Aufgaben in diesem Projekt</strong><span>Jede Aufgabe kann eine andere verantwortliche Person haben.</span></div>
+          <button id="projectAddTaskBtn" type="button" class="btn primary">+ Aufgabe</button>
+        </div>
+        <div id="projectDialogTasks" class="project-dialog-tasks"></div>
       </div>
       <div class="dialog-actions"><button id="deleteProjectBtn" type="button" class="btn danger hidden">Löschen</button><div class="controls-spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">Speichern</button></div>
     </form>
@@ -501,7 +490,7 @@
       <label>Beschreibung<textarea id="projectTaskDescription" rows="3"></textarea></label>
       <div class="form-grid">
         <label>Projekt<select id="projectTaskProject"></select></label>
-        <label>Verantwortlich<select id="projectTaskAssignee"></select></label>
+        <label>Verantwortlich<select id="projectTaskAssignee"></select><small class="field-hint">Wird bei Bedarf automatisch zum Projektteam hinzugefügt.</small></label>
         <label>Status<select id="projectTaskStatus"><option value="open">Offen</option><option value="progress">In Arbeit</option><option value="waiting">Rückfrage</option><option value="done">Erledigt</option></select></label>
         <label>Priorität<select id="projectTaskPriority"><option value="low">Niedrig</option><option value="medium">Mittel</option><option value="high">Hoch</option></select></label>
         <label>Start<input id="projectTaskStart" type="date"></label>
