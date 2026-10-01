@@ -76,6 +76,8 @@ let projectMembers = [];
 let projectTasks = [];
 let projectTemplates = [];
 let projectNotes = [];
+let projectComments = [];
+let projectActivity = [];
 let projectChannel = null;
 let trainingView = localStorage.getItem('teamplan-training-view') || 'overview';
 let trainingYear = Number(localStorage.getItem('teamplan-training-year')) || new Date().getFullYear();
@@ -1449,7 +1451,7 @@ function hideLogin(){const d=document.getElementById('loginDialog');if(d?.open)d
 function trainingCanManage(){return canManage()}
 function trainingEmployeeName(id){return state.employees.find(e=>e.id===id)?.name||'Unbekannter Mitarbeiter'}
 function trainingTypeById(id){return trainingTypes.find(t=>t.id===id)||null}
-function trainingCategoryFallbackColor(category=''){const c=String(category).toLowerCase();if(c.includes('weiterbildung'))return '#8b5cf6';if(c.includes('pflicht'))return '#e59f23';if(c.includes('training'))return '#0f8b78';return '#5b8def'}
+function trainingCategoryFallbackColor(category=''){const c=String(category).toLowerCase();if(c.includes('weiterbildung'))return '#8b5cf6';if(c.includes('pflicht'))return '#e59f23';if(c.includes('training'))return '#d8891c';return '#5b8def'}
 function trainingColor(t){const type=trainingTypeById(t?.type_id);return type?.color||trainingCategoryFallbackColor(t?.category)}
 function trainingBudgetFor(empId,year=trainingYear){return Number(trainingBudgets.find(b=>b.employee_id===empId&&Number(b.year)===Number(year))?.amount||0)}
 function trainingDate(d){return d?new Date(d+'T12:00:00'):null}
@@ -2368,6 +2370,16 @@ const projectDefaultTemplates=[
   {id:'local-template-meeting',name:'Teamsitzung vorbereiten',description:'Agenda, Themen und offene Punkte sammeln',default_priority:'medium',recurrence:'monthly',icon:'users',sort_order:60,active:true}
 ];
 function projectCanManage(){return canManage()}
+function projectIsLead(projectId){
+  const p=projectProjects.find(x=>x.id===projectId);
+  const employeeId=authMembership?.employee_id||sessionEmployeeId;
+  return !!(p&&employeeId&&p.lead_employee_id===employeeId);
+}
+function projectCanManageProject(projectId){return projectCanManage()||projectIsLead(projectId)}
+function projectCanManageTask(task){
+  return !!task&&(projectCanManageProject(task.project_id)||(sessionRole==='employee'&&task.assignee_employee_id===(authMembership?.employee_id||sessionEmployeeId)));
+}
+function currentProjectEmployeeId(){return authMembership?.employee_id||sessionEmployeeId||''}
 function projectEmployeeName(id){return state.employees.find(e=>e.id===id)?.name||'Nicht zugewiesen'}
 function projectName(id){return projectProjects.find(p=>p.id===id)?.name||'Ohne Projekt'}
 function projectStatusLabel(s){return s==='active'?'In Arbeit':s==='paused'?'Pausiert':s==='done'?'Erledigt':'In Planung'}
@@ -2375,7 +2387,7 @@ function projectTaskStatusLabel(s){return s==='progress'?'In Arbeit':s==='waitin
 function projectPriorityLabel(s){return s==='high'?'Hoch':s==='low'?'Niedrig':'Mittel'}
 function projectDateLabel(v){if(!v)return 'ohne Termin';const d=new Date(v+'T12:00:00');return d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'})}
 function saveProjectLocal(){
-  localStorage.setItem('teamplan-projects-local',JSON.stringify({projects:projectProjects,members:projectMembers,tasks:projectTasks,templates:projectTemplates,notes:projectNotes}));
+  localStorage.setItem('teamplan-projects-local',JSON.stringify({projects:projectProjects,members:projectMembers,tasks:projectTasks,templates:projectTemplates,notes:projectNotes,comments:projectComments,activity:projectActivity}));
 }
 function loadProjectLocal(){
   try{
@@ -2385,22 +2397,26 @@ function loadProjectLocal(){
     projectTasks=Array.isArray(raw.tasks)?raw.tasks:[];
     projectTemplates=Array.isArray(raw.templates)&&raw.templates.length?raw.templates:structuredClone(projectDefaultTemplates);
     projectNotes=Array.isArray(raw.notes)?raw.notes:[];
+    projectComments=Array.isArray(raw.comments)?raw.comments:[];
+    projectActivity=Array.isArray(raw.activity)?raw.activity:[];
   }catch{
-    projectProjects=[];projectMembers=[];projectTasks=[];projectTemplates=structuredClone(projectDefaultTemplates);projectNotes=[];
+    projectProjects=[];projectMembers=[];projectTasks=[];projectTemplates=structuredClone(projectDefaultTemplates);projectNotes=[];projectComments=[];projectActivity=[];
   }
 }
 async function loadProjectData(){
   if(!supabaseClient||!authUser){loadProjectLocal();renderProjectModule();return}
   const cfg=window.TEAMPLAN_CONFIG||{};
-  const [p,m,t,tt,n]=await Promise.all([
+  const [p,m,t,tt,n,c,a]=await Promise.all([
     supabaseClient.from('teamplan_projects').select('*').eq('team_id',cfg.teamId).order('created_at'),
     supabaseClient.from('teamplan_project_members').select('*').eq('team_id',cfg.teamId),
     supabaseClient.from('teamplan_tasks').select('*').eq('team_id',cfg.teamId).order('sort_order').order('created_at'),
     supabaseClient.from('teamplan_task_templates').select('*').eq('team_id',cfg.teamId).eq('active',true).order('sort_order'),
-    supabaseClient.from('teamplan_notes').select('*').eq('team_id',cfg.teamId).order('created_at',{ascending:false})
+    supabaseClient.from('teamplan_notes').select('*').eq('team_id',cfg.teamId).order('created_at',{ascending:false}),
+    supabaseClient.from('teamplan_task_comments').select('*').eq('team_id',cfg.teamId).order('created_at'),
+    supabaseClient.from('teamplan_project_activity').select('*').eq('team_id',cfg.teamId).order('created_at',{ascending:false}).limit(300)
   ]);
-  for(const r of [p,m,t,tt,n])if(r.error)throw r.error;
-  projectProjects=p.data||[];projectMembers=m.data||[];projectTasks=t.data||[];projectTemplates=tt.data||[];projectNotes=n.data||[];
+  for(const r of [p,m,t,tt,n,c,a])if(r.error)throw r.error;
+  projectProjects=p.data||[];projectMembers=m.data||[];projectTasks=t.data||[];projectTemplates=tt.data||[];projectNotes=n.data||[];projectComments=c.data||[];projectActivity=a.data||[];
   renderProjectModule();
 }
 async function startProjectRealtime(){
@@ -2413,11 +2429,13 @@ async function startProjectRealtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_tasks',filter:'team_id=eq.'+cfg.teamId},loadProjectData)
     .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_task_templates',filter:'team_id=eq.'+cfg.teamId},loadProjectData)
     .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_notes',filter:'team_id=eq.'+cfg.teamId},loadProjectData)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_task_comments',filter:'team_id=eq.'+cfg.teamId},loadProjectData)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_project_activity',filter:'team_id=eq.'+cfg.teamId},loadProjectData)
     .subscribe();
 }
 async function stopProjectRealtime(){
   if(projectChannel){try{await supabaseClient.removeChannel(projectChannel)}catch{}}
-  projectChannel=null;projectProjects=[];projectMembers=[];projectTasks=[];projectNotes=[];projectTemplates=[];renderProjectModule();
+  projectChannel=null;projectProjects=[];projectMembers=[];projectTasks=[];projectNotes=[];projectTemplates=[];projectComments=[];projectActivity=[];renderProjectModule();
 }
 function populateProjectControls(){
   const projectOptions='<option value="">Alle Projekte</option>'+projectProjects.map(p=>'<option value="'+p.id+'">'+escapeHtml(p.name)+'</option>').join('');
@@ -2445,7 +2463,7 @@ function filteredProjects(){
 }
 function projectCardHtml(p){
   const tasks=projectTasks.filter(t=>t.project_id===p.id),done=tasks.filter(t=>t.status==='done').length,progress=tasks.length?Math.round(done/tasks.length*100):Number(p.progress||0);
-  return '<article class="project-card" data-project-id="'+p.id+'" draggable="'+(projectCanManage()?'true':'false')+'" style="--project-color:'+escapeHtml(p.color||'#0f8b78')+';--progress:'+progress+'%"><div class="project-card-head"><div><strong>'+escapeHtml(p.name)+'</strong><span>'+escapeHtml(projectStatusLabel(p.status))+'</span></div><span>'+progress+' %</span></div><div class="project-progress"><i></i></div><div class="project-meta"><span class="project-chip">'+escapeHtml(projectPriorityLabel(p.priority))+'</span><span class="project-chip">'+escapeHtml(projectEmployeeName(p.lead_employee_id))+'</span><span class="project-chip">'+done+'/'+tasks.length+' Aufgaben</span>'+(p.due_date?'<span class="project-chip">'+escapeHtml(projectDateLabel(p.due_date))+'</span>':'')+'</div></article>';
+  return '<article class="project-card" data-project-id="'+p.id+'" draggable="'+(projectCanManage()?'true':'false')+'" style="--project-color:'+escapeHtml(p.color||'#d8891c')+';--progress:'+progress+'%"><div class="project-card-head"><div><strong>'+escapeHtml(p.name)+'</strong><span>'+escapeHtml(projectStatusLabel(p.status))+'</span></div><span>'+progress+' %</span></div><div class="project-progress"><i></i></div><div class="project-meta"><span class="project-chip">'+escapeHtml(projectPriorityLabel(p.priority))+'</span><span class="project-chip">'+escapeHtml(projectEmployeeName(p.lead_employee_id))+'</span><span class="project-chip">'+done+'/'+tasks.length+' Aufgaben</span>'+(p.due_date?'<span class="project-chip">'+escapeHtml(projectDateLabel(p.due_date))+'</span>':'')+'</div></article>';
 }
 function projectTaskHtml(t){
   return '<article class="project-task-card priority-'+escapeHtml(t.priority||'medium')+'" data-project-task-id="'+t.id+'" draggable="'+(projectCanManage()?'true':'false')+'"><div class="project-task-head"><strong>'+escapeHtml(t.title)+'</strong><span class="project-task-status '+escapeHtml(t.status)+'">'+escapeHtml(projectTaskStatusLabel(t.status))+'</span></div><span>'+escapeHtml(projectName(t.project_id))+' · '+escapeHtml(projectEmployeeName(t.assignee_employee_id))+'</span><div class="project-meta"><span class="project-chip">'+escapeHtml(projectPriorityLabel(t.priority))+'</span>'+(t.due_date?'<span class="project-chip">bis '+escapeHtml(projectDateLabel(t.due_date))+'</span>':'')+(t.recurrence&&t.recurrence!=='none'?'<span class="project-chip">↻ '+escapeHtml(t.recurrence)+'</span>':'')+'</div></article>';
@@ -2529,13 +2547,13 @@ function openProject(id=null){
   document.getElementById('projectStart').value=p?.start_date||'';
   document.getElementById('projectDue').value=p?.due_date||'';
   document.getElementById('projectLead').value=p?.lead_employee_id||'';
-  document.getElementById('projectColor').value=p?.color||'#0f8b78';
+  document.getElementById('projectColor').value=p?.color||'#d8891c';
   document.getElementById('deleteProjectBtn').classList.toggle('hidden',!p);
   safeShowDialog('projectDialog');
 }
 async function saveProjectFromForm(){
   if(!projectCanManage())return;
-  const id=document.getElementById('projectId').value||null,row={name:document.getElementById('projectName').value.trim(),description:document.getElementById('projectDescription').value.trim(),status:document.getElementById('projectStatus').value,priority:document.getElementById('projectPriority').value,start_date:document.getElementById('projectStart').value||null,due_date:document.getElementById('projectDue').value||null,lead_employee_id:document.getElementById('projectLead').value||null,color:document.getElementById('projectColor').value||'#0f8b78',updated_at:new Date().toISOString()};
+  const id=document.getElementById('projectId').value||null,row={name:document.getElementById('projectName').value.trim(),description:document.getElementById('projectDescription').value.trim(),status:document.getElementById('projectStatus').value,priority:document.getElementById('projectPriority').value,start_date:document.getElementById('projectStart').value||null,due_date:document.getElementById('projectDue').value||null,lead_employee_id:document.getElementById('projectLead').value||null,color:document.getElementById('projectColor').value||'#d8891c',updated_at:new Date().toISOString()};
   if(!row.name)return;
   if(supabaseClient&&authUser){row.team_id=(window.TEAMPLAN_CONFIG||{}).teamId;const res=id?await supabaseClient.from('teamplan_projects').update(row).eq('id',id):await supabaseClient.from('teamplan_projects').insert(row);if(res.error){alert(res.error.message);return}await loadProjectData()}
   else{if(id){const i=projectProjects.findIndex(x=>x.id===id);if(i>=0)projectProjects[i]={...projectProjects[i],...row}}else projectProjects.push({id:uid(),...row,created_at:new Date().toISOString()});saveProjectLocal();renderProjectModule()}
