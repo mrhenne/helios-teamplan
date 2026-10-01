@@ -688,3 +688,41 @@ begin
   alter publication supabase_realtime add table public.teamplan_training_budgets;
 exception when duplicate_object then null;
 end $$;
+
+
+-- Fortbildungen können auch zunächst nur für ein Jahr geplant werden.
+-- Kennzeichnung: date_precision = 'year', start_date/end_date = null.
+alter table public.teamplan_trainings
+  add column if not exists date_precision text not null default 'exact',
+  add column if not exists training_year integer;
+
+update public.teamplan_trainings
+set training_year = extract(year from start_date)::integer
+where training_year is null and start_date is not null;
+
+alter table public.teamplan_trainings
+  alter column start_date drop not null,
+  alter column end_date drop not null;
+
+alter table public.teamplan_trainings
+  drop constraint if exists teamplan_trainings_date_mode_check;
+
+alter table public.teamplan_trainings
+  add constraint teamplan_trainings_date_mode_check check (
+    (date_precision = 'exact'
+      and start_date is not null
+      and end_date is not null
+      and end_date >= start_date
+      and training_year is not null)
+    or
+    (date_precision = 'year'
+      and training_year between 2020 and 2100
+      and start_date is null
+      and end_date is null)
+  );
+
+alter table public.teamplan_trainings
+  drop constraint if exists teamplan_trainings_check;
+
+create index if not exists teamplan_trainings_team_year_idx
+  on public.teamplan_trainings(team_id,training_year);
