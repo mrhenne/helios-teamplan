@@ -4745,3 +4745,24 @@ body.dark-mode .project-template-row{background:#172723}
   .project-members-list{grid-template-columns:1fr}
   #projectTaskDialog form{padding:15px!important}
 }
+
+
+/* === 2026-10-01 TOPBAR FINAL GEOMETRY === */
+@media(min-width:1101px){
+  .top-status-item{
+    min-height:32px!important;
+    height:32px!important;
+    overflow:visible!important;
+  }
+  .top-status-item .sync-pill{
+    box-sizing:border-box!important;
+    height:28px!important;
+    min-height:28px!important;
+    max-height:28px!important;
+    line-height:28px!important;
+    padding:0 7px!important;
+    margin:0!important;
+    overflow:hidden!important;
+    white-space:nowrap!important;
+  }
+}
