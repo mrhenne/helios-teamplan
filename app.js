@@ -66,6 +66,15 @@ let unreadDiscussionIds = new Set();
 let conflictFilter = 'all';
 let conflictSort = 'type';
 let currentModule = localStorage.getItem('teamplan-module') || 'vacation';
+let projectView = localStorage.getItem('teamplan-project-view') || 'overview';
+let projectCalendarMode = localStorage.getItem('teamplan-project-calendar-mode') || 'month';
+let projectCalendarDate = (()=>{const r=localStorage.getItem('teamplan-project-calendar-date');const d=r?new Date(r+'T12:00:00'):new Date();return isNaN(d)?new Date():d})();
+let projectProjects = [];
+let projectMembers = [];
+let projectTasks = [];
+let projectTemplates = [];
+let projectNotes = [];
+let projectChannel = null;
 let trainingView = localStorage.getItem('teamplan-training-view') || 'overview';
 let trainingYear = Number(localStorage.getItem('teamplan-training-year')) || new Date().getFullYear();
 let trainingZoom = Math.max(.7,Math.min(1.3,Number(localStorage.getItem('teamplan-training-zoom')||1)));
@@ -1218,6 +1227,7 @@ function renderRoleControls(){
   const discussionsBtn=document.getElementById('discussionsBtn');if(discussionsBtn)discussionsBtn.classList.toggle('hidden',!authUser);
   updateDiscussionBadge();
   applyTrainingRoleUI();
+  renderProjectModule();
 }
 
 async function invokeUserAdmin(body){
@@ -1547,11 +1557,11 @@ function formatTrainingDateRange(t){
 function euro(n){return Number(n||0).toLocaleString('de-DE',{style:'currency',currency:'EUR'})}
 
 function switchModule(module,silent=false){
-  currentModule=module==='training'?'training':'vacation';
+  currentModule=['training','projects'].includes(module)?module:'vacation';
   localStorage.setItem('teamplan-module',currentModule);
-  if(currentModule==='training'&&document.body.classList.contains('planner-focus'))exitPlannerFocus();
-  if(currentModule==='vacation'&&document.body.classList.contains('training-focus'))exitTrainingFocus();
-  const vacation=currentModule==='vacation';
+  if(currentModule!=='vacation'&&document.body.classList.contains('planner-focus'))exitPlannerFocus();
+  if(currentModule!=='training'&&document.body.classList.contains('training-focus'))exitTrainingFocus();
+  const vacation=currentModule==='vacation',training=currentModule==='training',projects=currentModule==='projects';
   ['vacationToolbar','monthView','plannerFocusControls','yearView','vacationHint'].forEach(id=>{
     const el=document.getElementById(id);if(!el)return;
     if(id==='monthView')el.classList.toggle('hidden',!vacation||currentView==='year');
@@ -1559,13 +1569,17 @@ function switchModule(module,silent=false){
     else if(id==='plannerFocusControls')el.classList.toggle('module-hidden',!vacation);
     else el.classList.toggle('hidden',!vacation);
   });
-  document.getElementById('trainingModule')?.classList.toggle('hidden',vacation);
+  document.getElementById('trainingModule')?.classList.toggle('hidden',!training);
+  document.getElementById('projectsModule')?.classList.toggle('hidden',!projects);
   document.getElementById('moduleVacationBtn')?.classList.toggle('active',vacation);
-  document.getElementById('moduleTrainingBtn')?.classList.toggle('active',!vacation);
-  document.body.classList.toggle('training-module-active',!vacation);
+  document.getElementById('moduleTrainingBtn')?.classList.toggle('active',training);
+  document.getElementById('moduleProjectsBtn')?.classList.toggle('active',projects);
+  document.body.classList.toggle('training-module-active',training);
   document.body.classList.toggle('vacation-module-active',vacation);
-  if(!vacation)renderTrainingModule();
-  if(!silent)showToast(vacation?'Urlaubsplanung':'Fortbildungsplaner');
+  document.body.classList.toggle('projects-module-active',projects);
+  if(training)renderTrainingModule();
+  if(projects)renderProjectModule();
+  if(!silent)showToast(vacation?'Urlaubsplanung':training?'Fortbildungsplaner':'Projektmanagement');
 }
 function applyTrainingRoleUI(){
   document.querySelectorAll('.training-manager-action').forEach(el=>el.classList.toggle('hidden',!trainingCanManage()));
@@ -2319,6 +2333,314 @@ function initTrainingModuleUI(){
   populateTrainingControls();applyTrainingRoleUI();applyTrainingZoom();
 }
 
+
+/* =========================================================
+   Projektmanagement
+   ========================================================= */
+const projectDefaultTemplates=[
+  {id:'local-template-duty',name:'Dienstplan schreiben',description:'Monatlichen Dienstplan vorbereiten, prüfen und veröffentlichen',default_priority:'high',recurrence:'monthly',icon:'calendar',sort_order:10,active:true},
+  {id:'local-template-med',name:'Medikamentenkontrolle',description:'Bestände, Verfall und Vollständigkeit kontrollieren',default_priority:'high',recurrence:'monthly',icon:'check',sort_order:20,active:true},
+  {id:'local-template-hygiene',name:'Hygienekontrolle',description:'Hygienestandards und offene Punkte prüfen',default_priority:'medium',recurrence:'monthly',icon:'check',sort_order:30,active:true},
+  {id:'local-template-vacation',name:'Urlaubsplanung',description:'Urlaubsplanung des Teams vorbereiten und abstimmen',default_priority:'high',recurrence:'yearly',icon:'calendar',sort_order:40,active:true},
+  {id:'local-template-holiday',name:'Weihnachts- und Silvesterplanung',description:'Feiertagsbesetzung und Wünsche koordinieren',default_priority:'high',recurrence:'yearly',icon:'calendar',sort_order:50,active:true},
+  {id:'local-template-meeting',name:'Teamsitzung vorbereiten',description:'Agenda, Themen und offene Punkte sammeln',default_priority:'medium',recurrence:'monthly',icon:'users',sort_order:60,active:true}
+];
+function projectCanManage(){return canManage()}
+function projectEmployeeName(id){return state.employees.find(e=>e.id===id)?.name||'Nicht zugewiesen'}
+function projectName(id){return projectProjects.find(p=>p.id===id)?.name||'Ohne Projekt'}
+function projectStatusLabel(s){return s==='active'?'In Arbeit':s==='paused'?'Pausiert':s==='done'?'Erledigt':'In Planung'}
+function projectTaskStatusLabel(s){return s==='progress'?'In Arbeit':s==='waiting'?'Rückfrage':s==='done'?'Erledigt':'Offen'}
+function projectPriorityLabel(s){return s==='high'?'Hoch':s==='low'?'Niedrig':'Mittel'}
+function projectDateLabel(v){if(!v)return 'ohne Termin';const d=new Date(v+'T12:00:00');return d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'})}
+function saveProjectLocal(){
+  localStorage.setItem('teamplan-projects-local',JSON.stringify({projects:projectProjects,members:projectMembers,tasks:projectTasks,templates:projectTemplates,notes:projectNotes}));
+}
+function loadProjectLocal(){
+  try{
+    const raw=JSON.parse(localStorage.getItem('teamplan-projects-local')||'{}');
+    projectProjects=Array.isArray(raw.projects)?raw.projects:[];
+    projectMembers=Array.isArray(raw.members)?raw.members:[];
+    projectTasks=Array.isArray(raw.tasks)?raw.tasks:[];
+    projectTemplates=Array.isArray(raw.templates)&&raw.templates.length?raw.templates:structuredClone(projectDefaultTemplates);
+    projectNotes=Array.isArray(raw.notes)?raw.notes:[];
+  }catch{
+    projectProjects=[];projectMembers=[];projectTasks=[];projectTemplates=structuredClone(projectDefaultTemplates);projectNotes=[];
+  }
+}
+async function loadProjectData(){
+  if(!supabaseClient||!authUser){loadProjectLocal();renderProjectModule();return}
+  const cfg=window.TEAMPLAN_CONFIG||{};
+  const [p,m,t,tt,n]=await Promise.all([
+    supabaseClient.from('teamplan_projects').select('*').eq('team_id',cfg.teamId).order('created_at'),
+    supabaseClient.from('teamplan_project_members').select('*').eq('team_id',cfg.teamId),
+    supabaseClient.from('teamplan_tasks').select('*').eq('team_id',cfg.teamId).order('sort_order').order('created_at'),
+    supabaseClient.from('teamplan_task_templates').select('*').eq('team_id',cfg.teamId).eq('active',true).order('sort_order'),
+    supabaseClient.from('teamplan_notes').select('*').eq('team_id',cfg.teamId).order('created_at',{ascending:false})
+  ]);
+  for(const r of [p,m,t,tt,n])if(r.error)throw r.error;
+  projectProjects=p.data||[];projectMembers=m.data||[];projectTasks=t.data||[];projectTemplates=tt.data||[];projectNotes=n.data||[];
+  renderProjectModule();
+}
+async function startProjectRealtime(){
+  if(!supabaseClient||!authUser)return;
+  if(projectChannel){try{await supabaseClient.removeChannel(projectChannel)}catch{}}
+  const cfg=window.TEAMPLAN_CONFIG||{};
+  projectChannel=supabaseClient.channel('teamplan-projects-live-'+cfg.teamId)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_projects',filter:'team_id=eq.'+cfg.teamId},loadProjectData)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_project_members',filter:'team_id=eq.'+cfg.teamId},loadProjectData)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_tasks',filter:'team_id=eq.'+cfg.teamId},loadProjectData)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_task_templates',filter:'team_id=eq.'+cfg.teamId},loadProjectData)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_notes',filter:'team_id=eq.'+cfg.teamId},loadProjectData)
+    .subscribe();
+}
+async function stopProjectRealtime(){
+  if(projectChannel){try{await supabaseClient.removeChannel(projectChannel)}catch{}}
+  projectChannel=null;projectProjects=[];projectMembers=[];projectTasks=[];projectNotes=[];projectTemplates=[];renderProjectModule();
+}
+function populateProjectControls(){
+  const projectOptions='<option value="">Alle Projekte</option>'+projectProjects.map(p=>'<option value="'+p.id+'">'+escapeHtml(p.name)+'</option>').join('');
+  const projectTaskOptions='<option value="">Ohne Projekt</option>'+projectProjects.map(p=>'<option value="'+p.id+'">'+escapeHtml(p.name)+'</option>').join('');
+  const employeeOptions='<option value="">Nicht zugewiesen</option>'+[...state.employees].sort((a,b)=>a.order-b.order).map(e=>'<option value="'+e.id+'">'+escapeHtml(e.name)+'</option>').join('');
+  const pf=document.getElementById('projectsProjectFilter');if(pf){const old=pf.value;pf.innerHTML=projectOptions;if([...pf.options].some(o=>o.value===old))pf.value=old}
+  const af=document.getElementById('projectsAssigneeFilter');if(af){const old=af.value;af.innerHTML='<option value="">Alle Mitarbeiter</option>'+employeeOptions.replace('<option value="">Nicht zugewiesen</option>','');if([...af.options].some(o=>o.value===old))af.value=old}
+  ['projectTaskProject','projectNoteProject'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=projectTaskOptions});
+  const lead=document.getElementById('projectLead');if(lead)lead.innerHTML=employeeOptions;
+  const ass=document.getElementById('projectTaskAssignee');if(ass)ass.innerHTML=employeeOptions;
+  const tpl=document.getElementById('projectsTemplateSelect');
+  if(tpl){tpl.innerHTML='<option value="">Schnellaufgabe aus Vorlage…</option>'+projectTemplates.filter(x=>x.active!==false).map(x=>'<option value="'+x.id+'">'+escapeHtml(x.name)+'</option>').join('')}
+}
+function filteredProjectTasks(){
+  const q=(document.getElementById('projectsSearchInput')?.value||'').trim().toLowerCase();
+  const projectId=document.getElementById('projectsProjectFilter')?.value||'';
+  const assignee=document.getElementById('projectsAssigneeFilter')?.value||'';
+  const status=document.getElementById('projectsStatusFilter')?.value||'';
+  return projectTasks.filter(t=>(!projectId||t.project_id===projectId)&&(!assignee||t.assignee_employee_id===assignee)&&(!status||t.status===status)&&(!q||[t.title,t.description,projectName(t.project_id),projectEmployeeName(t.assignee_employee_id)].join(' ').toLowerCase().includes(q)));
+}
+function filteredProjects(){
+  const q=(document.getElementById('projectsSearchInput')?.value||'').trim().toLowerCase();
+  const projectId=document.getElementById('projectsProjectFilter')?.value||'';
+  return projectProjects.filter(p=>(!projectId||p.id===projectId)&&(!q||[p.name,p.description,projectEmployeeName(p.lead_employee_id)].join(' ').toLowerCase().includes(q)));
+}
+function projectCardHtml(p){
+  const tasks=projectTasks.filter(t=>t.project_id===p.id),done=tasks.filter(t=>t.status==='done').length,progress=tasks.length?Math.round(done/tasks.length*100):Number(p.progress||0);
+  return '<article class="project-card" data-project-id="'+p.id+'" draggable="'+(projectCanManage()?'true':'false')+'" style="--project-color:'+escapeHtml(p.color||'#0f8b78')+';--progress:'+progress+'%"><div class="project-card-head"><div><strong>'+escapeHtml(p.name)+'</strong><span>'+escapeHtml(projectStatusLabel(p.status))+'</span></div><span>'+progress+' %</span></div><div class="project-progress"><i></i></div><div class="project-meta"><span class="project-chip">'+escapeHtml(projectPriorityLabel(p.priority))+'</span><span class="project-chip">'+escapeHtml(projectEmployeeName(p.lead_employee_id))+'</span><span class="project-chip">'+done+'/'+tasks.length+' Aufgaben</span>'+(p.due_date?'<span class="project-chip">'+escapeHtml(projectDateLabel(p.due_date))+'</span>':'')+'</div></article>';
+}
+function projectTaskHtml(t){
+  return '<article class="project-task-card priority-'+escapeHtml(t.priority||'medium')+'" data-project-task-id="'+t.id+'" draggable="'+(projectCanManage()?'true':'false')+'"><div class="project-task-head"><strong>'+escapeHtml(t.title)+'</strong><span class="project-task-status '+escapeHtml(t.status)+'">'+escapeHtml(projectTaskStatusLabel(t.status))+'</span></div><span>'+escapeHtml(projectName(t.project_id))+' · '+escapeHtml(projectEmployeeName(t.assignee_employee_id))+'</span><div class="project-meta"><span class="project-chip">'+escapeHtml(projectPriorityLabel(t.priority))+'</span>'+(t.due_date?'<span class="project-chip">bis '+escapeHtml(projectDateLabel(t.due_date))+'</span>':'')+(t.recurrence&&t.recurrence!=='none'?'<span class="project-chip">↻ '+escapeHtml(t.recurrence)+'</span>':'')+'</div></article>';
+}
+function renderProjectMetrics(){
+  const box=document.getElementById('projectsMetrics');if(!box)return;
+  const active=projectProjects.filter(p=>p.status==='active').length,open=projectTasks.filter(t=>t.status!=='done').length,done=projectTasks.filter(t=>t.status==='done').length;
+  const today=dateKey(new Date()),overdue=projectTasks.filter(t=>t.status!=='done'&&t.due_date&&t.due_date<today).length;
+  box.innerHTML='<article><span>Aktive Projekte</span><strong>'+active+'</strong><small>derzeit in Arbeit</small></article><article><span>Offene Aufgaben</span><strong>'+open+'</strong><small>im Team</small></article><article><span>Erledigt</span><strong>'+done+'</strong><small>Aufgaben abgeschlossen</small></article><article class="'+(overdue?'metric-alert':'')+'"><span>Überfällig</span><strong>'+overdue+'</strong><small>Handlungsbedarf</small></article>';
+}
+function renderProjectOverview(){
+  renderProjectMetrics();
+  const focus=document.getElementById('projectsFocusList'),next=document.getElementById('projectsNextTasks');
+  const projects=filteredProjects().filter(p=>p.status!=='done').slice(0,8);
+  focus.innerHTML=projects.length?projects.map(projectCardHtml).join(''):'<div class="empty-state">Noch keine aktiven Projekte.</div>';
+  let tasks=filteredProjectTasks().filter(t=>t.status!=='done').sort((a,b)=>(a.due_date||'9999').localeCompare(b.due_date||'9999'));
+  if(sessionRole==='employee'&&sessionEmployeeId)tasks=tasks.filter(t=>t.assignee_employee_id===sessionEmployeeId);
+  next.innerHTML=tasks.length?tasks.slice(0,10).map(projectTaskHtml).join(''):'<div class="empty-state">Keine offenen Aufgaben.</div>';
+}
+function renderProjectRoadmap(){
+  const statuses=[['planned','In Planung'],['active','In Arbeit'],['paused','Pausiert'],['done','Erledigt']];
+  const board=document.getElementById('projectsRoadmapBoard');
+  board.innerHTML=statuses.map(([s,label])=>{const items=filteredProjects().filter(p=>p.status===s);return '<section class="roadmap-column" data-project-drop-status="'+s+'"><header><strong>'+label+'</strong><span>'+items.length+'</span></header><div class="roadmap-list">'+(items.length?items.map(projectCardHtml).join(''):'<div class="empty-state">Leer</div>')+'</div></section>'}).join('');
+}
+function renderProjectKanban(){
+  const statuses=[['open','Offen'],['progress','In Arbeit'],['waiting','Rückfrage'],['done','Erledigt']];
+  const board=document.getElementById('projectsKanban'),items=filteredProjectTasks();
+  board.innerHTML=statuses.map(([s,label])=>{const rows=items.filter(t=>t.status===s);return '<section class="kanban-column" data-task-drop-status="'+s+'"><header><strong>'+label+'</strong><span>'+rows.length+'</span></header><div class="kanban-list">'+(rows.length?rows.map(projectTaskHtml).join(''):'<div class="empty-state">Leer</div>')+'</div></section>'}).join('');
+}
+function startOfCalendarGrid(d){const x=new Date(d.getFullYear(),d.getMonth(),1);const dow=(x.getDay()+6)%7;x.setDate(x.getDate()-dow);return x}
+function renderProjectCalendar(){
+  const body=document.getElementById('projectsCalendarBody'),label=document.getElementById('projectsCalendarLabel');
+  document.getElementById('projectsCalendarMonthBtn')?.classList.toggle('active',projectCalendarMode==='month');
+  document.getElementById('projectsCalendarYearBtn')?.classList.toggle('active',projectCalendarMode==='year');
+  if(projectCalendarMode==='year'){
+    label.textContent=String(projectCalendarDate.getFullYear());
+    body.innerHTML='<div class="projects-calendar-year">'+Array.from({length:12},(_,m)=>{const monthTasks=projectTasks.filter(t=>t.due_date&&new Date(t.due_date+'T12:00:00').getFullYear()===projectCalendarDate.getFullYear()&&new Date(t.due_date+'T12:00:00').getMonth()===m);const monthProjects=projectProjects.filter(p=>p.due_date&&new Date(p.due_date+'T12:00:00').getFullYear()===projectCalendarDate.getFullYear()&&new Date(p.due_date+'T12:00:00').getMonth()===m);return '<section class="project-year-month"><h3>'+MONTHS[m]+'</h3><div class="project-year-list">'+[...monthProjects.map(p=>'<span>▣ '+escapeHtml(p.name)+'</span>'),...monthTasks.map(t=>'<span>✓ '+escapeHtml(t.title)+'</span>')].join('')+'</div></section>'}).join('')+'</div>';return;
+  }
+  label.textContent=MONTHS[projectCalendarDate.getMonth()]+' '+projectCalendarDate.getFullYear();
+  const start=startOfCalendarGrid(projectCalendarDate),days=Array.from({length:42},(_,i)=>addDays(start,i));
+  body.innerHTML='<div class="projects-calendar-month">'+['Mo','Di','Mi','Do','Fr','Sa','So'].map(x=>'<div class="project-calendar-weekday">'+x+'</div>').join('')+days.map(d=>{const key=dateKey(d),outside=d.getMonth()!==projectCalendarDate.getMonth(),today=key===dateKey(new Date());const tasks=filteredProjectTasks().filter(t=>t.due_date===key),projects=filteredProjects().filter(p=>p.due_date===key);return '<div class="project-calendar-day '+(outside?'outside ':'')+(today?'today':'')+'" data-project-date="'+key+'"><header><span>'+d.getDate()+'</span></header>'+projects.map(p=>'<button class="project-calendar-item project" data-project-id="'+p.id+'" type="button">▣ '+escapeHtml(p.name)+'</button>').join('')+tasks.map(t=>'<button class="project-calendar-item" data-project-task-id="'+t.id+'" draggable="'+(projectCanManage()?'true':'false')+'" type="button">✓ '+escapeHtml(t.title)+'</button>').join('')+'</div>'}).join('')+'</div>';
+}
+function renderProjectTeam(){
+  const box=document.getElementById('projectsTeamGrid');if(!box)return;
+  const employees=[...state.employees].sort((a,b)=>a.order-b.order);
+  box.innerHTML=employees.map(e=>{const tasks=projectTasks.filter(t=>t.assignee_employee_id===e.id&&t.status!=='done'),projects=projectProjects.filter(p=>p.lead_employee_id===e.id&&p.status!=='done');const initials=e.name.split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase();return '<article class="project-team-card"><header><div class="project-team-avatar">'+escapeHtml(initials)+'</div><div><h3>'+escapeHtml(e.name)+'</h3><small>'+projects.length+' Projekte · '+tasks.length+' offene Aufgaben</small></div></header><div class="project-team-list">'+projects.map(p=>'<button type="button" data-project-id="'+p.id+'"><span>▣ '+escapeHtml(p.name)+'</span><b>'+escapeHtml(projectStatusLabel(p.status))+'</b></button>').join('')+tasks.slice(0,6).map(t=>'<button type="button" data-project-task-id="'+t.id+'"><span>✓ '+escapeHtml(t.title)+'</span><b>'+escapeHtml(projectTaskStatusLabel(t.status))+'</b></button>').join('')+'</div></article>'}).join('');
+}
+function renderProjectNotes(){
+  const box=document.getElementById('projectsNotesBoard');if(!box)return;
+  box.innerHTML=projectNotes.length?projectNotes.map(n=>'<article class="project-note-card '+escapeHtml(n.category||'info')+'" data-project-note-id="'+n.id+'"><h3>'+escapeHtml(n.title||({idea:'Idee',important:'Wichtig',problem:'Problem',info:'Info'}[n.category]||'Notiz'))+'</h3><p>'+escapeHtml(n.body)+'</p><footer>'+escapeHtml(n.author_name||'Team')+(n.project_id?' · '+escapeHtml(projectName(n.project_id)):'')+' · '+escapeHtml(new Date(n.created_at||Date.now()).toLocaleDateString('de-DE'))+'</footer></article>').join(''):'<div class="empty-state">Noch keine Notizen.</div>';
+}
+function renderProjectModule(){
+  if(!document.getElementById('projectsModule'))return;
+  populateProjectControls();
+  document.querySelectorAll('.project-manager-action').forEach(el=>el.classList.toggle('hidden',!projectCanManage()));
+  const views=['overview','roadmap','board','calendar','team','notes'];
+  views.forEach(v=>{
+    document.getElementById('projects'+v[0].toUpperCase()+v.slice(1)+'View')?.classList.toggle('hidden',projectView!==v);
+    document.getElementById('projects'+v[0].toUpperCase()+v.slice(1)+'Btn')?.classList.toggle('active',projectView===v);
+  });
+  if(projectView==='overview')renderProjectOverview();
+  if(projectView==='roadmap')renderProjectRoadmap();
+  if(projectView==='board')renderProjectKanban();
+  if(projectView==='calendar')renderProjectCalendar();
+  if(projectView==='team')renderProjectTeam();
+  if(projectView==='notes')renderProjectNotes();
+  const sub=document.getElementById('projectsHeadingSub');if(sub)sub.textContent=(sessionRole==='employee'?'Meine Aufgaben':'ZNA Management')+' · '+projectProjects.length+' Projekte';
+  bindProjectRenderedEvents();
+}
+function setProjectView(view){projectView=view;localStorage.setItem('teamplan-project-view',view);renderProjectModule()}
+function openProject(id=null){
+  if(!projectCanManage())return;
+  const p=id?projectProjects.find(x=>x.id===id):null;
+  populateProjectControls();
+  document.getElementById('projectDialogTitle').textContent=p?'Projekt bearbeiten':'Projekt anlegen';
+  document.getElementById('projectId').value=p?.id||'';
+  document.getElementById('projectName').value=p?.name||'';
+  document.getElementById('projectDescription').value=p?.description||'';
+  document.getElementById('projectStatus').value=p?.status||'planned';
+  document.getElementById('projectPriority').value=p?.priority||'medium';
+  document.getElementById('projectStart').value=p?.start_date||'';
+  document.getElementById('projectDue').value=p?.due_date||'';
+  document.getElementById('projectLead').value=p?.lead_employee_id||'';
+  document.getElementById('projectColor').value=p?.color||'#0f8b78';
+  document.getElementById('deleteProjectBtn').classList.toggle('hidden',!p);
+  safeShowDialog('projectDialog');
+}
+async function saveProjectFromForm(){
+  if(!projectCanManage())return;
+  const id=document.getElementById('projectId').value||null,row={name:document.getElementById('projectName').value.trim(),description:document.getElementById('projectDescription').value.trim(),status:document.getElementById('projectStatus').value,priority:document.getElementById('projectPriority').value,start_date:document.getElementById('projectStart').value||null,due_date:document.getElementById('projectDue').value||null,lead_employee_id:document.getElementById('projectLead').value||null,color:document.getElementById('projectColor').value||'#0f8b78',updated_at:new Date().toISOString()};
+  if(!row.name)return;
+  if(supabaseClient&&authUser){row.team_id=(window.TEAMPLAN_CONFIG||{}).teamId;const res=id?await supabaseClient.from('teamplan_projects').update(row).eq('id',id):await supabaseClient.from('teamplan_projects').insert(row);if(res.error){alert(res.error.message);return}await loadProjectData()}
+  else{if(id){const i=projectProjects.findIndex(x=>x.id===id);if(i>=0)projectProjects[i]={...projectProjects[i],...row}}else projectProjects.push({id:uid(),...row,created_at:new Date().toISOString()});saveProjectLocal();renderProjectModule()}
+  document.getElementById('projectDialog').close();showToast(id?'Projekt aktualisiert':'Projekt angelegt');
+}
+async function deleteProject(){
+  const id=document.getElementById('projectId').value;if(!id||!projectCanManage()||!confirm('Projekt wirklich löschen? Zugeordnete Aufgaben bleiben ohne Projekt erhalten.'))return;
+  if(supabaseClient&&authUser){const {error}=await supabaseClient.from('teamplan_projects').delete().eq('id',id);if(error){alert(error.message);return}await loadProjectData()}
+  else{projectProjects=projectProjects.filter(x=>x.id!==id);projectTasks=projectTasks.map(t=>t.project_id===id?{...t,project_id:null}:t);saveProjectLocal();renderProjectModule()}
+  document.getElementById('projectDialog').close();showToast('Projekt gelöscht');
+}
+function openProjectTask(id=null,defaults={}){
+  if(!projectCanManage()&&!(sessionRole==='employee'&&id))return;
+  const t=id?projectTasks.find(x=>x.id===id):null;
+  if(sessionRole==='employee'&&t?.assignee_employee_id!==sessionEmployeeId)return;
+  populateProjectControls();
+  document.getElementById('projectTaskDialogTitle').textContent=t?'Aufgabe bearbeiten':'Aufgabe anlegen';
+  document.getElementById('projectTaskId').value=t?.id||'';
+  document.getElementById('projectTaskTitle').value=defaults.title||t?.title||'';
+  document.getElementById('projectTaskDescription').value=defaults.description||t?.description||'';
+  document.getElementById('projectTaskProject').value=defaults.project_id||t?.project_id||'';
+  document.getElementById('projectTaskAssignee').value=defaults.assignee_employee_id||t?.assignee_employee_id||'';
+  document.getElementById('projectTaskStatus').value=defaults.status||t?.status||'open';
+  document.getElementById('projectTaskPriority').value=defaults.priority||t?.priority||'medium';
+  document.getElementById('projectTaskStart').value=defaults.start_date||t?.start_date||'';
+  document.getElementById('projectTaskDue').value=defaults.due_date||t?.due_date||'';
+  document.getElementById('projectTaskRecurrence').value=defaults.recurrence||t?.recurrence||'none';
+  document.getElementById('deleteProjectTaskBtn').classList.toggle('hidden',!t||!projectCanManage());
+  ['projectTaskTitle','projectTaskDescription','projectTaskProject','projectTaskAssignee','projectTaskPriority','projectTaskStart','projectTaskDue','projectTaskRecurrence'].forEach(x=>{const el=document.getElementById(x);if(el)el.disabled=sessionRole==='employee'});
+  safeShowDialog('projectTaskDialog');
+}
+async function saveProjectTaskFromForm(){
+  const id=document.getElementById('projectTaskId').value||null;
+  const existing=id?projectTasks.find(x=>x.id===id):null;
+  if(!projectCanManage()&&!(sessionRole==='employee'&&existing?.assignee_employee_id===sessionEmployeeId))return;
+  const row={title:document.getElementById('projectTaskTitle').value.trim(),description:document.getElementById('projectTaskDescription').value.trim(),project_id:document.getElementById('projectTaskProject').value||null,assignee_employee_id:document.getElementById('projectTaskAssignee').value||null,status:document.getElementById('projectTaskStatus').value,priority:document.getElementById('projectTaskPriority').value,start_date:document.getElementById('projectTaskStart').value||null,due_date:document.getElementById('projectTaskDue').value||null,recurrence:document.getElementById('projectTaskRecurrence').value,updated_at:new Date().toISOString()};
+  if(!row.title)return;
+  if(sessionRole==='employee'&&existing){row.title=existing.title;row.description=existing.description;row.project_id=existing.project_id;row.assignee_employee_id=existing.assignee_employee_id;row.priority=existing.priority;row.start_date=existing.start_date;row.due_date=existing.due_date;row.recurrence=existing.recurrence}
+  if(supabaseClient&&authUser){row.team_id=(window.TEAMPLAN_CONFIG||{}).teamId;const res=id?await supabaseClient.from('teamplan_tasks').update(row).eq('id',id):await supabaseClient.from('teamplan_tasks').insert(row);if(res.error){alert(res.error.message);return}await loadProjectData()}
+  else{if(id){const i=projectTasks.findIndex(x=>x.id===id);if(i>=0)projectTasks[i]={...projectTasks[i],...row}}else projectTasks.push({id:uid(),...row,created_at:new Date().toISOString()});saveProjectLocal();renderProjectModule()}
+  document.getElementById('projectTaskDialog').close();showToast(id?'Aufgabe aktualisiert':'Aufgabe angelegt');
+}
+async function deleteProjectTask(){
+  const id=document.getElementById('projectTaskId').value;if(!id||!projectCanManage()||!confirm('Aufgabe wirklich löschen?'))return;
+  if(supabaseClient&&authUser){const {error}=await supabaseClient.from('teamplan_tasks').delete().eq('id',id);if(error){alert(error.message);return}await loadProjectData()}
+  else{projectTasks=projectTasks.filter(x=>x.id!==id);saveProjectLocal();renderProjectModule()}
+  document.getElementById('projectTaskDialog').close();showToast('Aufgabe gelöscht');
+}
+function openProjectNote(id=null){
+  const n=id?projectNotes.find(x=>x.id===id):null;
+  if(n&&sessionRole!=='admin'&&sessionRole!=='planner'&&authUser&&n.author_user_id!==authUser.id)return;
+  populateProjectControls();
+  document.getElementById('projectNoteDialogTitle').textContent=n?'Notiz bearbeiten':'Notiz hinzufügen';
+  document.getElementById('projectNoteId').value=n?.id||'';
+  document.getElementById('projectNoteTitle').value=n?.title||'';
+  document.getElementById('projectNoteBody').value=n?.body||'';
+  document.getElementById('projectNoteCategory').value=n?.category||'info';
+  document.getElementById('projectNoteProject').value=n?.project_id||'';
+  document.getElementById('deleteProjectNoteBtn').classList.toggle('hidden',!n);
+  safeShowDialog('projectNoteDialog');
+}
+async function saveProjectNoteFromForm(){
+  const id=document.getElementById('projectNoteId').value||null,row={title:document.getElementById('projectNoteTitle').value.trim(),body:document.getElementById('projectNoteBody').value.trim(),category:document.getElementById('projectNoteCategory').value,project_id:document.getElementById('projectNoteProject').value||null,author_name:authMembership?.display_name||actorName(),updated_at:new Date().toISOString()};
+  if(!row.body)return;
+  if(supabaseClient&&authUser){row.team_id=(window.TEAMPLAN_CONFIG||{}).teamId;if(!id)row.author_user_id=authUser.id;const res=id?await supabaseClient.from('teamplan_notes').update(row).eq('id',id):await supabaseClient.from('teamplan_notes').insert(row);if(res.error){alert(res.error.message);return}await loadProjectData()}
+  else{if(id){const i=projectNotes.findIndex(x=>x.id===id);if(i>=0)projectNotes[i]={...projectNotes[i],...row}}else projectNotes.unshift({id:uid(),...row,created_at:new Date().toISOString()});saveProjectLocal();renderProjectModule()}
+  document.getElementById('projectNoteDialog').close();showToast(id?'Notiz aktualisiert':'Notiz hinzugefügt');
+}
+async function deleteProjectNote(){
+  const id=document.getElementById('projectNoteId').value;if(!id||!confirm('Notiz wirklich löschen?'))return;
+  if(supabaseClient&&authUser){const {error}=await supabaseClient.from('teamplan_notes').delete().eq('id',id);if(error){alert(error.message);return}await loadProjectData()}
+  else{projectNotes=projectNotes.filter(x=>x.id!==id);saveProjectLocal();renderProjectModule()}
+  document.getElementById('projectNoteDialog').close();showToast('Notiz gelöscht');
+}
+async function updateProjectStatusByDrop(id,status){
+  if(!projectCanManage())return;
+  if(supabaseClient&&authUser){const {error}=await supabaseClient.from('teamplan_projects').update({status,updated_at:new Date().toISOString()}).eq('id',id);if(error){alert(error.message);return}await loadProjectData()}
+  else{const p=projectProjects.find(x=>x.id===id);if(p)p.status=status;saveProjectLocal();renderProjectModule()}
+}
+async function updateProjectTaskByDrop(id,patch){
+  const t=projectTasks.find(x=>x.id===id);if(!t)return;
+  if(!projectCanManage()&&!(sessionRole==='employee'&&t.assignee_employee_id===sessionEmployeeId))return;
+  if(sessionRole==='employee')patch={status:patch.status||t.status};
+  if(supabaseClient&&authUser){const {error}=await supabaseClient.from('teamplan_tasks').update({...patch,updated_at:new Date().toISOString()}).eq('id',id);if(error){alert(error.message);return}await loadProjectData()}
+  else{Object.assign(t,patch);saveProjectLocal();renderProjectModule()}
+}
+function bindProjectRenderedEvents(){
+  document.querySelectorAll('[data-project-id]').forEach(el=>el.addEventListener('click',e=>{if(e.target.closest('[data-project-task-id]'))return;const id=el.dataset.projectId;if(projectCanManage())openProject(id)}));
+  document.querySelectorAll('[data-project-task-id]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();openProjectTask(el.dataset.projectTaskId)}));
+  document.querySelectorAll('[data-project-note-id]').forEach(el=>el.addEventListener('click',()=>openProjectNote(el.dataset.projectNoteId)));
+  if(projectCanManage()){
+    document.querySelectorAll('.project-card[draggable="true"]').forEach(el=>{el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/project-id',el.dataset.projectId);el.classList.add('dragging')});el.addEventListener('dragend',()=>el.classList.remove('dragging'))});
+    document.querySelectorAll('[data-project-drop-status]').forEach(z=>{z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('drag-over')});z.addEventListener('dragleave',()=>z.classList.remove('drag-over'));z.addEventListener('drop',e=>{e.preventDefault();z.classList.remove('drag-over');const id=e.dataTransfer.getData('text/project-id');if(id)updateProjectStatusByDrop(id,z.dataset.projectDropStatus)})});
+  }
+  document.querySelectorAll('.project-task-card[draggable="true"],.project-calendar-item[draggable="true"]').forEach(el=>{el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/project-task-id',el.dataset.projectTaskId);el.classList.add('dragging')});el.addEventListener('dragend',()=>el.classList.remove('dragging'))});
+  document.querySelectorAll('[data-task-drop-status]').forEach(z=>{z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('drag-over')});z.addEventListener('dragleave',()=>z.classList.remove('drag-over'));z.addEventListener('drop',e=>{e.preventDefault();z.classList.remove('drag-over');const id=e.dataTransfer.getData('text/project-task-id');if(id)updateProjectTaskByDrop(id,{status:z.dataset.taskDropStatus})})});
+  document.querySelectorAll('[data-project-date]').forEach(day=>{day.addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('text/project-task-id')){e.preventDefault();day.classList.add('drag-over')}});day.addEventListener('dragleave',()=>day.classList.remove('drag-over'));day.addEventListener('drop',e=>{e.preventDefault();day.classList.remove('drag-over');const id=e.dataTransfer.getData('text/project-task-id');if(id)updateProjectTaskByDrop(id,{due_date:day.dataset.projectDate})})});
+}
+function createTaskFromTemplate(id){
+  const t=projectTemplates.find(x=>x.id===id);if(!t||!projectCanManage())return;
+  document.getElementById('projectsTemplateSelect').value='';
+  openProjectTask(null,{title:t.name,description:t.description,priority:t.default_priority||'medium',recurrence:t.recurrence||'none'});
+}
+function initProjectModuleUI(){
+  document.getElementById('moduleProjectsBtn')?.addEventListener('click',()=>switchModule('projects'));
+  const map={projectsOverviewBtn:'overview',projectsRoadmapBtn:'roadmap',projectsBoardBtn:'board',projectsCalendarBtn:'calendar',projectsTeamBtn:'team',projectsNotesBtn:'notes'};
+  Object.entries(map).forEach(([id,v])=>document.getElementById(id)?.addEventListener('click',()=>setProjectView(v)));
+  ['projectsSearchInput','projectsProjectFilter','projectsAssigneeFilter','projectsStatusFilter'].forEach(id=>document.getElementById(id)?.addEventListener(id==='projectsSearchInput'?'input':'change',renderProjectModule));
+  document.getElementById('projectsTemplateSelect')?.addEventListener('change',e=>{if(e.target.value)createTaskFromTemplate(e.target.value)});
+  document.getElementById('addProjectBtn')?.addEventListener('click',()=>openProject());
+  document.getElementById('addTaskBtn')?.addEventListener('click',()=>openProjectTask());
+  document.getElementById('addNoteBtn')?.addEventListener('click',()=>openProjectNote());
+  document.getElementById('projectForm')?.addEventListener('submit',e=>{e.preventDefault();saveProjectFromForm()});
+  document.getElementById('projectTaskForm')?.addEventListener('submit',e=>{e.preventDefault();saveProjectTaskFromForm()});
+  document.getElementById('projectNoteForm')?.addEventListener('submit',e=>{e.preventDefault();saveProjectNoteFromForm()});
+  document.getElementById('deleteProjectBtn')?.addEventListener('click',deleteProject);
+  document.getElementById('deleteProjectTaskBtn')?.addEventListener('click',deleteProjectTask);
+  document.getElementById('deleteProjectNoteBtn')?.addEventListener('click',deleteProjectNote);
+  document.getElementById('projectsCalendarPrev')?.addEventListener('click',()=>{projectCalendarDate=projectCalendarMode==='year'?new Date(projectCalendarDate.getFullYear()-1,0,1):new Date(projectCalendarDate.getFullYear(),projectCalendarDate.getMonth()-1,1);localStorage.setItem('teamplan-project-calendar-date',dateKey(projectCalendarDate));renderProjectCalendar();bindProjectRenderedEvents()});
+  document.getElementById('projectsCalendarNext')?.addEventListener('click',()=>{projectCalendarDate=projectCalendarMode==='year'?new Date(projectCalendarDate.getFullYear()+1,0,1):new Date(projectCalendarDate.getFullYear(),projectCalendarDate.getMonth()+1,1);localStorage.setItem('teamplan-project-calendar-date',dateKey(projectCalendarDate));renderProjectCalendar();bindProjectRenderedEvents()});
+  document.getElementById('projectsCalendarToday')?.addEventListener('click',()=>{projectCalendarDate=new Date();localStorage.setItem('teamplan-project-calendar-date',dateKey(projectCalendarDate));renderProjectCalendar();bindProjectRenderedEvents()});
+  document.getElementById('projectsCalendarMonthBtn')?.addEventListener('click',()=>{projectCalendarMode='month';localStorage.setItem('teamplan-project-calendar-mode',projectCalendarMode);renderProjectCalendar();bindProjectRenderedEvents()});
+  document.getElementById('projectsCalendarYearBtn')?.addEventListener('click',()=>{projectCalendarMode='year';localStorage.setItem('teamplan-project-calendar-mode',projectCalendarMode);renderProjectCalendar();bindProjectRenderedEvents()});
+  loadProjectLocal();renderProjectModule();
+}
+
+
 async function initRemote(){
   const cfg=window.TEAMPLAN_CONFIG||{};
   if(!authConfigured()){setSync('local','● Lokal');return}
@@ -2337,13 +2659,13 @@ async function initRemote(){
     if(!session){setSync('local','● Login erforderlich');showLogin()}
     else{
       const {data:{user},error:userError}=await supabaseClient.auth.getUser();if(userError)throw userError;
-      authUser=user;await loadAuthMembership();await loadRemotePlan();await loadTrainingData();await startPresence();await startDiscussionRealtime();await startTrainingRealtime();hideLogin();setSync('live','● Live synchron');switchModule(currentModule,true);
+      authUser=user;await loadAuthMembership();await loadRemotePlan();await loadTrainingData();await loadProjectData();await startPresence();await startDiscussionRealtime();await startTrainingRealtime();await startProjectRealtime();hideLogin();setSync('live','● Live synchron');switchModule(currentModule,true);
     }
     supabaseClient.auth.onAuthStateChange(async(event,session)=>{
-      if(event==='SIGNED_OUT'||!session){await stopTrainingRealtime();await stopDiscussionRealtime();await stopPresence();authUser=null;authMembership=null;renderRoleControls();setSync('local','● Abgemeldet');showLogin();return}
+      if(event==='SIGNED_OUT'||!session){await stopProjectRealtime();await stopTrainingRealtime();await stopDiscussionRealtime();await stopPresence();authUser=null;authMembership=null;renderRoleControls();setSync('local','● Abgemeldet');showLogin();return}
       if(event==='SIGNED_IN'||event==='TOKEN_REFRESHED'){
         const {data:{user}}=await supabaseClient.auth.getUser();authUser=user;
-        try{await loadAuthMembership();await loadRemotePlan();await loadTrainingData();await startPresence();await startDiscussionRealtime();await startTrainingRealtime();hideLogin();setSync('live','● Live synchron');switchModule(currentModule,true)}catch(err){console.error(err);document.getElementById('loginError').textContent=err.message;document.getElementById('loginError').classList.remove('hidden');showLogin()}
+        try{await loadAuthMembership();await loadRemotePlan();await loadTrainingData();await loadProjectData();await startPresence();await startDiscussionRealtime();await startTrainingRealtime();await startProjectRealtime();hideLogin();setSync('live','● Live synchron');switchModule(currentModule,true)}catch(err){console.error(err);document.getElementById('loginError').textContent=err.message;document.getElementById('loginError').classList.remove('hidden');showLogin()}
       }
     });
     supabaseClient.channel('teamplan-live').on('postgres_changes',{event:'*',schema:'public',table:'team_plans',filter:`team_id=eq.${cfg.teamId}`},payload=>{const remote=payload.new?.data;if(remote&&remote.updatedAt!==state.updatedAt){isApplyingRemote=true;state=normalizeState(remote);localStorage.setItem('helios-teamplan-v1',JSON.stringify(state));isApplyingRemote=false;render();showToast('Plan wurde aktualisiert')}}).subscribe();
@@ -2588,4 +2910,4 @@ window.addEventListener('resize',hideCellContextMenu);
 document.getElementById('planner').addEventListener('scroll',hideCellContextMenu,{passive:true});
 
 document.addEventListener('pointerdown',e=>{if(!e.target.closest('#trainingContextMenu'))hideTrainingContextMenu()});
-initTrainingModuleUI();renderRoleControls();render();switchModule(currentModule,true);initRemote();
+initTrainingModuleUI();initProjectModuleUI();renderRoleControls();render();switchModule(currentModule,true);initRemote();
