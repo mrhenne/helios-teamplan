@@ -545,3 +545,146 @@ with check (
   user_id = (select auth.uid())
   and (select private.is_team_member(team_id))
 );
+
+
+-- =========================================================
+-- Fortbildungsplaner Modul
+-- =========================================================
+create table if not exists public.teamplan_training_types (
+  id uuid primary key default gen_random_uuid(),
+  team_id text not null,
+  name text not null,
+  category text not null default 'Pflichtfortbildung',
+  interval_months integer check (interval_months is null or interval_months between 1 and 240),
+  default_hours numeric(6,2) not null default 0 check (default_hours >= 0),
+  default_cost numeric(10,2) not null default 0 check (default_cost >= 0),
+  mandatory boolean not null default false,
+  description text not null default '',
+  active boolean not null default true,
+  created_by uuid not null default auth.uid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.teamplan_trainings (
+  id uuid primary key default gen_random_uuid(),
+  team_id text not null,
+  employee_id text not null,
+  type_id uuid references public.teamplan_training_types(id) on delete set null,
+  title text not null,
+  category text not null default 'Fortbildung',
+  start_date date not null,
+  end_date date not null,
+  status text not null default 'planned' check (status in ('planned','completed','cancelled')),
+  hours numeric(6,2) not null default 0 check (hours >= 0),
+  cost numeric(10,2) not null default 0 check (cost >= 0),
+  provider text not null default '',
+  valid_until date,
+  note text not null default '',
+  created_by uuid not null default auth.uid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (end_date >= start_date)
+);
+
+create table if not exists public.teamplan_training_budgets (
+  team_id text not null,
+  employee_id text not null,
+  year integer not null check (year between 2020 and 2100),
+  amount numeric(10,2) not null default 0 check (amount >= 0),
+  updated_at timestamptz not null default now(),
+  primary key (team_id,employee_id,year)
+);
+
+create index if not exists teamplan_training_types_team_idx on public.teamplan_training_types(team_id,active,name);
+create index if not exists teamplan_trainings_team_employee_idx on public.teamplan_trainings(team_id,employee_id,start_date);
+create index if not exists teamplan_trainings_team_dates_idx on public.teamplan_trainings(team_id,start_date,end_date);
+create index if not exists teamplan_training_budgets_team_year_idx on public.teamplan_training_budgets(team_id,year);
+
+alter table public.teamplan_training_types enable row level security;
+alter table public.teamplan_trainings enable row level security;
+alter table public.teamplan_training_budgets enable row level security;
+
+revoke all on public.teamplan_training_types from anon, authenticated;
+revoke all on public.teamplan_trainings from anon, authenticated;
+revoke all on public.teamplan_training_budgets from anon, authenticated;
+
+grant select,insert,update,delete on public.teamplan_training_types to authenticated;
+grant select,insert,update,delete on public.teamplan_trainings to authenticated;
+grant select,insert,update,delete on public.teamplan_training_budgets to authenticated;
+
+drop policy if exists "training types read" on public.teamplan_training_types;
+drop policy if exists "training types manage" on public.teamplan_training_types;
+drop policy if exists "trainings scoped read" on public.teamplan_trainings;
+drop policy if exists "trainings manage" on public.teamplan_trainings;
+drop policy if exists "training budgets scoped read" on public.teamplan_training_budgets;
+drop policy if exists "training budgets manage" on public.teamplan_training_budgets;
+
+create policy "training types read"
+on public.teamplan_training_types for select to authenticated
+using ((select private.is_team_member(team_id)));
+
+create policy "training types manage"
+on public.teamplan_training_types for all to authenticated
+using ((select private.is_team_manager(team_id)))
+with check ((select private.is_team_manager(team_id)));
+
+create policy "trainings scoped read"
+on public.teamplan_trainings for select to authenticated
+using (
+  (select private.is_team_manager(team_id))
+  or exists (
+    select 1 from public.team_members tm
+    where tm.team_id = teamplan_trainings.team_id
+      and tm.user_id = (select auth.uid())
+      and tm.active = true
+      and (
+        tm.role = 'viewer'
+        or (tm.role = 'employee' and tm.employee_id = teamplan_trainings.employee_id)
+      )
+  )
+);
+
+create policy "trainings manage"
+on public.teamplan_trainings for all to authenticated
+using ((select private.is_team_manager(team_id)))
+with check ((select private.is_team_manager(team_id)));
+
+create policy "training budgets scoped read"
+on public.teamplan_training_budgets for select to authenticated
+using (
+  (select private.is_team_manager(team_id))
+  or exists (
+    select 1 from public.team_members tm
+    where tm.team_id = teamplan_training_budgets.team_id
+      and tm.user_id = (select auth.uid())
+      and tm.active = true
+      and (
+        tm.role = 'viewer'
+        or (tm.role = 'employee' and tm.employee_id = teamplan_training_budgets.employee_id)
+      )
+  )
+);
+
+create policy "training budgets manage"
+on public.teamplan_training_budgets for all to authenticated
+using ((select private.is_team_manager(team_id)))
+with check ((select private.is_team_manager(team_id)));
+
+do $$
+begin
+  alter publication supabase_realtime add table public.teamplan_trainings;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.teamplan_training_types;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.teamplan_training_budgets;
+exception when duplicate_object then null;
+end $$;
