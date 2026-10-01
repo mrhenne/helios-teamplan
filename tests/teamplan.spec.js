@@ -271,7 +271,7 @@ test('Projekt und Aufgabe können lokal angelegt und gespeichert werden', async 
 
   await page.reload();
   await page.locator('#moduleProjectsBtn').click();
-  await expect(page.locator('.project-card strong', { hasText:'QA Projekt' }).first()).toBeVisible();
+  await expect(page.locator('#projectsProjectFilter option', { hasText:'QA Projekt' })).toHaveCount(1);
   await page.locator('#projectsBoardBtn').click();
   await expect(page.locator('#projectsKanban .project-task-card strong', { hasText:'QA Aufgabe' }).first()).toBeVisible();
 });
@@ -329,4 +329,28 @@ test('Projektkalender kann zwischen Monat und Jahr wechseln', async ({ page }) =
   await expect(page.locator('.projects-calendar-year')).toBeVisible();
   await page.locator('#projectsCalendarMonthBtn').click();
   await expect(page.locator('.projects-calendar-month')).toBeVisible();
+});
+
+
+test('Projekt Tabs überlappen auf kleinen Ansichten nicht', async ({ page }) => {
+  await bootLocal(page);
+  await page.locator('#moduleProjectsBtn').click();
+  const result = await page.locator('.projects-view-switch .segment').evaluateAll(nodes => {
+    const boxes = nodes.filter(n => {
+      const s=getComputedStyle(n),r=n.getBoundingClientRect();
+      return s.display!=='none' && s.visibility!=='hidden' && r.width>0 && r.height>0;
+    }).map(n => {
+      const r=n.getBoundingClientRect();
+      return {id:n.id,left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};
+    });
+    const overlaps=[];
+    for(let i=0;i<boxes.length;i++) for(let j=i+1;j<boxes.length;j++){
+      const a=boxes[i],b=boxes[j];
+      const overlapX=Math.min(a.right,b.right)-Math.max(a.left,b.left);
+      const overlapY=Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top);
+      if(overlapX>1 && overlapY>1) overlaps.push([a.id,b.id,overlapX,overlapY]);
+    }
+    return {boxes,overlaps};
+  });
+  expect(result.overlaps, JSON.stringify(result.boxes)).toEqual([]);
 });
