@@ -2902,3 +2902,26 @@ body.dark-mode .training-type-drop-hint{color:#a7c9e8;border-color:rgba(167,201,
   .training-teamstatus-pool>div{grid-template-columns:1fr}
   .global-theme-control{padding:2px 4px}
 }
+
+
+/* Letzter Stabilitäts-Fix für globale Kopfzeile */
+@media(min-width:1101px){
+  #syncPill{grid-column:1}
+  #authUserPill{grid-column:2}
+  #onlinePill{grid-column:3}
+  #roleSelect{grid-column:4}
+  .account-group .global-theme-control{grid-column:1}
+  .account-group #settingsBtn{grid-column:2}
+  .account-group #logoutBtn{grid-column:3}
+}
+.training-view-switch .segment,
+.view-switch .segment{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:4px!important
+}
+.training-view-switch .segment .ui-icon,
+.view-switch .segment .ui-icon{
+  width:11px;height:11px
+}
