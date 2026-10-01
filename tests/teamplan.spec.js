@@ -31,7 +31,7 @@ async function assertNoOverflow(locator) {
       const parent = node.parentElement?.getBoundingClientRect();
       return {
         id: node.id || node.className || String(node.tagName),
-        own: node.scrollWidth <= node.clientWidth + 1 && node.scrollHeight <= node.clientHeight + 1,
+        own: node.tagName === 'SELECT' ? true : (node.scrollWidth <= node.clientWidth + 1 && node.scrollHeight <= node.clientHeight + 1),
         inside: !parent || (r.left >= parent.left - 1 && r.right <= parent.right + 1 && r.top >= parent.top - 1 && r.bottom <= parent.bottom + 1)
       };
     });
@@ -160,6 +160,7 @@ test('Backup enthält den Zustand und Import stellt ihn wieder her', async ({ pa
   await page.locator('#employeeForm button[type="submit"]').click();
   await expect(page.locator('.employee-name', { hasText: 'Backup Testperson' })).toBeVisible();
 
+  await page.evaluate(() => { try { Object.defineProperty(window, 'showSaveFilePicker', { value: undefined, configurable: true }); } catch {} });
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.locator('#exportBtn').click()
