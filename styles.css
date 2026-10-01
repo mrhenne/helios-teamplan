@@ -1136,3 +1136,301 @@ body.dark-mode .conflict-summary>button.active{background:#20372f;border-color:r
   }
   #conflictsDialog .dialog-panel{padding:12px!important}
 }
+
+/* Finaler UI-Audit: einheitliche Typografie, Abstände und Controls */
+:root{
+  --ui-control-h:30px;
+  --ui-radius:9px;
+  --ui-font:9px;
+  --ui-label:8px;
+  --ui-title:15px;
+}
+
+/* Grundtypografie in Dialogen */
+.dialog{
+  border-radius:16px!important;
+}
+.dialog form,
+.dialog-panel{
+  padding:18px!important;
+}
+.dialog-head{
+  margin-bottom:12px!important;
+  gap:10px;
+}
+.dialog h2{
+  font-size:var(--ui-title)!important;
+  line-height:1.15!important;
+  margin-top:2px!important;
+  font-weight:780!important;
+}
+.dialog .eyebrow{
+  font-size:6.5px!important;
+  letter-spacing:.1em!important;
+}
+.dialog label{
+  gap:5px!important;
+  font-size:8.5px!important;
+  font-weight:750!important;
+  color:#45625b
+}
+.dialog input,
+.dialog select,
+.dialog textarea{
+  border-radius:var(--ui-radius)!important;
+  padding:8px 9px!important;
+  font:600 var(--ui-font) Inter,sans-serif!important;
+  line-height:1.3!important;
+}
+.dialog input,
+.dialog select{
+  min-height:var(--ui-control-h);
+}
+.dialog textarea{
+  min-height:58px;
+}
+.dialog-actions{
+  margin-top:13px!important;
+  gap:6px!important;
+}
+.dialog .btn{
+  min-height:var(--ui-control-h);
+  padding:0 10px!important;
+  border-radius:var(--ui-radius)!important;
+  font-size:8.5px!important;
+}
+.dialog .icon-btn{
+  width:30px!important;
+  height:30px!important;
+  border-radius:9px!important;
+  font-size:18px!important;
+  flex:0 0 30px
+}
+.dialog-copy{
+  font-size:8.5px!important;
+  line-height:1.45!important
+}
+
+/* Formulare und Einstellungsblöcke */
+.form-grid{gap:9px!important}
+.settings-section{padding:10px 0!important}
+.settings-section-head{margin-bottom:8px!important;gap:8px!important}
+.settings-section-head strong{font-size:10px!important}
+.settings-section-head span{font-size:7.5px!important}
+.workweek-box,
+.auto-weekend-box,
+.user-invite-box,
+.calc-preview,
+.plan-import-preview,
+.invite-result{
+  border-radius:11px!important;
+  padding:10px!important
+}
+.workweek-box,
+.calc-preview{font-size:9px!important}
+.workweek-box small,
+.auto-weekend-box>small,
+.plan-import-preview,
+.invite-result{font-size:8px!important}
+.weekday-toggle{
+  min-height:28px;
+  padding:0 8px!important;
+  border-radius:8px!important;
+  font-size:8.5px!important
+}
+
+/* Codes und Planungsstatus */
+.code-selector{gap:5px!important;margin-bottom:10px!important}
+.code-btn{
+  min-height:36px;
+  border-radius:10px!important;
+  padding:6px 4px!important;
+  font-size:9px!important
+}
+.code-btn small{font-size:6.5px!important;margin-top:1px!important}
+.inline-warning{
+  margin-top:8px!important;
+  padding:8px 9px!important;
+  border-radius:9px!important;
+  font-size:8px!important;
+  line-height:1.4!important
+}
+.toggle-line{
+  gap:7px!important;
+  margin-top:9px!important;
+  font-size:8.5px!important
+}
+
+/* Management- und Listenansichten */
+.management-list{gap:6px!important;margin-top:10px!important}
+.management-item{
+  gap:9px!important;
+  border-radius:10px!important;
+  padding:8px 9px!important
+}
+.management-item strong{font-size:9.5px!important}
+.management-item span{font-size:7.5px!important;margin-top:2px!important}
+.empty-state{
+  padding:14px!important;
+  border-radius:10px!important;
+  font-size:8.5px!important
+}
+.role-help-grid{gap:7px!important}
+.role-help-grid article{
+  padding:9px!important;
+  border-radius:10px!important
+}
+.role-help-grid strong{font-size:9.5px!important}
+.role-help-grid p{font-size:8px!important;line-height:1.45!important;margin-top:4px!important}
+.role-security-note{
+  margin-top:9px!important;
+  padding:9px 10px!important;
+  border-radius:10px!important;
+  font-size:8px!important
+}
+
+/* Haupt-Toolbar: eine durchgängige 29-30px Linie */
+.planner-controls{
+  border-radius:14px!important;
+  padding:9px!important;
+  margin-bottom:9px!important
+}
+.controls-row{row-gap:6px!important}
+.date-nav-block{
+  min-height:30px;
+  padding:2px 5px!important;
+  border-radius:9px!important
+}
+.date-nav-block .icon-btn,
+.zoom-btn{
+  width:27px!important;
+  height:27px!important;
+  border-radius:8px!important;
+  font-size:15px!important
+}
+.date-select{
+  min-height:27px!important;
+  font-size:8.5px!important
+}
+.control-caption{font-size:7px!important}
+.view-tool-btn,.today-btn,.compact-employee-search,#addEmployeeBtn{
+  height:29px!important;
+  border-radius:8px!important;
+  font-size:8px!important
+}
+.compact-employee-search{
+  padding:0 9px!important
+}
+.theme-switch-wrap>span{font-size:7px!important}
+.legend{gap:7px!important}
+.legend>span{font-size:8px!important;gap:4px!important}
+.chip{
+  min-width:21px!important;
+  height:19px!important;
+  border-radius:6px!important;
+  font-size:8px!important;
+  padding:0 4px!important
+}
+
+/* Mitarbeiterzeilen */
+.employee-name{font-size:11px!important}
+.employee-meta{font-size:8px!important;margin-top:2px!important}
+.employee-stats strong{font-size:10px!important}
+.employee-stats small{font-size:7px!important}
+.drag-handle{font-size:14px!important}
+.presence-dot{width:6px!important;height:6px!important;margin-right:5px!important}
+.employee-message-badge{
+  min-width:14px!important;height:14px!important;
+  font-size:5.8px!important;margin-left:5px!important
+}
+
+/* Zellinformationen bei Zoom */
+body.planner-zoom-small .cell-note-preview{
+  left:2px;right:2px;height:10px;line-height:10px;
+  font-size:4.7px;padding:0 3px
+}
+body.planner-zoom-tiny .cell-note-preview{
+  left:auto!important;right:2px!important;bottom:2px!important;
+  width:6px!important;height:6px!important;padding:0!important;
+  border-radius:50%!important;font-size:0!important;line-height:0!important
+}
+body.planner-zoom-tiny .cell-note-preview::before{display:none}
+body.planner-zoom-small .planner-marker,
+body.planner-zoom-tiny .planner-marker{
+  min-width:11px!important;height:10px!important;font-size:4.3px!important
+}
+body.planner-zoom-tiny .planner-markers{gap:0!important}
+
+/* Fokusmodus: gleiche Control-Höhen */
+.planner-focus-controls{
+  min-height:44px;
+  padding-top:7px!important;
+  padding-bottom:7px!important
+}
+.focus-nav button,
+.focus-actions>button,
+.focus-zoom,
+.focus-nav select,
+.focus-search-wrap input{
+  height:29px!important
+}
+.focus-nav button,
+.focus-actions>button{
+  width:29px!important
+}
+.focus-zoom button{height:27px!important}
+.focus-period strong{font-size:12px!important}
+.focus-period span{font-size:7.5px!important}
+
+/* Team-Chat / Konflikte an gleiche Typografie koppeln */
+#discussionsDialog .dialog-head h2,
+#conflictsDialog .dialog-head h2{
+  font-size:14px!important
+}
+.discussion-item strong{font-size:8.5px!important}
+.discussion-message p{font-size:8px!important}
+.conflict-summary>button strong{font-size:15px!important}
+.conflict-summary>button span{font-size:7px!important}
+.conflict-kind{font-size:6.5px!important}
+.conflict-jump strong{font-size:9px!important}
+.conflict-jump span{font-size:7.5px!important}
+
+/* Darkmode: Inputs und Controls konsistent */
+body.dark-mode .dialog input,
+body.dark-mode .dialog select,
+body.dark-mode .dialog textarea,
+body.dark-mode .conflict-sort-label select{
+  background:#172723!important;
+  color:#e7f0ed!important;
+  border-color:rgba(200,235,226,.12)!important
+}
+body.dark-mode .dialog label{color:#a9beb7!important}
+
+/* Mobile: kompakt, aber nicht gequetscht */
+@media(max-width:700px){
+  .dialog,
+  .dialog.compact,
+  .wide-dialog{
+    width:calc(100vw - 12px)!important;
+    border-radius:13px!important
+  }
+  .dialog form,
+  .dialog-panel{
+    padding:12px!important
+  }
+  .dialog h2{font-size:13px!important}
+  .form-grid.two{grid-template-columns:1fr!important}
+  .dialog input,
+  .dialog select{
+    min-height:32px!important
+  }
+  .dialog .btn{min-height:31px!important}
+  .code-selector{grid-template-columns:repeat(3,1fr)!important}
+  .planner-marker-block{align-items:flex-start!important;gap:5px!important}
+  .planner-marker-label{width:100%}
+  .planner-controls{border-radius:11px!important;padding:7px!important}
+  .legend>span{font-size:7px!important}
+}
+
+/* Entfernte KPI-Leiste: alte Regeln bewusst neutralisiert */
+.summary-grid{display:none!important}
