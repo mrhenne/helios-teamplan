@@ -69,6 +69,11 @@ let currentModule = localStorage.getItem('teamplan-module') || 'vacation';
 let trainingView = localStorage.getItem('teamplan-training-view') || 'overview';
 let trainingYear = Number(localStorage.getItem('teamplan-training-year')) || new Date().getFullYear();
 let trainingZoom = Math.max(.7,Math.min(1.3,Number(localStorage.getItem('teamplan-training-zoom')||1)));
+let trainingMultiYearFrom = Number(localStorage.getItem('teamplan-training-multiyear-from')) || Math.max(2025,new Date().getFullYear()-1);
+let trainingMultiYearTo = Number(localStorage.getItem('teamplan-training-multiyear-to')) || trainingMultiYearFrom+6;
+let trainingTeamStatusTypeId = localStorage.getItem('teamplan-training-teamstatus-type') || '';
+let trainingTeamStatusYear = Number(localStorage.getItem('teamplan-training-teamstatus-year')) || new Date().getFullYear();
+let trainingTeamStatusSort = localStorage.getItem('teamplan-training-teamstatus-sort') || 'name';
 let trainingTypes = [];
 let trainings = [];
 let trainingBudgets = [];
@@ -1498,9 +1503,13 @@ function filteredTrainings(){
   const search=(document.getElementById('trainingSearchInput')?.value||'').trim().toLowerCase();
   const empFilter=sessionRole==='employee'?sessionEmployeeId:(document.getElementById('trainingEmployeeFilter')?.value||'');
   const status=document.getElementById('trainingStatusFilter')?.value||'';
+  const typeFilter=document.getElementById('trainingTypeFilter')?.value||'';
+  const categoryFilter=document.getElementById('trainingCategoryFilter')?.value||'';
   return trainingItemsWithProjections(trainingYear).filter(t=>{
     if(!trainingIntersectsYear(t))return false;
     if(empFilter&&t.employee_id!==empFilter)return false;
+    if(typeFilter&&t.type_id!==typeFilter)return false;
+    if(categoryFilter&&t.category!==categoryFilter)return false;
     if(search&&!([t.title,t.category,t.provider,trainingEmployeeName(t.employee_id)].join(' ').toLowerCase().includes(search)))return false;
     if(status==='due'&&trainingDueState(t)!=='due')return false;
     if(status==='overdue'&&trainingDueState(t)!=='overdue')return false;
@@ -1576,12 +1585,40 @@ function populateTrainingControls(){
   }
   const employee=document.getElementById('trainingEmployee');
   if(employee)employee.innerHTML=employees.map(e=>'<option value="'+e.id+'">'+escapeHtml(e.name)+'</option>').join('');
+  const activeTypes=trainingTypes.filter(t=>t.active!==false);
   const type=document.getElementById('trainingType');
   if(type){
     const old=type.value;
-    type.innerHTML='<option value="">Freier Eintrag</option>'+trainingTypes.filter(t=>t.active!==false).map(t=>'<option value="'+t.id+'">'+escapeHtml(t.name)+'</option>').join('');
+    type.innerHTML='<option value="">Freier Eintrag</option>'+activeTypes.map(t=>'<option value="'+t.id+'">'+escapeHtml(t.name)+'</option>').join('');
     if([...type.options].some(o=>o.value===old))type.value=old;
   }
+  const typeFilter=document.getElementById('trainingTypeFilter');
+  if(typeFilter){
+    const old=typeFilter.value;
+    typeFilter.innerHTML='<option value="">Alle Fortbildungen</option>'+activeTypes.map(t=>'<option value="'+t.id+'">'+escapeHtml(t.name)+'</option>').join('');
+    if([...typeFilter.options].some(o=>o.value===old))typeFilter.value=old;
+  }
+  const categories=[...new Set(activeTypes.map(t=>t.category).filter(Boolean).concat(trainings.map(t=>t.category).filter(Boolean)))].sort((a,b)=>a.localeCompare(b,'de'));
+  const categoryFilter=document.getElementById('trainingCategoryFilter');
+  if(categoryFilter){
+    const old=categoryFilter.value;
+    categoryFilter.innerHTML='<option value="">Alle Arten</option>'+categories.map(c=>'<option value="'+escapeHtml(c)+'">'+escapeHtml(c)+'</option>').join('');
+    if([...categoryFilter.options].some(o=>o.value===old))categoryFilter.value=old;
+  }
+  const teamType=document.getElementById('trainingTeamStatusType');
+  if(teamType){
+    teamType.innerHTML=activeTypes.map(t=>'<option value="'+t.id+'">'+escapeHtml(t.name)+'</option>').join('');
+    if(!trainingTeamStatusTypeId||!activeTypes.some(t=>t.id===trainingTeamStatusTypeId))trainingTeamStatusTypeId=activeTypes[0]?.id||'';
+    teamType.value=trainingTeamStatusTypeId;
+  }
+  const teamYear=document.getElementById('trainingTeamStatusYear');
+  if(teamYear){
+    if(!teamYear.options.length){for(let y=2025;y<=2035;y++){const o=document.createElement('option');o.value=String(y);o.textContent=String(y);teamYear.appendChild(o)}}
+    teamYear.value=String(trainingTeamStatusYear);
+  }
+  const teamSort=document.getElementById('trainingTeamStatusSort');if(teamSort)teamSort.value=trainingTeamStatusSort;
+  const mf=document.getElementById('trainingMultiYearFrom'),mt=document.getElementById('trainingMultiYearTo');
+  if(mf)mf.value=String(trainingMultiYearFrom);if(mt)mt.value=String(trainingMultiYearTo);
 }
 async function loadTrainingData(){
   if(!supabaseClient||!authUser)return;
