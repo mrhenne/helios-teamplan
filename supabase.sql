@@ -957,3 +957,163 @@ do $$ begin alter publication supabase_realtime add table public.teamplan_projec
 do $$ begin alter publication supabase_realtime add table public.teamplan_task_templates; exception when duplicate_object then null; end $$;
 do $$ begin alter publication supabase_realtime add table public.teamplan_tasks; exception when duplicate_object then null; end $$;
 do $$ begin alter publication supabase_realtime add table public.teamplan_notes; exception when duplicate_object then null; end $$;
+
+
+-- =========================================================
+-- Projektmanagement Zusammenarbeit
+-- =========================================================
+alter table public.teamplan_tasks
+  add column if not exists recurrence_parent_id uuid references public.teamplan_tasks(id) on delete set null,
+  add column if not exists completed_at timestamptz;
+
+create index if not exists teamplan_tasks_recurrence_parent_idx on public.teamplan_tasks(recurrence_parent_id);
+
+create table if not exists public.teamplan_task_comments (
+  id uuid primary key default gen_random_uuid(),
+  team_id text not null,
+  task_id uuid not null references public.teamplan_tasks(id) on delete cascade,
+  body text not null,
+  author_user_id uuid not null default auth.uid(),
+  author_name text not null default '',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.teamplan_project_activity (
+  id uuid primary key default gen_random_uuid(),
+  team_id text not null,
+  entity_type text not null check (entity_type in ('project','task','note','template')),
+  entity_id uuid,
+  action text not null,
+  details text not null default '',
+  actor_user_id uuid not null default auth.uid(),
+  actor_name text not null default '',
+  created_at timestamptz not null default now()
+);
+
+create index if not exists teamplan_task_comments_task_idx on public.teamplan_task_comments(task_id,created_at);
+create index if not exists teamplan_project_activity_team_idx on public.teamplan_project_activity(team_id,created_at desc);
+create index if not exists teamplan_project_activity_entity_idx on public.teamplan_project_activity(entity_type,entity_id,created_at desc);
+
+alter table public.teamplan_task_comments enable row level security;
+alter table public.teamplan_project_activity enable row level security;
+
+revoke all on public.teamplan_task_comments from anon, authenticated;
+revoke all on public.teamplan_project_activity from anon, authenticated;
+grant select,insert,delete on public.teamplan_task_comments to authenticated;
+grant select,insert on public.teamplan_project_activity to authenticated;
+
+create or replace function private.is_project_lead(p_project_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, private
+as $$
+  select exists (
+    select 1
+    from public.teamplan_projects p
+    join public.team_members tm on tm.team_id=p.team_id
+    where p.id=p_project_id
+      and tm.user_id=(select auth.uid())
+      and tm.active=true
+      and tm.employee_id is not null
+      and tm.employee_id=p.lead_employee_id
+  );
+$$;
+
+revoke all on function private.is_project_lead(uuid) from public, anon;
+grant execute on function private.is_project_lead(uuid) to authenticated;
+
+drop policy if exists "projects lead update" on public.teamplan_projects;
+create policy "projects lead update" on public.teamplan_projects for update to authenticated
+using ((select private.is_project_lead(id)))
+with check ((select private.is_project_lead(id)));
+
+drop policy if exists "project members lead manage" on public.teamplan_project_members;
+create policy "project members lead manage" on public.teamplan_project_members for all to authenticated
+using ((select private.is_project_lead(project_id)))
+with check ((select private.is_project_lead(project_id)));
+
+drop policy if exists "tasks project lead manage" on public.teamplan_tasks;
+create policy "tasks project lead manage" on public.teamplan_tasks for all to authenticated
+using (project_id is not null and (select private.is_project_lead(project_id)))
+with check (project_id is not null and (select private.is_project_lead(project_id)));
+
+create policy "task comments team read" on public.teamplan_task_comments for select to authenticated
+using ((select private.is_team_member(team_id)));
+create policy "task comments team insert" on public.teamplan_task_comments for insert to authenticated
+with check ((select private.is_team_member(team_id)) and author_user_id=(select auth.uid()));
+create policy "task comments own or manager delete" on public.teamplan_task_comments for delete to authenticated
+using (
+  author_user_id=(select auth.uid())
+  or (select private.is_team_manager(team_id))
+  or exists (
+    select 1 from public.teamplan_tasks t
+    where t.id=teamplan_task_comments.task_id
+      and t.project_id is not null
+      and (select private.is_project_lead(t.project_id))
+  )
+);
+
+create policy "project activity team read" on public.teamplan_project_activity for select to authenticated
+using ((select private.is_team_member(team_id)));
+create policy "project activity team insert" on public.teamplan_project_activity for insert to authenticated
+with check ((select private.is_team_member(team_id)) and actor_user_id=(select auth.uid()));
+
+create or replace function public.teamplan_create_next_recurring_task()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_interval interval;
+  v_checklist jsonb;
+begin
+  if new.status <> 'done'
+     or coalesce(new.recurrence,'none') = 'none'
+     or new.due_date is null then
+    return new;
+  end if;
+
+  if exists(select 1 from public.teamplan_tasks x where x.recurrence_parent_id=new.id) then
+    return new;
+  end if;
+
+  v_interval := case new.recurrence
+    when 'weekly' then interval '7 days'
+    when 'monthly' then interval '1 month'
+    when 'quarterly' then interval '3 months'
+    when 'halfyear' then interval '6 months'
+    when 'yearly' then interval '1 year'
+    else null
+  end;
+  if v_interval is null then return new; end if;
+
+  select coalesce(jsonb_agg(jsonb_set(item,'{done}','false'::jsonb,true)),'[]'::jsonb)
+  into v_checklist
+  from jsonb_array_elements(coalesce(new.checklist,'[]'::jsonb)) item;
+
+  insert into public.teamplan_tasks(
+    team_id,project_id,title,description,status,priority,start_date,due_date,
+    assignee_employee_id,template_id,recurrence,checklist,sort_order,
+    created_by,recurrence_parent_id
+  ) values (
+    new.team_id,new.project_id,new.title,new.description,'open',new.priority,
+    case when new.start_date is null then null else (new.start_date + v_interval)::date end,
+    (new.due_date + v_interval)::date,
+    new.assignee_employee_id,new.template_id,new.recurrence,coalesce(v_checklist,'[]'::jsonb),
+    new.sort_order,new.created_by,new.id
+  );
+  return new;
+end;
+$$;
+
+revoke all on function public.teamplan_create_next_recurring_task() from public, anon, authenticated;
+drop trigger if exists trg_teamplan_next_recurring_task on public.teamplan_tasks;
+create trigger trg_teamplan_next_recurring_task
+after insert or update of status on public.teamplan_tasks
+for each row execute function public.teamplan_create_next_recurring_task();
+
+do $$ begin alter publication supabase_realtime add table public.teamplan_task_comments; exception when duplicate_object then null; end $$;
+do $$ begin alter publication supabase_realtime add table public.teamplan_project_activity; exception when duplicate_object then null; end $$;
