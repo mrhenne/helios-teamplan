@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-42" />
+  <link rel="stylesheet" href="styles.css?v=20261001-43" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -385,6 +385,7 @@
         <div class="projects-overview-grid">
           <section class="glass project-panel"><header><div><span class="eyebrow">AKTUELLE PROJEKTE</span><h2>Im Fokus</h2></div></header><div id="projectsFocusList" class="project-card-list"></div></section>
           <section class="glass project-panel"><header><div><span class="eyebrow">MEINE / OFFENE AUFGABEN</span><h2>Als Nächstes</h2></div></header><div id="projectsNextTasks" class="project-task-list"></div></section>
+          <section class="glass project-panel project-attention-panel"><header><div><span class="eyebrow">HANDLUNGSBEDARF</span><h2>Aufmerksamkeit</h2></div><span id="projectsAttentionCount" class="project-chip">0</span></header><div id="projectsAttentionList" class="project-attention-list"></div></section>
           <section class="glass project-panel project-activity-panel"><header><div><span class="eyebrow">FORTSCHRITT</span><h2>Letzte Änderungen</h2></div><span class="project-chip">Live</span></header><div id="projectsRecentActivity" class="project-recent-activity"></div></section>
         </div>
       </section>
@@ -448,6 +449,12 @@
         <label>Zieltermin<input id="projectDue" type="date"></label>
         <label>Projektleitung<select id="projectLead"></select></label>
         <label>Farbe<input id="projectColor" type="color" value="#d8891c"></label>
+      </div>
+      <div id="projectDialogSummary" class="project-dialog-summary hidden">
+        <article><span>Fortschritt</span><strong id="projectSummaryProgress">0 %</strong></article>
+        <article><span>Offen</span><strong id="projectSummaryOpen">0</strong></article>
+        <article><span>Rückfragen</span><strong id="projectSummaryWaiting">0</strong></article>
+        <article><span>Überfällig</span><strong id="projectSummaryOverdue">0</strong></article>
       </div>
       <div class="project-members-box">
         <div class="project-section-title">
