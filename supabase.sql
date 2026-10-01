@@ -1317,3 +1317,17 @@ with check (
   project_id is not null
   and ((select private.is_project_lead(project_id)) or (select private.is_project_responsible(project_id)))
 );
+
+
+-- === 2026-10-01 LOGIN-SAFE PROJECT POLICY ROLLBACK ===
+-- Zusätzliche Projektverantwortliche bleiben als Datenmodell erhalten.
+-- Erweiterte Rechte werden getrennt umgesetzt, damit SELECT/Ladepfade nicht blockieren.
+alter policy "projects lead update"
+on public.teamplan_projects
+using ((select private.is_project_lead(teamplan_projects.id)))
+with check ((select private.is_project_lead(teamplan_projects.id)));
+
+alter policy "tasks project lead manage"
+on public.teamplan_tasks
+using ((project_id is not null) and (select private.is_project_lead(teamplan_tasks.project_id)))
+with check ((project_id is not null) and (select private.is_project_lead(teamplan_tasks.project_id)));
