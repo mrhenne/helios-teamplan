@@ -66,6 +66,8 @@ let unreadDiscussionIds = new Set();
 let conflictFilter = 'all';
 let conflictSort = 'type';
 let currentModule = localStorage.getItem('teamplan-module') || 'vacation';
+let employeeInfoPrefs = (()=>{try{return {...{work:false,vacation:true,xu:false},...JSON.parse(localStorage.getItem('teamplan-employee-info')||'{}')}}catch{return {work:false,vacation:true,xu:false}}})();
+let vacationToolsOpen = localStorage.getItem('teamplan-vacation-tools-open') === '1';
 let projectView = localStorage.getItem('teamplan-project-view') || 'overview';
 let projectCalendarMode = localStorage.getItem('teamplan-project-calendar-mode') || 'month';
 let projectCalendarDate = (()=>{const r=localStorage.getItem('teamplan-project-calendar-date');const d=r?new Date(r+'T12:00:00'):new Date();return isNaN(d)?new Date():d})();
@@ -505,6 +507,26 @@ function activePlannerDates(){return currentView==='month'?flowingMonthDates():m
 function dailyCounts(key){let U=0,XU=0,S=0,extraAbsence=0;state.employees.forEach(e=>{const v=entryFor(e.id,key);if(!entryIsActive(v))return;const c=v.codes||[];if(c.includes('U'))U++;if(c.includes('XU'))XU++;if(c.includes('S'))S++;extraAbsence+=c.filter(code=>!['U','X','XU','S','G'].includes(code)&&isAbsenceCode(code)).length});return {U,XU,S,extraAbsence,total:U+XU+(state.settings.countSchool?S:0)+extraAbsence};}
 function conflictLevel(key){const c=dailyCounts(key);return {vacation:c.U>state.settings.maxVacation,total:c.total>state.settings.maxAbsence};}
 
+function syncVacationUiPrefs(){
+  const work=document.getElementById('employeeInfoWork'),vac=document.getElementById('employeeInfoVacation'),xu=document.getElementById('employeeInfoXU');
+  if(work)work.checked=!!employeeInfoPrefs.work;
+  if(vac)vac.checked=!!employeeInfoPrefs.vacation;
+  if(xu)xu.checked=!!employeeInfoPrefs.xu;
+  const row=document.getElementById('vacationToolsRow'),btn=document.getElementById('vacationToolsToggle');
+  if(row)row.classList.toggle('vacation-tools-collapsed',!vacationToolsOpen);
+  if(btn)btn.setAttribute('aria-expanded',String(vacationToolsOpen));
+}
+function saveEmployeeInfoPrefs(){
+  localStorage.setItem('teamplan-employee-info',JSON.stringify(employeeInfoPrefs));
+  syncVacationUiPrefs();
+  render();
+}
+function toggleVacationTools(){
+  vacationToolsOpen=!vacationToolsOpen;
+  localStorage.setItem('teamplan-vacation-tools-open',vacationToolsOpen?'1':'0');
+  syncVacationUiPrefs();
+}
+
 function render(){
   ensureAutoWeekendEntries(viewDate.getFullYear());
   const dates=activePlannerDates(), holidays=holidaysNRW(viewDate.getFullYear());
@@ -524,7 +546,7 @@ function render(){
   employees.forEach(e=>{
     const used=usedVacation(e),total=vacationEntitlement(e),remain=remainingVacation(e),xu=countCode(e,'XU'); const status=remain<0?'status-bad':remain<=3?'status-low':'status-good';
     const employeeFocusClass=sessionRole==='employee'?(e.id===sessionEmployeeId?'employee-own-row':'employee-muted-row'):'';
-    html+=`<tr class="employee-row ${employeeFocusClass}" draggable="true" data-id="${e.id}"><td class="employee-col employee-cell"><div class="employee-card"><span class="drag-handle">⠿</span><div class="employee-edit" data-id="${e.id}"><div class="employee-name"><span class="presence-dot" title="Offline"></span>${escapeHtml(e.name)}</div><div class="employee-meta">${e.hours} h · ${e.percent}% · ${e.workdays} Tage/Woche · ${formatVacationNumber(vacationDaysPerWeek(e))} U/Woche · XU ${xu}</div></div><div class="employee-stats ${status}"><div class="vacation-stat-line"><strong>${formatVacationNumber(used)}/${formatVacationNumber(total)}</strong>${state.settings.vacationDisplayMode==='actual'?`<span class="vacation-factor-badge">× ${formatVacationNumber(vacationFactor(e))}</span>`:''}</div><small>${formatVacationNumber(remain)} übrig</small></div></div></td>`;
+    html+=`<tr class="employee-row ${employeeFocusClass}" draggable="true" data-id="${e.id}"><td class="employee-col employee-cell"><div class="employee-card ${employeeInfoPrefs.vacation?'':'employee-info-minimal'}"><span class="drag-handle">⠿</span><div class="employee-edit" data-id="${e.id}"><div class="employee-name"><span class="presence-dot" title="Offline"></span>${escapeHtml(e.name)}</div><div class="employee-meta"><span class="employee-meta-part ${employeeInfoPrefs.work?'':'hidden-info'}">${e.hours} h · ${e.percent}% · ${e.workdays} Tage/Woche · ${formatVacationNumber(vacationDaysPerWeek(e))} U/Woche</span><span class="employee-meta-part ${employeeInfoPrefs.xu?'':'hidden-info'}">XU ${xu}</span></div></div><div class="employee-stats ${status} ${employeeInfoPrefs.vacation?'':'hidden-info'}"><div class="vacation-stat-line employee-stat-main"><strong>${formatVacationNumber(used)}/${formatVacationNumber(total)}</strong>${state.settings.vacationDisplayMode==='actual'?`<span class="vacation-factor-badge">× ${formatVacationNumber(vacationFactor(e))}</span>`:''}</div><small class="employee-stat-remain">${formatVacationNumber(remain)} übrig</small></div></div></td>`;
     dates.forEach(d=>{const key=dateKey(d),v=entryFor(e.id,key),we=[0,6].includes(d.getDay()),nonwork=!isWorkday(e,d),conf=conflictLevel(key),school=schoolBreakForDate(d),monthTone=d.getMonth()%2===0?'month-even':'month-odd',blackout=blackoutForKey(key),status=v.status||'wish';const codes=(v.codes||[]).map(c=>{const d=codeDef(c),weighted=c==='U'&&state.settings.vacationDisplayMode==='actual';return `<span class="cell-code ${codeClassName(c)} ${weighted?'weighted-u':''}"${d.color?` style="--code-color:${escapeHtml(d.color)}"`:''}>${c}${weighted?`<small class="u-weight">${formatVacationNumber(vacationFactor(e))}</small>`:''}</span>`}).join('');const plannerMarkers=(v.plannerMarkers||[]).map(m=>`<span class="planner-marker marker-${m==='V?'?'v':m==='T?'?'t':'k'}">${escapeHtml(m)}</span>`).join('');const dayTrainings=trainingForEmployeeDate(e.id,key);const trainingMark=dayTrainings.length?`<span class="cell-training-mark" title="${escapeHtml(dayTrainings.map(t=>t.title).join(' · '))}">F</span>`:'';const warn=(conf.vacation&&entryIsActive(v)&&v.codes?.includes('U'))||(conf.total&&entryIsActive(v)&&v.codes?.some(c=>['U','XU','S'].includes(c)));html+=`<td class="day-cell ${we?'weekend':''} ${nonwork?'nonwork':''} ${school?'school-holiday-cell':''} ${monthTone} status-${status} ${blackout?'blackout-cell':''}" data-emp="${e.id}" data-date="${key}" title="${escapeHtml([v.note,blackout&&('Sperrzeit: '+blackout.name),school&&('NRW '+school),status&&('Status: '+status),(v.plannerMarkers||[]).length&&('Planer: '+v.plannerMarkers.join(', '))].filter(Boolean).join(' · '))}"><div class="cell-codes">${codes}</div><div class="planner-markers">${plannerMarkers}</div>${trainingMark}${(v.codes||[]).length?`<span class="status-mark status-${status}"></span>`:''}${v.priority?`<span class="cell-priority p${v.priority}"></span>`:''}${v.note?`<span class="cell-note-preview" title="${escapeHtml(v.note)}">${escapeHtml(String(v.note).trim().slice(0,14))}</span>`:''}${warn?'<span class="cell-warning-mark">!</span>':''}</td>`});
     html+='</tr>';
   });
@@ -2750,6 +2772,25 @@ document.getElementById('employeeCleanupBtn').addEventListener('click',()=>{cons
 document.getElementById('openCleanupBtn').addEventListener('click',()=>openCleanupDialog('all'));
 ['cleanupEmployee','cleanupPeriod','cleanupCode'].forEach(id=>document.getElementById(id).addEventListener('change',updateCleanupPreview));
 document.getElementById('cleanupForm').addEventListener('submit',e=>{e.preventDefault();applyCleanup()});
+document.getElementById('employeeInfoToggle')?.addEventListener('click',e=>{
+  e.stopPropagation();
+  const menu=document.getElementById('employeeInfoMenu');
+  const open=menu.classList.contains('hidden');
+  menu.classList.toggle('hidden',!open);
+  document.getElementById('employeeInfoToggle').setAttribute('aria-expanded',String(open));
+});
+document.getElementById('employeeInfoWork')?.addEventListener('change',e=>{employeeInfoPrefs.work=e.target.checked;saveEmployeeInfoPrefs()});
+document.getElementById('employeeInfoVacation')?.addEventListener('change',e=>{employeeInfoPrefs.vacation=e.target.checked;saveEmployeeInfoPrefs()});
+document.getElementById('employeeInfoXU')?.addEventListener('change',e=>{employeeInfoPrefs.xu=e.target.checked;saveEmployeeInfoPrefs()});
+document.getElementById('vacationToolsToggle')?.addEventListener('click',toggleVacationTools);
+document.addEventListener('click',e=>{
+  const menu=document.getElementById('employeeInfoMenu');
+  if(menu&&!menu.classList.contains('hidden')&&!e.target.closest('.employee-info-control')){
+    menu.classList.add('hidden');
+    document.getElementById('employeeInfoToggle')?.setAttribute('aria-expanded','false');
+  }
+});
+syncVacationUiPrefs();
 document.getElementById('fitEmployeesBtn').addEventListener('click',fitAllEmployees);
 document.getElementById('focusFitBtn').addEventListener('click',fitAllEmployees);
 document.getElementById('focusModeBtn').addEventListener('click',enterPlannerFocus);
