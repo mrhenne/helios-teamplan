@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-26" />
+  <link rel="stylesheet" href="styles.css?v=20261001-27" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -56,13 +56,15 @@
           <div id="syncPill" class="sync-pill local">● Lokal</div>
           <div id="authUserPill" class="sync-pill hidden"></div>
           <div id="onlinePill" class="sync-pill online-pill hidden" title="Aktuell aktive Nutzer">● 0 online</div>
-          <select id="roleSelect" class="role-select" title="Arbeitsmodus">
-            <option value="admin">Admin</option>
-            <option value="planner">Planer</option>
-            <option value="employee">Mitarbeiter</option>
-            <option value="viewer">Nur Lesen</option>
-          </select>
-          <select id="roleEmployeeSelect" class="role-select hidden" title="Mitarbeiter auswählen"></select>
+          <div class="role-stack">
+            <select id="roleSelect" class="role-select" title="Arbeitsmodus">
+              <option value="admin">Admin</option>
+              <option value="planner">Planer</option>
+              <option value="employee">Mitarbeiter</option>
+              <option value="viewer">Nur Lesen</option>
+            </select>
+            <select id="roleEmployeeSelect" class="role-select hidden" title="Mitarbeiter auswählen"></select>
+          </div>
         </div>
         <div class="action-groups">
           <div class="action-group" aria-label="Team">
@@ -220,6 +222,7 @@
         <select id="trainingStatusFilter">
           <option value="">Alle Status</option>
           <option value="planned">Geplant</option>
+          <option value="in_progress">In Durchführung</option>
           <option value="completed">Absolviert</option>
           <option value="due">Bald fällig</option>
           <option value="overdue">Überfällig</option>
@@ -230,14 +233,18 @@
 
       <section id="trainingOverviewView" class="training-view">
         <div id="trainingOverviewDropzones" class="training-status-dropzones training-manager-action"></div>
-        <div id="trainingMetrics" class="training-metrics"></div>
-        <div class="training-content-grid">
-          <article class="glass training-panel">
-            <div class="training-panel-head"><div><span class="eyebrow">NÄCHSTE TERMINE</span><h2>Geplant & laufend</h2></div></div>
-            <div id="trainingUpcomingList" class="training-list"></div>
+        <div id="trainingMetrics" class="training-metrics training-cockpit"></div>
+        <div class="training-content-grid training-overview-grid">
+          <article class="glass training-panel training-panel-running">
+            <div class="training-panel-head"><div><span class="eyebrow">JETZT</span><h2>In Durchführung</h2><p>Aktuell laufende Fort- und Weiterbildungen</p></div></div>
+            <div id="trainingRunningList" class="training-list"></div>
           </article>
           <article class="glass training-panel">
-            <div class="training-panel-head"><div><span class="eyebrow">FÄLLIGKEITEN</span><h2>Pflichtfortbildungen</h2></div></div>
+            <div class="training-panel-head"><div><span class="eyebrow">ALS NÄCHSTES</span><h2>Geplant</h2><p>Bevorstehende Termine und Jahresplanungen</p></div></div>
+            <div id="trainingUpcomingList" class="training-list"></div>
+          </article>
+          <article class="glass training-panel training-panel-attention">
+            <div class="training-panel-head"><div><span class="eyebrow">HANDLUNGSBEDARF</span><h2>Fällig & überfällig</h2><p>Pflichtfortbildungen mit Priorität</p></div></div>
             <div id="trainingDueList" class="training-list"></div>
           </article>
         </div>
@@ -310,7 +317,7 @@
         <label>Fortbildungsart<select id="trainingType"><option value="">Freier Eintrag</option></select></label>
         <label class="span-two">Titel<input id="trainingTitle" required maxlength="160" placeholder="z. B. Notfalltraining"></label>
         <label>Kategorie<input id="trainingCategory" maxlength="80" placeholder="z. B. Pflichtfortbildung"></label>
-        <label>Status<select id="trainingStatus"><option value="planned">Geplant</option><option value="completed">Absolviert</option><option value="cancelled">Abgesagt</option></select></label>
+        <label>Status<select id="trainingStatus"><option value="planned">Geplant</option><option value="in_progress">In Durchführung</option><option value="completed">Absolviert</option><option value="cancelled">Abgesagt</option></select></label>
         <label class="span-two training-year-only-toggle"><span><input id="trainingYearOnly" type="checkbox"> Termin noch unbekannt – nur Jahr planen</span></label>
         <label id="trainingYearOnlyField" class="hidden">Jahr<input id="trainingOnlyYear" type="number" min="2020" max="2100" step="1"></label>
         <label id="trainingStartField">Beginn<input id="trainingStart" type="date"></label>
@@ -340,6 +347,7 @@
           <label>Intervall Monate<input id="trainingTypeInterval" type="number" min="1" max="240" placeholder="z. B. 24"></label>
           <label>Standardstunden<input id="trainingTypeHours" type="number" min="0" step="0.25" value="0"></label>
           <label>Standardkosten €<input id="trainingTypeCost" type="number" min="0" step="0.01" value="0"></label>
+          <label>Farbe<input id="trainingTypeColor" class="training-color-input" type="color" value="#5b8def"></label>
           <label class="toggle-line"><input id="trainingTypeMandatory" type="checkbox"> Pflichtfortbildung</label>
           <label class="span-two">Beschreibung<textarea id="trainingTypeDescription" rows="2" maxlength="500"></textarea></label>
         </div>
@@ -763,6 +771,6 @@
 
   <div id="cellContextMenu" class="cell-context-menu hidden" role="menu" aria-label="Schnellaktionen"></div>
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20261001-26"></script>
+  <script src="app.js?v=20261001-27"></script>
 </body>
 </html>
