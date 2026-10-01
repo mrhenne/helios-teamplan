@@ -2722,6 +2722,38 @@ function collectProjectMemberRows(){
 function collectProjectMemberChoices(){
   return collectProjectMemberRows().map(x=>x.employee_id);
 }
+function renderProjectDialogTasks(projectId){
+  const box=document.getElementById('projectTasksBox'),list=document.getElementById('projectDialogTasks');
+  if(!box||!list)return;
+  box.classList.toggle('hidden',!projectId);
+  if(!projectId){list.innerHTML='';return}
+  const rows=projectTasks.filter(t=>t.project_id===projectId).sort((a,b)=>(a.status==='done')-(b.status==='done')||(a.due_date||'9999').localeCompare(b.due_date||'9999'));
+  list.innerHTML=rows.length?rows.map(t=>{
+    const check=projectChecklistProgress(t),done=t.status==='done';
+    return '<div class="project-dialog-task '+(done?'done':'')+'" data-project-task-id="'+t.id+'"><button type="button" class="project-task-quickcheck" aria-label="'+(done?'Aufgabe wieder öffnen':'Aufgabe erledigen')+'" title="'+(done?'Wieder öffnen':'Als erledigt markieren')+'">'+(done?'✓':'')+'</button><button type="button" class="project-dialog-task-main"><span><strong>'+escapeHtml(t.title)+'</strong><small>'+escapeHtml(projectEmployeeName(t.assignee_employee_id))+(t.due_date?' · bis '+escapeHtml(projectDateLabel(t.due_date)):'')+(check.total?' · Checkliste '+check.done+'/'+check.total:'')+'</small></span></button><span class="project-task-status '+escapeHtml(t.status)+'">'+escapeHtml(projectTaskStatusLabel(t.status))+'</span></div>';
+  }).join(''):'<div class="empty-state">Noch keine Aufgaben. Lege die erste Aufgabe für dieses Projekt an.</div>';
+  list.querySelectorAll('.project-dialog-task-main').forEach(btn=>btn.addEventListener('click',()=>{const row=btn.closest('[data-project-task-id]');document.getElementById('projectDialog')?.close();openProjectTask(row.dataset.projectTaskId)}));
+  list.querySelectorAll('.project-task-quickcheck').forEach(btn=>btn.addEventListener('click',()=>{const row=btn.closest('[data-project-task-id]');toggleProjectTaskDone(row.dataset.projectTaskId)}));
+}
+function populateProjectAssigneeForProject(projectId,selected=''){
+  const el=document.getElementById('projectTaskAssignee');if(!el)return;
+  const memberIds=new Set(projectMembers.filter(m=>m.project_id===projectId).map(m=>m.employee_id));
+  const project=projectProjects.find(p=>p.id===projectId);if(project?.lead_employee_id)memberIds.add(project.lead_employee_id);
+  const employees=[...state.employees].sort((a,b)=>a.order-b.order);
+  const team=employees.filter(e=>memberIds.has(e.id)),others=employees.filter(e=>!memberIds.has(e.id));
+  el.innerHTML='<option value="">Nicht zugewiesen</option>'+(team.length?'<optgroup label="Projektteam">'+team.map(e=>'<option value="'+e.id+'">'+escapeHtml(e.name)+'</option>').join('')+'</optgroup>':'')+(others.length?'<optgroup label="Weitere Mitarbeitende">'+others.map(e=>'<option value="'+e.id+'">'+escapeHtml(e.name)+'</option>').join('')+'</optgroup>':'');
+  if([...el.options].some(o=>o.value===selected))el.value=selected;
+}
+async function ensureProjectMember(projectId,employeeId){
+  if(!projectId||!employeeId||projectMembers.some(m=>m.project_id===projectId&&m.employee_id===employeeId))return;
+  const teamId=(window.TEAMPLAN_CONFIG||{}).teamId||'local';
+  if(supabaseClient&&authUser){
+    const {error}=await supabaseClient.from('teamplan_project_members').insert({project_id:projectId,team_id:teamId,employee_id:employeeId,is_responsible:false});
+    if(error&&error.code!=='23505')throw error;
+  }else{
+    projectMembers.push({project_id:projectId,team_id:teamId,employee_id:employeeId,is_responsible:false,created_at:new Date().toISOString()});
+  }
+}
 async function logProjectActivity(entityType,entityId,action,details=''){
   const row={team_id:(window.TEAMPLAN_CONFIG||{}).teamId||'local',entity_type:entityType,entity_id:entityId||null,action,details,actor_name:authMembership?.display_name||actorName(),created_at:new Date().toISOString()};
   if(supabaseClient&&authUser){
@@ -2913,6 +2945,60 @@ async function deleteProjectTask(){
   else{projectTasks=projectTasks.filter(x=>x.id!==id);projectComments=projectComments.filter(x=>x.task_id!==id);saveProjectLocal();renderProjectModule()}
   document.getElementById('projectTaskDialog').close();showToast('Aufgabe gelöscht');
 }
+
+async function toggleProjectTaskDone(taskId){
+  const task=projectTasks.find(t=>t.id===taskId);if(!task||!projectCanManageTask(task))return;
+  const next=task.status==='done'?'open':'done',patch={status:next,completed_at:next==='done'?new Date().toISOString():null};
+  if(supabaseClient&&authUser){
+    const {error}=await supabaseClient.from('teamplan_tasks').update({...patch,updated_at:new Date().toISOString()}).eq('id',taskId);
+    if(error){alert(error.message);return}
+    await logProjectActivity('task',taskId,next==='done'?'Aufgabe erledigt':'Aufgabe wieder geöffnet',task.title);
+    await loadProjectData();
+  }else{
+    Object.assign(task,patch,{updated_at:new Date().toISOString()});localNextRecurringTask(task);
+    await logProjectActivity('task',taskId,next==='done'?'Aufgabe erledigt':'Aufgabe wieder geöffnet',task.title);
+    saveProjectLocal();renderProjectModule();
+  }
+  const pid=task.project_id;
+  if(document.getElementById('projectDialog')?.open&&pid){renderProjectDialogSummary(pid);renderProjectDialogTasks(pid)}
+}
+async function saveProjectBackup(){
+  const payload={version:1,exported_at:new Date().toISOString(),projects:projectProjects,members:projectMembers,tasks:projectTasks,templates:projectTemplates,notes:projectNotes,comments:projectComments,activity:projectActivity};
+  const filename='TeamPlan-Projekte-'+dateKey(new Date())+'.json',data=JSON.stringify(payload,null,2);
+  try{
+    if(window.showSaveFilePicker){
+      const handle=await window.showSaveFilePicker({suggestedName:filename,types:[{description:'TeamPlan Projekt-Sicherung',accept:{'application/json':['.json']}}]});
+      const writable=await handle.createWritable();await writable.write(data);await writable.close();showToast('Projekt-Sicherung gespeichert');return;
+    }
+  }catch(err){if(err?.name==='AbortError')return;console.warn(err)}
+  const blob=new Blob([data],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);showToast('Projekt-Sicherung erstellt');
+}
+function projectResponsibleNames(projectId){
+  return projectMembers.filter(m=>m.project_id===projectId&&m.is_responsible).map(m=>projectEmployeeName(m.employee_id));
+}
+function projectReportTaskRows(tasks){
+  return tasks.map(t=>'<tr><td>'+escapeHtml(t.title)+'</td><td>'+escapeHtml(projectName(t.project_id))+'</td><td>'+escapeHtml(projectEmployeeName(t.assignee_employee_id))+'</td><td>'+escapeHtml(projectTaskStatusLabel(t.status))+'</td><td>'+escapeHtml(projectPriorityLabel(t.priority))+'</td><td>'+(t.due_date?escapeHtml(projectDateLabel(t.due_date)):'')+'</td></tr>').join('');
+}
+function buildProjectPdfHtml(options){
+  const year=projectCalendarDate.getFullYear(),month=projectCalendarDate.getMonth(),sections=[];
+  if(options.projects)sections.push('<section><h2>Aktuelle Projekte</h2>'+projectProjects.filter(p=>p.status!=='done').map(p=>{const info=projectProgressInfo(p.id,p.progress),responsibles=projectResponsibleNames(p.id);return '<div class="report-project"><div class="report-project-head"><strong>'+escapeHtml(p.name)+'</strong><b>'+info.percent+' %</b></div><div class="bar"><i style="width:'+info.percent+'%;background:'+projectProgressColor(info.percent)+'"></i></div><p>Status: '+escapeHtml(projectStatusLabel(p.status))+' · Leitung: '+escapeHtml(projectEmployeeName(p.lead_employee_id))+(responsibles.length?' · Weitere Verantwortliche: '+escapeHtml(responsibles.join(', ')):'')+(p.due_date?' · Ziel: '+escapeHtml(projectDateLabel(p.due_date)):'')+'</p></div>'}).join('')+'</section>');
+  if(options.tasks)sections.push('<section><h2>Aufgaben & Status</h2><table><thead><tr><th>Aufgabe</th><th>Projekt</th><th>Verantwortlich</th><th>Status</th><th>Priorität</th><th>Fällig</th></tr></thead><tbody>'+projectReportTaskRows(projectTasks)+'</tbody></table></section>');
+  if(options.month){
+    const monthly=projectTasks.filter(t=>t.due_date&&new Date(t.due_date+'T12:00:00').getFullYear()===year&&new Date(t.due_date+'T12:00:00').getMonth()===month),monthlyProjects=projectProjects.filter(p=>p.due_date&&new Date(p.due_date+'T12:00:00').getFullYear()===year&&new Date(p.due_date+'T12:00:00').getMonth()===month);
+    const entries=[...monthlyProjects.map(p=>({date:p.due_date,text:'Projekt: '+p.name})),...monthly.map(t=>({date:t.due_date,text:'Aufgabe: '+t.title+' · '+projectEmployeeName(t.assignee_employee_id)}))].sort((a,b)=>a.date.localeCompare(b.date));
+    sections.push('<section><h2>Monatsübersicht '+MONTHS[month]+' '+year+'</h2><div class="date-list">'+(entries.length?entries.map(x=>'<div><time>'+escapeHtml(projectDateLabel(x.date))+'</time><span>'+escapeHtml(x.text)+'</span></div>').join(''):'<p>Keine Termine in diesem Monat.</p>')+'</div></section>');
+  }
+  if(options.year)sections.push('<section><h2>Jahresübersicht '+year+'</h2><div class="year-grid">'+Array.from({length:12},(_,m)=>{const ts=projectTasks.filter(t=>t.due_date&&new Date(t.due_date+'T12:00:00').getFullYear()===year&&new Date(t.due_date+'T12:00:00').getMonth()===m),ps=projectProjects.filter(p=>p.due_date&&new Date(p.due_date+'T12:00:00').getFullYear()===year&&new Date(p.due_date+'T12:00:00').getMonth()===m);return '<div><h3>'+MONTHS[m]+'</h3><p>'+ps.length+' Projekte · '+ts.length+' Aufgaben</p>'+[...ps.map(p=>'▣ '+p.name),...ts.slice(0,6).map(t=>'✓ '+t.title)].map(x=>'<span>'+escapeHtml(x)+'</span>').join('')+'</div>'}).join('')+'</div></section>');
+  if(options.team)sections.push('<section><h2>Projektteams</h2>'+projectProjects.map(p=>{const members=projectMembers.filter(m=>m.project_id===p.id);return '<div class="team-row"><strong>'+escapeHtml(p.name)+'</strong><p>Leitung: '+escapeHtml(projectEmployeeName(p.lead_employee_id))+'</p><p>Verantwortliche: '+escapeHtml(members.filter(m=>m.is_responsible).map(m=>projectEmployeeName(m.employee_id)).join(', ')||'keine zusätzlichen')+'</p><p>Team: '+escapeHtml(members.map(m=>projectEmployeeName(m.employee_id)).join(', ')||'kein Team hinterlegt')+'</p></div>'}).join('')+'</section>');
+  if(options.notes)sections.push('<section><h2>Notizen</h2>'+projectNotes.map(n=>'<div class="note"><strong>'+escapeHtml(n.title||'Notiz')+'</strong><p>'+escapeHtml(n.body).replace(/\n/g,'<br>')+'</p><small>'+escapeHtml(projectName(n.project_id))+' · '+escapeHtml(n.author_name||'Team')+'</small></div>').join('')+'</section>');
+  return '<!doctype html><html lang="de"><head><meta charset="utf-8"><title>TeamPlan Projektbericht</title><style>@page{size:A4;margin:13mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#24332f;font-size:10px;line-height:1.35}header{border-bottom:2px solid #d8891c;padding-bottom:8px;margin-bottom:14px}h1{font-size:20px;margin:0}header p{margin:3px 0 0;color:#687b75}section{margin:0 0 18px}h2{font-size:13px;margin:0 0 8px;color:#915d13}h3{font-size:10px;margin:0 0 4px}.report-project,.team-row,.note{break-inside:avoid;border:1px solid #dfe8e5;border-radius:7px;padding:7px;margin-bottom:6px}.report-project-head{display:flex;justify-content:space-between}.bar{height:5px;background:#edf0ef;border-radius:9px;overflow:hidden;margin:5px 0}.bar i{display:block;height:100%}p{margin:3px 0}table{width:100%;border-collapse:collapse;font-size:8px}th,td{padding:5px;border-bottom:1px solid #dfe8e5;text-align:left;vertical-align:top}th{background:#f5f7f6}.date-list>div{display:grid;grid-template-columns:80px 1fr;border-bottom:1px solid #edf0ef;padding:4px}.date-list time{font-weight:bold}.year-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.year-grid>div{break-inside:avoid;border:1px solid #dfe8e5;border-radius:7px;padding:6px;min-height:76px}.year-grid span{display:block;font-size:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}small{color:#71837e}</style></head><body><header><h1>TeamPlan ZNA · Projektbericht</h1><p>Erstellt am '+new Date().toLocaleString('de-DE')+'</p></header>'+sections.join('')+'</body></html>';
+}
+function exportProjectPdf(){
+  const options={projects:document.getElementById('projectExportProjects')?.checked,tasks:document.getElementById('projectExportTasks')?.checked,month:document.getElementById('projectExportMonth')?.checked,year:document.getElementById('projectExportYear')?.checked,team:document.getElementById('projectExportTeam')?.checked,notes:document.getElementById('projectExportNotes')?.checked};
+  if(!Object.values(options).some(Boolean)){showToast('Bitte mindestens einen PDF-Inhalt auswählen');return}
+  const win=window.open('','_blank');if(!win){alert('PDF-Fenster wurde vom Browser blockiert. Bitte Pop-ups für TeamPlan erlauben.');return}
+  win.document.open();win.document.write(buildProjectPdfHtml(options));win.document.close();document.getElementById('projectExportDialog')?.close();setTimeout(()=>{win.focus();win.print()},250);
+}
 function openProjectNote(id=null){
   const n=id?projectNotes.find(x=>x.id===id):null;
   if(n&&sessionRole!=='admin'&&sessionRole!=='planner'&&authUser&&n.author_user_id!==authUser.id)return;
@@ -3029,6 +3115,9 @@ function initProjectModuleUI(){
   Object.entries(map).forEach(([id,v])=>document.getElementById(id)?.addEventListener('click',()=>setProjectView(v)));
   ['projectsSearchInput','projectsProjectFilter','projectsAssigneeFilter','projectsStatusFilter'].forEach(id=>document.getElementById(id)?.addEventListener(id==='projectsSearchInput'?'input':'change',renderProjectModule));
   document.getElementById('projectsTemplateSelect')?.addEventListener('change',e=>{if(e.target.value)createTaskFromTemplate(e.target.value)});
+  document.getElementById('projectsSaveBtn')?.addEventListener('click',saveProjectBackup);
+  document.getElementById('projectsPdfBtn')?.addEventListener('click',()=>safeShowDialog('projectExportDialog'));
+  document.getElementById('projectExportForm')?.addEventListener('submit',e=>{e.preventDefault();exportProjectPdf()});
   document.getElementById('projectsTemplatesBtn')?.addEventListener('click',openProjectTemplates);
   document.getElementById('addProjectBtn')?.addEventListener('click',()=>openProject());
   document.getElementById('addTaskBtn')?.addEventListener('click',()=>openProjectTask());
