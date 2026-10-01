@@ -2392,6 +2392,7 @@ const projectDefaultTemplates=[
 ];
 function projectCanManage(){return canManage()}
 function projectIsLead(projectId){
+  if(sessionRole!=='employee')return false;
   const p=projectProjects.find(x=>x.id===projectId);
   const employeeId=authMembership?.employee_id||sessionEmployeeId;
   return !!(p&&employeeId&&p.lead_employee_id===employeeId);
@@ -2613,6 +2614,7 @@ function updateProjectMemberCount(){
 function renderProjectMemberChoices(projectId){
   const box=document.getElementById('projectMembersList');if(!box)return;
   const selected=new Set(projectMembers.filter(m=>m.project_id===projectId).map(m=>m.employee_id));
+  document.querySelectorAll('#projectMembersList input[type="checkbox"]:checked').forEach(x=>selected.add(x.value));
   const q=(document.getElementById('projectMemberSearch')?.value||'').trim().toLowerCase();
   box.innerHTML=[...state.employees].sort((a,b)=>a.order-b.order).filter(emp=>!q||emp.name.toLowerCase().includes(q)).map(emp=>'<label><input type="checkbox" value="'+emp.id+'" '+(selected.has(emp.id)?'checked':'')+'> <span>'+escapeHtml(emp.name)+'</span></label>').join('');
   box.querySelectorAll('input[type="checkbox"]').forEach(input=>input.addEventListener('change',updateProjectMemberCount));
