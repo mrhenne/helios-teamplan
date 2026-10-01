@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-13" />
+  <link rel="stylesheet" href="styles.css?v=20261001-14" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -22,7 +22,7 @@
         <div class="brand-mark">H</div>
         <div>
           <div class="eyebrow">HELIOS INSPIRED · TEAMPLAN</div>
-          <h1>Gemeinsame Urlaubsplanung</h1>
+          <h1 id="appTitle">TeamPlan ZNA</h1>
         </div>
       </div>
       <div class="top-actions organized-actions">
@@ -68,7 +68,12 @@
       </div>
     </header>
 
-    <section class="toolbar glass planner-controls">
+    <nav class="module-switch glass" aria-label="Modul wechseln">
+      <button id="moduleVacationBtn" type="button" class="module-tab active"><span class="module-tab-icon">▦</span><span><b>Urlaubsplanung</b><small>Kalender & Abwesenheiten</small></span></button>
+      <button id="moduleTrainingBtn" type="button" class="module-tab"><span class="module-tab-icon">◇</span><span><b>Fortbildungen</b><small>Planung & Nachweise</small></span></button>
+    </nav>
+
+    <section id="vacationToolbar" class="toolbar glass planner-controls">
   <div class="controls-row controls-primary">
     <div class="calendar-heading"><strong id="monthLabel"></strong><span id="yearLabel"></span></div>
     <div class="date-nav-block">
@@ -143,10 +148,125 @@
       <div id="yearOverview" class="year-overview"></div>
     </section>
 
-    <section class="hint glass">
+    <section id="vacationHint" class="hint glass">
       <strong>Bedienung:</strong> Zelle anklicken, mehrere Kürzel wählen und optional Priorität/Notiz setzen. Mitarbeitende links per Drag & Drop sortieren. Wochenenden und NRW-Feiertage werden automatisch hervorgehoben.
     </section>
+
+    <section id="trainingModule" class="training-module hidden">
+      <section class="toolbar glass training-toolbar">
+        <div class="training-heading">
+          <span class="eyebrow">FORTBILDUNGSPLANER</span>
+          <div><strong id="trainingHeadingTitle">Fortbildungen</strong><span id="trainingHeadingSub">Teamübersicht</span></div>
+        </div>
+        <div class="training-year-nav">
+          <button id="trainingPrevYear" class="icon-btn" type="button" aria-label="Vorheriges Jahr">‹</button>
+          <select id="trainingYearSelect" class="date-select" aria-label="Fortbildungsjahr"></select>
+          <button id="trainingNextYear" class="icon-btn" type="button" aria-label="Nächstes Jahr">›</button>
+        </div>
+        <div class="segmented training-view-switch">
+          <button id="trainingOverviewBtn" class="segment active" type="button">Übersicht</button>
+          <button id="trainingCalendarBtn" class="segment" type="button">Kalender</button>
+          <button id="trainingEmployeesBtn" class="segment" type="button">Mitarbeiter</button>
+        </div>
+        <div class="controls-spacer"></div>
+        <button id="trainingExportBtn" class="btn ghost training-manager-action" type="button">▦ Excel</button>
+        <button id="trainingTypesBtn" class="btn ghost training-manager-action" type="button">Katalog</button>
+        <button id="addTrainingBtn" class="btn primary training-manager-action" type="button">+ Fortbildung</button>
+      </section>
+
+      <section class="training-filterbar glass">
+        <input id="trainingSearchInput" class="search" type="search" placeholder="Fortbildung suchen…">
+        <select id="trainingEmployeeFilter" class="training-manager-filter"><option value="">Alle Mitarbeiter</option></select>
+        <select id="trainingStatusFilter">
+          <option value="">Alle Status</option>
+          <option value="planned">Geplant</option>
+          <option value="completed">Abgeschlossen</option>
+          <option value="due">Bald fällig</option>
+          <option value="overdue">Überfällig</option>
+        </select>
+        <div id="trainingOwnScope" class="training-own-scope hidden">Nur meine Fortbildungen</div>
+      </section>
+
+      <section id="trainingOverviewView" class="training-view">
+        <div id="trainingMetrics" class="training-metrics"></div>
+        <div class="training-content-grid">
+          <article class="glass training-panel">
+            <div class="training-panel-head"><div><span class="eyebrow">NÄCHSTE TERMINE</span><h2>Geplant & laufend</h2></div></div>
+            <div id="trainingUpcomingList" class="training-list"></div>
+          </article>
+          <article class="glass training-panel">
+            <div class="training-panel-head"><div><span class="eyebrow">FÄLLIGKEITEN</span><h2>Pflichtfortbildungen</h2></div></div>
+            <div id="trainingDueList" class="training-list"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="trainingCalendarView" class="training-view hidden">
+        <div id="trainingYearCalendar" class="training-year-calendar"></div>
+      </section>
+
+      <section id="trainingEmployeesView" class="training-view hidden">
+        <div id="trainingEmployeeCards" class="training-employee-cards"></div>
+      </section>
+
+      <section class="hint glass training-hint">
+        <strong>Fortbildungen:</strong> Pflichttermine, wiederkehrende Intervalle, mehrjährige Weiterbildungen, Stunden, Kosten und Jahresbudgets werden getrennt von der Urlaubsplanung verwaltet.
+      </section>
+    </section>
   </main>
+
+
+  <dialog id="trainingDialog" class="dialog glass-solid">
+    <form id="trainingForm">
+      <div class="dialog-head"><div><span class="eyebrow">FORTBILDUNG</span><h2 id="trainingDialogTitle">Fortbildung planen</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <input id="trainingId" type="hidden">
+      <div class="form-grid two">
+        <label>Mitarbeiter<select id="trainingEmployee" required></select></label>
+        <label>Fortbildungsart<select id="trainingType"><option value="">Freier Eintrag</option></select></label>
+        <label class="span-two">Titel<input id="trainingTitle" required maxlength="160" placeholder="z. B. Notfalltraining"></label>
+        <label>Kategorie<input id="trainingCategory" maxlength="80" placeholder="z. B. Pflichtfortbildung"></label>
+        <label>Status<select id="trainingStatus"><option value="planned">Geplant</option><option value="completed">Abgeschlossen</option><option value="cancelled">Abgesagt</option></select></label>
+        <label>Beginn<input id="trainingStart" type="date" required></label>
+        <label>Ende<input id="trainingEnd" type="date" required></label>
+        <label>Stunden<input id="trainingHours" type="number" min="0" step="0.25" value="0"></label>
+        <label>Kosten €<input id="trainingCost" type="number" min="0" step="0.01" value="0"></label>
+        <label>Anbieter<input id="trainingProvider" maxlength="120"></label>
+        <label>Gültig bis<input id="trainingValidUntil" type="date"></label>
+        <label class="span-two">Notiz<textarea id="trainingNote" rows="3" maxlength="1000"></textarea></label>
+      </div>
+      <div id="trainingVacationWarning" class="inline-warning hidden"></div>
+      <div class="dialog-actions"><button id="deleteTrainingBtn" type="button" class="btn danger hidden">Löschen</button><div class="spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">Speichern</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="trainingTypesDialog" class="dialog glass-solid wide-dialog">
+    <div class="dialog-panel">
+      <div class="dialog-head"><div><span class="eyebrow">FORTBILDUNGSKATALOG</span><h2>Arten & Intervalle</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <div id="trainingTypesList" class="management-list"></div>
+      <form id="trainingTypeForm" class="training-type-form">
+        <input id="trainingTypeId" type="hidden">
+        <div class="form-grid two">
+          <label>Name<input id="trainingTypeName" required maxlength="120"></label>
+          <label>Kategorie<input id="trainingTypeCategory" maxlength="80" value="Pflichtfortbildung"></label>
+          <label>Intervall Monate<input id="trainingTypeInterval" type="number" min="1" max="240" placeholder="z. B. 24"></label>
+          <label>Standardstunden<input id="trainingTypeHours" type="number" min="0" step="0.25" value="0"></label>
+          <label>Standardkosten €<input id="trainingTypeCost" type="number" min="0" step="0.01" value="0"></label>
+          <label class="toggle-line"><input id="trainingTypeMandatory" type="checkbox"> Pflichtfortbildung</label>
+          <label class="span-two">Beschreibung<textarea id="trainingTypeDescription" rows="2" maxlength="500"></textarea></label>
+        </div>
+        <div class="dialog-actions"><button id="trainingTypeResetBtn" type="button" class="btn ghost">Neu</button><div class="spacer"></div><button type="submit" class="btn primary">Speichern</button></div>
+      </form>
+    </div>
+  </dialog>
+
+  <dialog id="trainingBudgetDialog" class="dialog glass-solid compact">
+    <form id="trainingBudgetForm">
+      <div class="dialog-head"><div><span class="eyebrow">JAHRESBUDGET</span><h2 id="trainingBudgetTitle">Budget festlegen</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <input id="trainingBudgetEmployee" type="hidden">
+      <label>Budget für <span id="trainingBudgetYearLabel"></span><input id="trainingBudgetAmount" type="number" min="0" step="0.01" required></label>
+      <div class="dialog-actions"><div class="spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">Speichern</button></div>
+    </form>
+  </dialog>
 
   <dialog id="namesImportDialog" class="dialog glass-solid">
     <form id="namesImportForm" method="dialog">
@@ -554,6 +674,6 @@
 
   <div id="cellContextMenu" class="cell-context-menu hidden" role="menu" aria-label="Schnellaktionen"></div>
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20261001-13"></script>
+  <script src="app.js?v=20261001-14"></script>
 </body>
 </html>
