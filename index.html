@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-10" />
+  <link rel="stylesheet" href="styles.css?v=20261001-11" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -99,7 +99,7 @@
     <div class="control-block zoom-block"><span class="control-caption">Zoom</span><button id="zoomOutBtn" class="zoom-btn" type="button">−</button><input id="zoomRange" type="range" min="10" max="140" step="5" value="100"><button id="zoomInBtn" class="zoom-btn" type="button">+</button><strong id="zoomLabel">100%</strong></div>
     <button id="fitEmployeesBtn" class="btn ghost view-tool-btn" type="button" title="Alle Mitarbeiter in die Höhe einpassen">↕ Alle einpassen</button>
     <button id="focusModeBtn" class="btn ghost view-tool-btn" type="button" title="Nur Zeitraum und Planung anzeigen">◫ Fokusmodus</button>
-    <div class="control-block"><span class="control-caption">Urlaub</span><div class="segmented vacation-mode"><button id="vacationFullBtn" class="segment" type="button">Gesamt</button><button id="vacationActualBtn" class="segment active" type="button">Anteilig</button></div></div>
+    <div class="control-block"><span class="control-caption">Urlaub</span><div class="segmented vacation-mode" title="Gesamt zählt alle mit U markierten Tage. Anteilig zählt nur die regelmäßigen Arbeitstage; der Jahresanspruch bleibt unverändert."><button id="vacationFullBtn" class="segment" type="button">Gesamt</button><button id="vacationActualBtn" class="segment active" type="button">Anteilig</button></div></div>
     <div class="controls-spacer"></div>
     <input id="searchInput" class="search control-search compact-employee-search" placeholder="Mitarbeiter suchen…" />
     <button id="addEmployeeBtn" class="btn primary">+ Mitarbeiter</button>
@@ -554,6 +554,6 @@
 
   <div id="cellContextMenu" class="cell-context-menu hidden" role="menu" aria-label="Schnellaktionen"></div>
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20261001-10"></script>
+  <script src="app.js?v=20261001-11"></script>
 </body>
 </html>
