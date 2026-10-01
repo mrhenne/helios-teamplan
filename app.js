@@ -2530,7 +2530,8 @@ function projectIsLead(projectId){
   if(sessionRole!=='employee')return false;
   const p=projectProjects.find(x=>x.id===projectId);
   const employeeId=authMembership?.employee_id||sessionEmployeeId;
-  return !!(p&&employeeId&&p.lead_employee_id===employeeId);
+  if(!p||!employeeId)return false;
+  return p.lead_employee_id===employeeId||projectMembers.some(m=>m.project_id===projectId&&m.employee_id===employeeId&&m.is_responsible===true);
 }
 function projectCanManageProject(projectId){return projectCanManage()||projectIsLead(projectId)}
 function projectCanManageTask(task){
@@ -2556,6 +2557,17 @@ function projectStatusLabel(s){return s==='active'?'In Arbeit':s==='paused'?'Pau
 function projectTaskStatusLabel(s){return s==='progress'?'In Arbeit':s==='waiting'?'Rückfrage':s==='done'?'Erledigt':'Offen'}
 function projectPriorityLabel(s){return s==='high'?'Hoch':s==='low'?'Niedrig':'Mittel'}
 function projectDateLabel(v){if(!v)return 'ohne Termin';const d=new Date(v+'T12:00:00');return d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'})}
+function projectRecencyBadge(item){
+  const stamp=item?.updated_at||item?.created_at;
+  if(!stamp)return '';
+  const d=new Date(stamp);
+  if(Number.isNaN(d.getTime()))return '';
+  const diff=Date.now()-d.getTime();
+  if(diff<0||diff>7*24*60*60*1000)return '';
+  const hours=Math.max(1,Math.round(diff/(60*60*1000)));
+  const label=hours<24?'vor '+hours+' h':'vor '+Math.max(1,Math.round(hours/24))+' T.';
+  return '<em class="project-recency-badge">'+escapeHtml(label)+'</em>';
+}
 function saveProjectLocal(){
   localStorage.setItem('teamplan-projects-local',JSON.stringify({projects:projectProjects,members:projectMembers,tasks:projectTasks,templates:projectTemplates,notes:projectNotes,comments:projectComments,activity:projectActivity}));
 }
@@ -2767,10 +2779,10 @@ function renderProjectOverview(){
   const focus=document.getElementById('projectsFocusList'),next=document.getElementById('projectsNextTasks'),activity=document.getElementById('projectsRecentActivity');
   renderProjectAttention();
   const projects=filteredProjects().filter(p=>p.status!=='done').slice(0,8);
-  focus.innerHTML=projects.length?projects.map(projectCardHtml).join(''):'<div class="empty-state">Noch keine aktiven Projekte.</div>';
+  if(focus)focus.innerHTML=projects.length?projects.map(projectCardHtml).join(''):'<div class="empty-state">Noch keine aktiven Projekte.</div>';
   let tasks=filteredProjectTasks().filter(t=>t.status!=='done').sort((a,b)=>(a.due_date||'9999').localeCompare(b.due_date||'9999'));
   if(sessionRole==='employee'&&sessionEmployeeId)tasks=tasks.filter(t=>t.assignee_employee_id===sessionEmployeeId);
-  next.innerHTML=tasks.length?tasks.slice(0,10).map(projectTaskHtml).join(''):'<div class="empty-state">Keine offenen Aufgaben.</div>';
+  if(next)next.innerHTML=tasks.length?tasks.slice(0,10).map(projectTaskHtml).join(''):'<div class="empty-state">Keine offenen Aufgaben.</div>';
   if(activity){
     const rows=[...projectActivity].sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0)).slice(0,8);
     activity.innerHTML=rows.length?rows.map(a=>'<div class="project-change-row"><span class="project-change-dot"></span><div><strong>'+escapeHtml(a.action)+'</strong><span>'+escapeHtml(a.details||'')+'</span><small>'+escapeHtml(a.actor_name||'Team')+' · '+new Date(a.created_at||Date.now()).toLocaleString('de-DE')+'</small></div></div>').join(''):'<div class="empty-state">Noch keine Änderungen protokolliert.</div>';
@@ -2778,12 +2790,12 @@ function renderProjectOverview(){
 }
 function renderProjectRoadmap(){
   const statuses=[['planned','In Planung'],['active','In Arbeit'],['paused','Pausiert'],['done','Erledigt']];
-  const board=document.getElementById('projectsRoadmapBoard');
+  const board=document.getElementById('projectsRoadmapBoard');if(!board)return;
   board.innerHTML=statuses.map(([s,label])=>{const items=filteredProjects().filter(p=>p.status===s);return '<section class="roadmap-column" data-project-drop-status="'+s+'"><header><strong>'+label+'</strong><span>'+items.length+'</span></header><div class="roadmap-list">'+(items.length?items.map(projectCardHtml).join(''):'<div class="empty-state">Leer</div>')+'</div></section>'}).join('');
 }
 function renderProjectKanban(){
   const statuses=[['open','Offen'],['progress','In Arbeit'],['waiting','Rückfrage'],['done','Erledigt']];
-  const board=document.getElementById('projectsKanban'),items=filteredProjectTasks();
+  const board=document.getElementById('projectsKanban'),items=filteredProjectTasks();if(!board)return;
   board.innerHTML=statuses.map(([s,label])=>{const rows=items.filter(t=>t.status===s);return '<section class="kanban-column" data-task-drop-status="'+s+'"><header><strong>'+label+'</strong><span>'+rows.length+'</span></header><div class="kanban-list">'+(rows.length?rows.map(projectTaskHtml).join(''):'<div class="empty-state">Leer</div>')+'</div></section>'}).join('');
 }
 function startOfCalendarGrid(d){const x=new Date(d.getFullYear(),d.getMonth(),1);const dow=(x.getDay()+6)%7;x.setDate(x.getDate()-dow);return x}
