@@ -79,6 +79,7 @@ let projectNotes = [];
 let projectComments = [];
 let projectActivity = [];
 let projectChannel = null;
+let projectDialogReturnProjectId = null;
 let trainingView = localStorage.getItem('teamplan-training-view') || 'overview';
 let trainingYear = Number(localStorage.getItem('teamplan-training-year')) || new Date().getFullYear();
 let trainingZoom = Math.max(.7,Math.min(1.3,Number(localStorage.getItem('teamplan-training-zoom')||1)));
@@ -2614,7 +2615,21 @@ function renderProjectCalendar(){
   document.getElementById('projectsCalendarYearBtn')?.classList.toggle('active',projectCalendarMode==='year');
   if(projectCalendarMode==='year'){
     label.textContent=String(projectCalendarDate.getFullYear());
-    body.innerHTML='<div class="projects-calendar-year">'+Array.from({length:12},(_,m)=>{const monthTasks=projectTasks.filter(t=>t.due_date&&new Date(t.due_date+'T12:00:00').getFullYear()===projectCalendarDate.getFullYear()&&new Date(t.due_date+'T12:00:00').getMonth()===m);const monthProjects=projectProjects.filter(p=>p.due_date&&new Date(p.due_date+'T12:00:00').getFullYear()===projectCalendarDate.getFullYear()&&new Date(p.due_date+'T12:00:00').getMonth()===m);return '<section class="project-year-month"><h3>'+MONTHS[m]+'</h3><div class="project-year-list">'+[...monthProjects.map(p=>'<span>▣ '+escapeHtml(p.name)+'</span>'),...monthTasks.map(t=>'<span>✓ '+escapeHtml(t.title)+'</span>')].join('')+'</div></section>'}).join('')+'</div>';return;
+    const y=projectCalendarDate.getFullYear();
+    body.innerHTML='<div class="projects-calendar-year">'+Array.from({length:12},(_,m)=>{
+      const monthTasks=projectTasks.filter(t=>t.due_date&&new Date(t.due_date+'T12:00:00').getFullYear()===y&&new Date(t.due_date+'T12:00:00').getMonth()===m).sort((a,b)=>a.due_date.localeCompare(b.due_date));
+      const monthProjects=projectProjects.filter(p=>p.due_date&&new Date(p.due_date+'T12:00:00').getFullYear()===y&&new Date(p.due_date+'T12:00:00').getMonth()===m).sort((a,b)=>a.due_date.localeCompare(b.due_date));
+      const total=monthTasks.length+monthProjects.length;
+      const items=[
+        ...monthProjects.map(p=>({type:'project',id:p.id,date:p.due_date,title:p.name})),
+        ...monthTasks.map(t=>({type:'task',id:t.id,date:t.due_date,title:t.title}))
+      ].sort((a,b)=>a.date.localeCompare(b.date));
+      const shown=items.slice(0,5);
+      return '<section class="project-year-month"><header><h3>'+MONTHS[m]+'</h3><span>'+total+(total===1?' Termin':' Termine')+'</span></header><div class="project-year-list">'+
+        (shown.length?shown.map(item=>'<button type="button" '+(item.type==='project'?'data-project-id="'+item.id+'"':'data-project-task-id="'+item.id+'"')+'><time>'+escapeHtml(item.date.slice(8,10))+'.'+escapeHtml(item.date.slice(5,7))+'.</time><span>'+(item.type==='project'?'▣ ':'✓ ')+escapeHtml(item.title)+'</span></button>').join(''):'<div class="project-year-empty">Keine Termine</div>')+
+        (total>shown.length?'<small>+'+(total-shown.length)+' weitere</small>':'')+
+      '</div></section>';
+    }).join('')+'</div>';return;
   }
   label.textContent=MONTHS[projectCalendarDate.getMonth()]+' '+projectCalendarDate.getFullYear();
   const start=startOfCalendarGrid(projectCalendarDate),days=Array.from({length:42},(_,i)=>addDays(start,i));
@@ -2780,6 +2795,7 @@ function localNextRecurringTask(task){
   projectActivity.unshift({id:uid(),team_id:'local',entity_type:'task',entity_id:next.id,action:'Wiederholungsaufgabe erstellt',details:next.title,actor_name:'TeamPlan',created_at:new Date().toISOString()});
 }
 function openProject(id=null){
+  projectDialogReturnProjectId=id||null;
   const p=id?projectProjects.find(x=>x.id===id):null;
   if(!p&&!projectCanManage())return;
   if(p&&!projectCanManageProject(p.id))return;
@@ -2797,6 +2813,9 @@ function openProject(id=null){
   document.getElementById('projectColor').value=p?.color||'#d8891c';
   document.getElementById('deleteProjectBtn').classList.toggle('hidden',!p||!projectCanManage());
   const memberSearch=document.getElementById('projectMemberSearch');if(memberSearch)memberSearch.value='';
+  const teamBody=document.getElementById('projectTeamBody'),teamToggle=document.getElementById('projectTeamToggle');
+  if(teamBody)teamBody.hidden=true;
+  if(teamToggle)teamToggle.setAttribute('aria-expanded','false');
   renderProjectMemberChoices(p?.id||'');
   renderProjectDialogSummary(p?.id||'');
   renderProjectDialogTasks(p?.id||'');
@@ -2834,6 +2853,7 @@ async function deleteProject(){
 }
 function openProjectTask(id=null,defaults={}){
   const t=id?projectTasks.find(x=>x.id===id):null;
+  projectDialogReturnProjectId=defaults.project_id||t?.project_id||projectDialogReturnProjectId||null;
   const leadProjects=projectProjects.filter(p=>projectCanManageProject(p.id));
   if(!t&&!projectCanManage()&&!leadProjects.length)return;
   populateProjectControls();
@@ -2860,6 +2880,7 @@ function openProjectTask(id=null,defaults={}){
   document.querySelectorAll('#projectTaskChecklist input,#projectTaskChecklist button').forEach(el=>el.disabled=readOnly);
   document.getElementById('projectTaskForm').querySelector('button[type="submit"]').classList.toggle('hidden',readOnly);
   document.getElementById('deleteProjectTaskBtn').classList.toggle('hidden',!t||!projectCanManageProject(t.project_id));
+  document.getElementById('projectTaskBackBtn')?.classList.toggle('hidden',!projectDialogReturnProjectId);
   safeShowDialog('projectTaskDialog');
 }
 async function saveProjectTaskFromForm(){
@@ -3016,7 +3037,13 @@ function initProjectModuleUI(){
   document.getElementById('projectMembersAllBtn')?.addEventListener('click',()=>{document.querySelectorAll('#projectMembersList input[type="checkbox"]').forEach(x=>x.checked=true);updateProjectMemberCount()});
   document.getElementById('projectMembersNoneBtn')?.addEventListener('click',()=>{document.querySelectorAll('#projectMembersList input[type="checkbox"]').forEach(x=>x.checked=false);updateProjectMemberCount()});
   document.getElementById('projectAddTaskBtn')?.addEventListener('click',()=>{const projectId=document.getElementById('projectId').value;if(!projectId)return;document.getElementById('projectDialog').close();openProjectTask(null,{project_id:projectId})});
-  document.getElementById('projectTaskProject')?.addEventListener('change',e=>populateProjectAssigneeForProject(e.target.value,document.getElementById('projectTaskAssignee').value));
+  document.getElementById('projectBackBtn')?.addEventListener('click',()=>{document.getElementById('projectDialog')?.close();setProjectView('overview')});
+  document.getElementById('projectTaskBackBtn')?.addEventListener('click',()=>{const pid=projectDialogReturnProjectId;document.getElementById('projectTaskDialog')?.close();if(pid)openProject(pid)});
+  document.getElementById('projectTeamToggle')?.addEventListener('click',()=>{
+    const body=document.getElementById('projectTeamBody'),btn=document.getElementById('projectTeamToggle');if(!body||!btn)return;
+    body.hidden=!body.hidden;btn.setAttribute('aria-expanded',String(!body.hidden));
+  });
+  document.getElementById('projectTaskProject')?.addEventListener('change',e=>{projectDialogReturnProjectId=e.target.value||null;populateProjectAssigneeForProject(e.target.value,document.getElementById('projectTaskAssignee').value)});
   document.getElementById('addNoteBtn')?.addEventListener('click',()=>openProjectNote());
   document.getElementById('projectForm')?.addEventListener('submit',e=>{e.preventDefault();saveProjectFromForm()});
   document.getElementById('projectTaskForm')?.addEventListener('submit',e=>{e.preventDefault();saveProjectTaskFromForm()});
