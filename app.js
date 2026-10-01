@@ -1350,6 +1350,28 @@ function renderConflicts(){
   list.querySelectorAll('.conflict-jump').forEach(btn=>btn.addEventListener('click',()=>{const item=btn.closest('.conflict-item'),d=new Date(item.dataset.date+'T12:00:00');viewDate=new Date(d.getFullYear(),d.getMonth(),1);currentView='month';document.getElementById('conflictsDialog').close();render()}));
   list.querySelectorAll('.conflict-discuss').forEach(btn=>btn.addEventListener('click',()=>{const item=btn.closest('.conflict-item');document.getElementById('conflictsDialog').close();openNewDiscussion({date:item.dataset.date,title:item.dataset.type+' · '+item.dataset.date,message:'Bitte hierzu im Team abstimmen.'})}));
 }
+async function saveExportFile(filename,data,mime,description,extensions){
+  const blob=data instanceof Blob?data:new Blob([data],{type:mime});
+  try{
+    if(window.showSaveFilePicker){
+      const accept={};accept[mime]=extensions;
+      const handle=await window.showSaveFilePicker({suggestedName:filename,types:[{description,accept}]});
+      const writable=await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return true;
+    }
+  }catch(err){
+    if(err?.name==='AbortError')return false;
+    console.warn('Speichern unter nicht verfügbar',err);
+  }
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  showToast('Datei heruntergeladen · Speicherort wird vom Browser bestimmt');
+  return true;
+}
+
 async function exportExcel(){
   if(!window.XLSX){alert('Excel-Export ist nicht verfügbar.');return}
   const year=viewDate.getFullYear(),rows=[['Mitarbeiter','Jahresanspruch','Verbraucht nach Arbeitstagen','Rest','XU']];
@@ -1358,13 +1380,8 @@ async function exportExcel(){
   state.employees.forEach(e=>Object.entries(state.entries[e.id]||{}).filter(([k])=>k.startsWith(year+'-')).forEach(([k,v])=>detail.push([k,e.name,(v.codes||[]).join('+'),v.status||'wish',v.priority||0,v.note||''])));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Urlaubskonten');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(detail),'Planung');
   const filename=`TeamPlan-${year}.xlsx`,data=XLSX.write(wb,{bookType:'xlsx',type:'array'});
-  try{
-    if(window.showSaveFilePicker){
-      const handle=await window.showSaveFilePicker({suggestedName:filename,types:[{description:'Excel-Arbeitsmappe',accept:{'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':['.xlsx']}}]});
-      const writable=await handle.createWritable();await writable.write(data);await writable.close();showToast('Excel gespeichert');return;
-    }
-  }catch(err){if(err?.name==='AbortError')return;console.warn(err)}
-  XLSX.writeFile(wb,filename);showToast('Excel erstellt');
+  const saved=await saveExportFile(filename,data,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','Excel-Arbeitsmappe',['.xlsx']);
+  if(saved)showToast('Excel gespeichert');
 }
 function reportPrintWindow(title,html,dialogId){
   const win=window.open('','_blank');
@@ -2170,15 +2187,16 @@ function bindTrainingMultiYearEvents(){
     });
   });
 }
-function exportTrainingCsv(){
+async function exportTrainingCsv(){
   const rows=filteredTrainings().filter(t=>!t._virtual);
   const cols=['Mitarbeiter','Titel','Kategorie','Von','Bis','Jahr','Wiederkehrend','Intervall Monate','Status','Stunden','Kosten','Anbieter'];
   const q=v=>'"'+String(v??'').replaceAll('"','""')+'"';
   const csv=[cols.map(q).join(';')].concat(rows.map(t=>[trainingEmployeeName(t.employee_id),t.title,t.category,t.start_date||'',t.end_date||'',t.training_year||'',t.recurring?'Ja':'Nein',t.recurrence_months||'',trainingStatusLabel(t),t.hours||0,t.cost||0,t.provider||''].map(q).join(';'))).join('\n');
-  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='TeamPlan_Fortbildungen_'+trainingYear+'.csv';link.click();URL.revokeObjectURL(url);
+  await saveExportFile('TeamPlan_Fortbildungen_'+trainingYear+'.csv','\ufeff'+csv,'text/csv;charset=utf-8','CSV-Datei',['.csv']);
 }
-function exportTrainingJson(){
-  const rows=filteredTrainings().filter(t=>!t._virtual),blob=new Blob([JSON.stringify(rows,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='TeamPlan_Fortbildungen_'+trainingYear+'.json';link.click();URL.revokeObjectURL(url);
+async function exportTrainingJson(){
+  const rows=filteredTrainings().filter(t=>!t._virtual);
+  await saveExportFile('TeamPlan_Fortbildungen_'+trainingYear+'.json',JSON.stringify(rows,null,2),'application/json','JSON-Datei',['.json']);
 }
 function bindTrainingRenderedEvents(){
   if(trainingCanManage())document.querySelectorAll('[data-training-id]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();openTraining(el.dataset.trainingId)}));
@@ -2346,10 +2364,13 @@ async function saveTrainingBudget(){
   if(error){alert(error.message);return}
   document.getElementById('trainingBudgetDialog').close();await loadTrainingData();showToast('Budget gespeichert');
 }
-function exportTrainingExcel(){
+async function exportTrainingExcel(){
   if(!window.XLSX){alert('Excel-Export nicht verfügbar.');return}
   const rows=filteredTrainings().map(t=>({Mitarbeiter:trainingEmployeeName(t.employee_id),Titel:t.title,Kategorie:t.category,Von:t.date_precision==='year'?'':t.start_date,Bis:t.date_precision==='year'?'':t.end_date,Jahr:t.training_year||'',Terminstatus:t.date_precision==='year'?'nur Jahr bekannt':'genaues Datum',Wiederkehrend:t.recurring?'Ja':'Nein',Intervall_Monate:t.recurring?Number(t.recurrence_months||0):'',Status:trainingStatusLabel(t),Stunden:Number(t.hours||0),Kosten:Number(t.cost||0),Anbieter:t.provider||'',Gueltig_bis:trainingDueDate(t)||'',Notiz:t.note||''}));
-  const wb=XLSX.utils.book_new(),ws=XLSX.utils.json_to_sheet(rows);XLSX.utils.book_append_sheet(wb,ws,'Fortbildungen');XLSX.writeFile(wb,'TeamPlan_Fortbildungen_'+trainingYear+'.xlsx');
+  const wb=XLSX.utils.book_new(),ws=XLSX.utils.json_to_sheet(rows);XLSX.utils.book_append_sheet(wb,ws,'Fortbildungen');
+  const filename='TeamPlan_Fortbildungen_'+trainingYear+'.xlsx',data=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  const saved=await saveExportFile(filename,data,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','Excel-Arbeitsmappe',['.xlsx']);
+  if(saved)showToast('Excel gespeichert');
 }
 function applyTrainingZoom(){
   trainingZoom=Math.max(.7,Math.min(1.3,Number(trainingZoom||1)));
@@ -3121,8 +3142,7 @@ function buildProjectPdfHtml(options){
 function exportProjectPdf(){
   const options={projects:document.getElementById('projectExportProjects')?.checked,tasks:document.getElementById('projectExportTasks')?.checked,month:document.getElementById('projectExportMonth')?.checked,year:document.getElementById('projectExportYear')?.checked,team:document.getElementById('projectExportTeam')?.checked,notes:document.getElementById('projectExportNotes')?.checked};
   if(!Object.values(options).some(Boolean)){showToast('Bitte mindestens einen PDF-Inhalt auswählen');return}
-  const win=window.open('','_blank');if(!win){alert('PDF-Fenster wurde vom Browser blockiert. Bitte Pop-ups für TeamPlan erlauben.');return}
-  win.document.open();win.document.write(buildProjectPdfHtml(options));win.document.close();document.getElementById('projectExportDialog')?.close();setTimeout(()=>{win.focus();win.print()},250);
+  reportPrintWindow('Projektbericht',buildProjectPdfHtml(options),'projectExportDialog');
 }
 function openProjectNote(id=null){
   const n=id?projectNotes.find(x=>x.id===id):null;
