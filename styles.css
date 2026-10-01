@@ -2568,3 +2568,6 @@ body.dark-mode .training-context-menu>button:hover{background:#20372f}
   .training-filterbar #trainingTypeFilter,
   .training-filterbar #trainingCategoryFilter{min-width:0;flex:1}
 }
+
+.training-day[draggable="true"]{cursor:grab!important}
+.training-day[draggable="true"].dragging{opacity:.38}
