@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-2" />
+  <link rel="stylesheet" href="styles.css?v=20261001-3" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -29,6 +29,7 @@
         <div class="status-cluster">
           <div id="syncPill" class="sync-pill local">● Lokal</div>
           <div id="authUserPill" class="sync-pill hidden"></div>
+          <div id="onlinePill" class="sync-pill online-pill hidden" title="Aktuell aktive Nutzer">● 0 online</div>
           <select id="roleSelect" class="role-select" title="Arbeitsmodus">
             <option value="admin">Admin</option>
             <option value="planner">Planer</option>
@@ -482,6 +483,6 @@
 
   <div id="cellContextMenu" class="cell-context-menu hidden" role="menu" aria-label="Schnellaktionen"></div>
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20261001-2"></script>
+  <script src="app.js?v=20261001-3"></script>
 </body>
 </html>
