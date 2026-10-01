@@ -1443,8 +1443,10 @@ function trainingVisibleEmployees(){
   return [...state.employees].sort((a,b)=>a.order-b.order);
 }
 function trainingIntersectsYear(t,year=trainingYear){
-  const start=year+'-01-01',end=year+'-12-31',due=trainingDueDate(t);
-  return (t.start_date<=end&&t.end_date>=start)||(due&&due>=start&&due<=end);
+  const due=trainingDueDate(t);
+  if(t.date_precision==='year')return Number(t.training_year)===Number(year)||(due&&due.startsWith(String(year)+'-'));
+  const start=year+'-01-01',end=year+'-12-31';
+  return (t.start_date&&t.end_date&&t.start_date<=end&&t.end_date>=start)||(due&&due>=start&&due<=end);
 }
 function filteredTrainings(){
   const search=(document.getElementById('trainingSearchInput')?.value||'').trim().toLowerCase();
@@ -1458,10 +1460,14 @@ function filteredTrainings(){
     if(status==='overdue'&&trainingDueState(t)!=='overdue')return false;
     if(status&& !['due','overdue'].includes(status) && t.status!==status)return false;
     return true;
-  }).sort((a,b)=>a.start_date.localeCompare(b.start_date)||a.title.localeCompare(b.title));
+  }).sort((a,b)=>{
+    const ad=a.date_precision==='year'?String(a.training_year)+'-99-99':(a.start_date||'9999-99-99');
+    const bd=b.date_precision==='year'?String(b.training_year)+'-99-99':(b.start_date||'9999-99-99');
+    return ad.localeCompare(bd)||a.title.localeCompare(b.title);
+  });
 }
 function trainingForEmployeeDate(empId,key){
-  return trainings.filter(t=>t.employee_id===empId&&t.status!=='cancelled'&&t.start_date<=key&&t.end_date>=key);
+  return trainings.filter(t=>t.employee_id===empId&&t.status!=='cancelled'&&t.date_precision!=='year'&&t.start_date&&t.end_date&&t.start_date<=key&&t.end_date>=key);
 }
 function trainingHasVacationConflict(empId,start,end){
   if(!empId||!start||!end)return [];
@@ -1474,6 +1480,7 @@ function trainingHasVacationConflict(empId,start,end){
   return out;
 }
 function formatTrainingDateRange(t){
+  if(t.date_precision==='year')return 'Termin '+t.training_year+' noch offen';
   const a=trainingDate(t.start_date),b=trainingDate(t.end_date);
   if(!a||!b)return '';
   const fmt=d=>d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'});
@@ -1485,6 +1492,7 @@ function switchModule(module,silent=false){
   currentModule=module==='training'?'training':'vacation';
   localStorage.setItem('teamplan-module',currentModule);
   if(currentModule==='training'&&document.body.classList.contains('planner-focus'))exitPlannerFocus();
+  if(currentModule==='vacation'&&document.body.classList.contains('training-focus'))exitTrainingFocus();
   const vacation=currentModule==='vacation';
   ['vacationToolbar','monthView','plannerFocusControls','yearView','vacationHint'].forEach(id=>{
     const el=document.getElementById(id);if(!el)return;
@@ -1539,7 +1547,7 @@ async function loadTrainingData(){
   ]);
   if(typesRes.error)throw typesRes.error;if(trainingRes.error)throw trainingRes.error;if(budgetRes.error)throw budgetRes.error;
   trainingTypes=typesRes.data||[];trainings=trainingRes.data||[];trainingBudgets=budgetRes.data||[];
-  populateTrainingControls();applyTrainingRoleUI();renderTrainingModule();render();
+  populateTrainingControls();applyTrainingRoleUI();renderTrainingModule();render();switchModule(currentModule,true);
 }
 async function startTrainingRealtime(){
   if(!supabaseClient||!authUser)return;
@@ -1557,8 +1565,11 @@ async function stopTrainingRealtime(){
 }
 function trainingEntryHtml(t){
   const emp=trainingEmployeeName(t.employee_id),due=trainingDueDate(t),dueState=trainingDueState(t),conf=trainingHasVacationConflict(t.employee_id,t.start_date,t.end_date);
-  return '<article class="training-entry '+(trainingCanManage()?'editable':'')+'" data-training-id="'+t.id+'">'+
-    '<div class="training-entry-date"><strong>'+escapeHtml(new Date(t.start_date+'T12:00:00').toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'}))+'</strong><span>'+escapeHtml(String(new Date(t.start_date+'T12:00:00').getFullYear()))+'</span></div>'+
+  const yearOnly=t.date_precision==='year';
+  const dateMain=yearOnly?'?':new Date(t.start_date+'T12:00:00').toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});
+  const dateSub=yearOnly?String(t.training_year):String(new Date(t.start_date+'T12:00:00').getFullYear());
+  return '<article class="training-entry '+(trainingCanManage()?'editable':'')+(yearOnly?' year-only':'')+'" data-training-id="'+t.id+'">'+
+    '<div class="training-entry-date"><strong>'+escapeHtml(dateMain)+'</strong><span>'+escapeHtml(dateSub)+'</span></div>'+
     '<div class="training-entry-main"><div class="training-entry-title"><strong>'+escapeHtml(t.title)+'</strong><span class="training-status '+(dueState||t.status)+'">'+escapeHtml(trainingStatusLabel(t))+'</span></div>'+
     '<span>'+escapeHtml(emp)+' · '+escapeHtml(t.category||'Fortbildung')+' · '+escapeHtml(formatTrainingDateRange(t))+'</span>'+
     '<small>'+[Number(t.hours)?formatVacationNumber(t.hours)+' h':'',Number(t.cost)?euro(t.cost):'',t.provider, due?'gültig bis '+new Date(due+'T12:00:00').toLocaleDateString('de-DE'):'' ].filter(Boolean).map(escapeHtml).join(' · ')+'</small>'+
@@ -1583,7 +1594,11 @@ function renderTrainingMetrics(items){
 function renderTrainingOverview(items){
   renderTrainingMetrics(items);
   const today=dateKey(new Date());
-  const upcoming=items.filter(t=>t.status==='planned'&&t.end_date>=today).sort((a,b)=>a.start_date.localeCompare(b.start_date)).slice(0,30);
+  const upcoming=items.filter(t=>t.status==='planned'&&(t.date_precision==='year'?Number(t.training_year)>=new Date().getFullYear():(t.end_date&&t.end_date>=today))).sort((a,b)=>{
+    const ad=a.date_precision==='year'?String(a.training_year)+'-99-99':(a.start_date||'9999-99-99');
+    const bd=b.date_precision==='year'?String(b.training_year)+'-99-99':(b.start_date||'9999-99-99');
+    return ad.localeCompare(bd);
+  }).slice(0,30);
   const due=items.filter(t=>['due','overdue'].includes(trainingDueState(t))).sort((a,b)=>(trainingDueDate(a)||'9999').localeCompare(trainingDueDate(b)||'9999')).slice(0,30);
   const up=document.getElementById('trainingUpcomingList'),dl=document.getElementById('trainingDueList');
   if(up)up.innerHTML=upcoming.length?upcoming.map(trainingEntryHtml).join(''):'<div class="empty-state">Keine geplanten Fortbildungen.</div>';
@@ -1591,10 +1606,12 @@ function renderTrainingOverview(items){
 }
 function renderTrainingCalendar(items){
   const box=document.getElementById('trainingYearCalendar');if(!box)return;
-  box.innerHTML=MONTHS.map((month,m)=>{
+  const undated=items.filter(t=>t.date_precision==='year'&&Number(t.training_year)===Number(trainingYear));
+  const undatedHtml=undated.length?'<article class="training-undated glass"><div class="training-month-head"><strong>Termin noch offen</strong><span>'+undated.length+'</span></div><div class="training-month-items">'+undated.map(t=>'<button type="button" class="training-month-item undated '+t.status+'" data-training-id="'+t.id+'"><b>'+escapeHtml(t.title)+'</b><span>'+escapeHtml(trainingEmployeeName(t.employee_id))+'</span><small>im Jahr '+escapeHtml(String(t.training_year))+'</small></button>').join('')+'</div></article>':'';
+  box.innerHTML=undatedHtml+MONTHS.map((month,m)=>{
     const first=trainingYear+'-'+String(m+1).padStart(2,'0')+'-01';
     const last=trainingYear+'-'+String(m+1).padStart(2,'0')+'-'+String(new Date(trainingYear,m+1,0).getDate()).padStart(2,'0');
-    const monthItems=items.filter(t=>t.start_date<=last&&t.end_date>=first).sort((a,b)=>a.start_date.localeCompare(b.start_date));
+    const monthItems=items.filter(t=>t.date_precision!=='year'&&t.start_date&&t.end_date&&t.start_date<=last&&t.end_date>=first).sort((a,b)=>a.start_date.localeCompare(b.start_date));
     return '<article class="training-month glass"><div class="training-month-head"><strong>'+month+'</strong><span>'+monthItems.length+'</span></div><div class="training-month-items">'+
       (monthItems.length?monthItems.map(t=>'<button type="button" class="training-month-item '+t.status+'" data-training-id="'+t.id+'"><b>'+escapeHtml(t.title)+'</b><span>'+escapeHtml(trainingEmployeeName(t.employee_id))+'</span><small>'+escapeHtml(formatTrainingDateRange(t))+'</small></button>').join(''):'<div class="training-month-empty">—</div>')+
       '</div></article>';
@@ -1638,9 +1655,33 @@ function setTrainingView(view){
 }
 function updateTrainingVacationWarning(){
   const box=document.getElementById('trainingVacationWarning');if(!box)return;
+  if(document.getElementById('trainingYearOnly')?.checked){box.classList.add('hidden');box.textContent='';return}
   const conflicts=trainingHasVacationConflict(document.getElementById('trainingEmployee').value,document.getElementById('trainingStart').value,document.getElementById('trainingEnd').value);
   box.classList.toggle('hidden',!conflicts.length);
   box.textContent=conflicts.length?'Achtung: '+conflicts.map(x=>x.key+' ('+x.codes.join('+')+')').join(', ')+' bereits als Abwesenheit geplant.':'';
+}
+function syncTrainingDateMode(){
+  const yearOnly=document.getElementById('trainingYearOnly').checked;
+  document.getElementById('trainingYearOnlyField').classList.toggle('hidden',!yearOnly);
+  document.getElementById('trainingStartField').classList.toggle('hidden',yearOnly);
+  document.getElementById('trainingEndField').classList.toggle('hidden',yearOnly);
+  document.getElementById('trainingStart').required=!yearOnly;
+  document.getElementById('trainingEnd').required=!yearOnly;
+  if(yearOnly){
+    if(!document.getElementById('trainingOnlyYear').value)document.getElementById('trainingOnlyYear').value=trainingYear;
+  }
+  updateTrainingVacationWarning();
+}
+function enterTrainingFocus(){
+  if(currentModule!=='training')switchModule('training',true);
+  document.body.classList.add('training-focus');
+  document.getElementById('trainingFocusBtn').classList.add('hidden');
+  document.getElementById('trainingExitFocusBtn').classList.remove('hidden');
+}
+function exitTrainingFocus(){
+  document.body.classList.remove('training-focus');
+  document.getElementById('trainingFocusBtn')?.classList.remove('hidden');
+  document.getElementById('trainingExitFocusBtn')?.classList.add('hidden');
 }
 function openTraining(id=null){
   if(!trainingCanManage()){showToast('Fortbildungen können nur Admin/Planer bearbeiten');return}
@@ -1653,6 +1694,9 @@ function openTraining(id=null){
   document.getElementById('trainingTitle').value=t?.title||'';
   document.getElementById('trainingCategory').value=t?.category||'Fortbildung';
   document.getElementById('trainingStatus').value=t?.status||'planned';
+  const yearOnly=t?.date_precision==='year';
+  document.getElementById('trainingYearOnly').checked=!!yearOnly;
+  document.getElementById('trainingOnlyYear').value=t?.training_year||trainingYear;
   document.getElementById('trainingStart').value=t?.start_date||today;
   document.getElementById('trainingEnd').value=t?.end_date||today;
   document.getElementById('trainingHours').value=Number(t?.hours||0);
@@ -1661,17 +1705,20 @@ function openTraining(id=null){
   document.getElementById('trainingValidUntil').value=t?.valid_until||'';
   document.getElementById('trainingNote').value=t?.note||'';
   document.getElementById('deleteTrainingBtn').classList.toggle('hidden',!t);
-  updateTrainingVacationWarning();safeShowDialog('trainingDialog');
+  syncTrainingDateMode();updateTrainingVacationWarning();safeShowDialog('trainingDialog');
 }
 async function saveTrainingFromForm(){
   if(!trainingCanManage())return;
-  const cfg=window.TEAMPLAN_CONFIG||{},id=document.getElementById('trainingId').value||null,start=document.getElementById('trainingStart').value,end=document.getElementById('trainingEnd').value;
-  if(!start||!end||end<start){alert('Bitte einen gültigen Zeitraum angeben.');return}
-  const row={team_id:cfg.teamId,employee_id:document.getElementById('trainingEmployee').value,type_id:document.getElementById('trainingType').value||null,title:document.getElementById('trainingTitle').value.trim(),category:document.getElementById('trainingCategory').value.trim()||'Fortbildung',start_date:start,end_date:end,status:document.getElementById('trainingStatus').value,hours:Number(document.getElementById('trainingHours').value||0),cost:Number(document.getElementById('trainingCost').value||0),provider:document.getElementById('trainingProvider').value.trim(),valid_until:document.getElementById('trainingValidUntil').value||null,note:document.getElementById('trainingNote').value.trim(),updated_at:new Date().toISOString()};
+  const cfg=window.TEAMPLAN_CONFIG||{},id=document.getElementById('trainingId').value||null,yearOnly=document.getElementById('trainingYearOnly').checked,start=document.getElementById('trainingStart').value,end=document.getElementById('trainingEnd').value,onlyYear=Number(document.getElementById('trainingOnlyYear').value||trainingYear);
+  if(yearOnly){
+    if(onlyYear<2020||onlyYear>2100){alert('Bitte ein gültiges Jahr angeben.');return}
+  }else if(!start||!end||end<start){alert('Bitte einen gültigen Zeitraum angeben.');return}
+  const row={team_id:cfg.teamId,employee_id:document.getElementById('trainingEmployee').value,type_id:document.getElementById('trainingType').value||null,title:document.getElementById('trainingTitle').value.trim(),category:document.getElementById('trainingCategory').value.trim()||'Fortbildung',date_precision:yearOnly?'year':'exact',training_year:yearOnly?onlyYear:Number(start.slice(0,4)),start_date:yearOnly?null:start,end_date:yearOnly?null:end,status:document.getElementById('trainingStatus').value,hours:Number(document.getElementById('trainingHours').value||0),cost:Number(document.getElementById('trainingCost').value||0),provider:document.getElementById('trainingProvider').value.trim(),valid_until:document.getElementById('trainingValidUntil').value||null,note:document.getElementById('trainingNote').value.trim(),updated_at:new Date().toISOString()};
   if(!row.employee_id||!row.title){alert('Bitte Mitarbeiter und Titel angeben.');return}
+  const keepView=trainingView;
   let res;if(id)res=await supabaseClient.from('teamplan_trainings').update(row).eq('id',id);else res=await supabaseClient.from('teamplan_trainings').insert(row);
   if(res.error){alert(res.error.message);return}
-  document.getElementById('trainingDialog').close();await loadTrainingData();showToast(id?'Fortbildung aktualisiert':'Fortbildung geplant');
+  document.getElementById('trainingDialog').close();await loadTrainingData();trainingView=keepView;switchModule('training',true);renderTrainingModule();showToast(id?'Fortbildung aktualisiert':'Fortbildung geplant');
 }
 async function deleteTraining(){
   if(!trainingCanManage())return;
@@ -1732,7 +1779,7 @@ async function saveTrainingBudget(){
 }
 function exportTrainingExcel(){
   if(!window.XLSX){alert('Excel-Export nicht verfügbar.');return}
-  const rows=filteredTrainings().map(t=>({Mitarbeiter:trainingEmployeeName(t.employee_id),Titel:t.title,Kategorie:t.category,Von:t.start_date,Bis:t.end_date,Status:trainingStatusLabel(t),Stunden:Number(t.hours||0),Kosten:Number(t.cost||0),Anbieter:t.provider||'',Gueltig_bis:trainingDueDate(t)||'',Notiz:t.note||''}));
+  const rows=filteredTrainings().map(t=>({Mitarbeiter:trainingEmployeeName(t.employee_id),Titel:t.title,Kategorie:t.category,Von:t.date_precision==='year'?'':t.start_date,Bis:t.date_precision==='year'?'':t.end_date,Jahr:t.training_year||'',Terminstatus:t.date_precision==='year'?'nur Jahr bekannt':'genaues Datum',Status:trainingStatusLabel(t),Stunden:Number(t.hours||0),Kosten:Number(t.cost||0),Anbieter:t.provider||'',Gueltig_bis:trainingDueDate(t)||'',Notiz:t.note||''}));
   const wb=XLSX.utils.book_new(),ws=XLSX.utils.json_to_sheet(rows);XLSX.utils.book_append_sheet(wb,ws,'Fortbildungen');XLSX.writeFile(wb,'TeamPlan_Fortbildungen_'+trainingYear+'.xlsx');
 }
 function initTrainingModuleUI(){
@@ -1747,6 +1794,10 @@ function initTrainingModuleUI(){
   ['trainingSearchInput','trainingEmployeeFilter','trainingStatusFilter'].forEach(id=>document.getElementById(id)?.addEventListener(id==='trainingSearchInput'?'input':'change',renderTrainingModule));
   document.getElementById('addTrainingBtn')?.addEventListener('click',()=>openTraining());
   document.getElementById('trainingTypesBtn')?.addEventListener('click',()=>{if(!trainingCanManage())return;resetTrainingTypeForm();renderTrainingTypes();safeShowDialog('trainingTypesDialog')});
+  document.getElementById('trainingFocusBtn')?.addEventListener('click',enterTrainingFocus);
+  document.getElementById('trainingExitFocusBtn')?.addEventListener('click',exitTrainingFocus);
+  document.getElementById('trainingYearOnly')?.addEventListener('change',syncTrainingDateMode);
+  document.getElementById('trainingOnlyYear')?.addEventListener('input',updateTrainingVacationWarning);
   document.getElementById('trainingExportBtn')?.addEventListener('click',exportTrainingExcel);
   document.getElementById('trainingForm')?.addEventListener('submit',e=>{e.preventDefault();saveTrainingFromForm()});
   document.getElementById('deleteTrainingBtn')?.addEventListener('click',deleteTraining);
