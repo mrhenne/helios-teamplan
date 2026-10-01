@@ -3226,7 +3226,11 @@ async function pushRemote(){
   try{const {error}=await supabaseClient.from('team_plans').upsert({team_id:cfg.teamId,data:state,updated_at:new Date().toISOString()},{onConflict:'team_id'});if(error)throw error;setSync('live','● Live synchron')}
   catch(e){console.error(e);setSync('error','● Sync-Fehler')}
 }
-function setSync(cls,text){const p=document.getElementById('syncPill');p.className='sync-pill '+cls;p.textContent=text}
+function setSync(cls,text){const p=document.getElementById('syncPill');if(!p)return;p.className='sync-pill '+cls;p.textContent=text}
+
+// Authentication must start before the optional UI listener wiring below.
+// That keeps login/session restoration working even if a later UI module throws.
+initRemote();
 
 // top controls
 document.getElementById('prevMonth').addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()-1);saveLastViewDate();plannerScrollLeft=null;render()});
@@ -3491,4 +3495,4 @@ window.addEventListener('resize',hideCellContextMenu);
 document.getElementById('planner').addEventListener('scroll',hideCellContextMenu,{passive:true});
 
 document.addEventListener('pointerdown',e=>{if(!e.target.closest('#trainingContextMenu'))hideTrainingContextMenu()});
-initTrainingModuleUI();initProjectModuleUI();renderRoleControls();render();switchModule(currentModule,true);initRemote();
+initTrainingModuleUI();initProjectModuleUI();renderRoleControls();render();switchModule(currentModule,true);
