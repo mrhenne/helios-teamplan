@@ -766,3 +766,15 @@ set color = case
   else '#5b8def'
 end
 where color is null or color = '#5b8def';
+
+
+-- === 2026-10-01 SECURITY/PERFORMANCE HARDENING ===
+-- Trigger function is internal-only. Trigger execution does not require API EXECUTE grants.
+revoke execute on function public.touch_teamplan_discussion() from public, anon, authenticated;
+
+-- Cover foreign keys used by discussion reads and training type joins.
+create index if not exists teamplan_discussion_reads_discussion_id_idx
+  on public.teamplan_discussion_reads(discussion_id);
+
+create index if not exists teamplan_trainings_type_id_idx
+  on public.teamplan_trainings(type_id);
