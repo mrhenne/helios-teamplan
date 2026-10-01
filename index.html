@@ -1038,6 +1038,52 @@
 
   <div id="cellContextMenu" class="cell-context-menu hidden" role="menu" aria-label="Schnellaktionen"></div>
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20261001-25"></script>
+  <script>
+    // Login fallback is intentionally independent from app.js.
+    // It remains usable if another UI module throws during app startup.
+    (() => {
+      const form = document.getElementById('loginForm');
+      const button = document.getElementById('loginSubmitBtn');
+      const errorBox = document.getElementById('loginError');
+      if (!form || !button || !window.supabase || !window.TEAMPLAN_CONFIG) return;
+
+      const cfg = window.TEAMPLAN_CONFIG;
+      const client = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+      window.TEAMPLAN_LOGIN_CLIENT = client;
+
+      form.addEventListener('submit', async (event) => {
+        if (window.loginMode === 'bootstrap') return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+
+        const email = document.getElementById('loginEmail')?.value.trim();
+        const password = document.getElementById('loginPassword')?.value || '';
+        if (!email || !password) {
+          errorBox.textContent = 'Bitte E-Mail und Passwort eingeben.';
+          errorBox.classList.remove('hidden');
+          return;
+        }
+
+        const oldText = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Anmeldung läuft…';
+        errorBox.classList.add('hidden');
+
+        try {
+          const { data, error } = await client.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+          if (!data?.session) throw new Error('Keine Sitzung erhalten. Bitte erneut versuchen.');
+          window.location.reload();
+        } catch (err) {
+          console.error('Login fallback failed', err);
+          errorBox.textContent = err?.message || 'Anmeldung fehlgeschlagen.';
+          errorBox.classList.remove('hidden');
+          button.disabled = false;
+          button.textContent = oldText;
+        }
+      }, true);
+    })();
+  </script>
+  <script src="app.js?v=20261001-26"></script>
 </body>
 </html>
