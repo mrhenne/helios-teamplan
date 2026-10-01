@@ -2593,6 +2593,8 @@ function renderProjectDialogSummary(projectId){
   if(!projectId)return;
   const rows=projectTasks.filter(t=>t.project_id===projectId),open=rows.filter(t=>t.status!=='done').length,waiting=rows.filter(t=>t.status==='waiting').length,overdue=rows.filter(projectIsOverdue).length,progress=projectProgressInfo(projectId).percent;
   document.getElementById('projectSummaryProgress').textContent=progress+' %';
+  const progressBar=document.getElementById('projectDialogProgress');
+  if(progressBar){progressBar.classList.remove('hidden');progressBar.style.setProperty('--progress',progress+'%');progressBar.style.setProperty('--progress-color',projectProgressColor(progress))}
   document.getElementById('projectSummaryOpen').textContent=String(open);
   document.getElementById('projectSummaryWaiting').textContent=String(waiting);
   document.getElementById('projectSummaryOverdue').textContent=String(overdue);
