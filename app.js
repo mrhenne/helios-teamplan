@@ -544,6 +544,8 @@ function applyAppearance(){
   const z=Math.max(.10,Math.min(1.40,Number(state.settings.zoom||1)));
   const dayWidth=Math.max(6,Math.round(52*z)),dayHeight=Math.max(8,Math.round(62*z)),employeeWidth=Math.max(72,Math.round(265*Math.max(.27,z)));
   document.documentElement.style.setProperty('--planner-scale',z);
+  document.body.classList.toggle('planner-zoom-tiny',z<.45);
+  document.body.classList.toggle('planner-zoom-small',z>=.45&&z<.65);
   document.documentElement.style.setProperty('--day-width',dayWidth+'px');
   document.documentElement.style.setProperty('--day-height',dayHeight+'px');
   document.documentElement.style.setProperty('--employee-width',employeeWidth+'px');
