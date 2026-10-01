@@ -226,3 +226,107 @@ test('Keine sichtbaren Kerncontrols haben unlesbar kleine Schrift', async ({ pag
   });
   expect(tooSmall).toEqual([]);
 });
+
+
+test('Projektmanagement Modul funktioniert lokal', async ({ page }) => {
+  await bootLocal(page);
+  await expect(page.locator('#moduleProjectsBtn')).toBeVisible();
+  await page.locator('#moduleProjectsBtn').click();
+  await expect(page.locator('#projectsModule')).toBeVisible();
+  await expect(page.locator('#vacationToolbar')).toBeHidden();
+  await expect(page.locator('#trainingModule')).toBeHidden();
+
+  for (const id of ['projectsOverviewBtn','projectsRoadmapBtn','projectsBoardBtn','projectsCalendarBtn','projectsTeamBtn','projectsNotesBtn']) {
+    const btn=page.locator('#'+id);
+    await expect(btn).toBeVisible();
+    await btn.click();
+    await expect(btn).toHaveClass(/active/);
+  }
+});
+
+test('Projekt und Aufgabe können lokal angelegt und gespeichert werden', async ({ page }) => {
+  await bootLocal(page);
+  await page.locator('#moduleProjectsBtn').click();
+
+  await page.locator('#addProjectBtn').click();
+  await expect(page.locator('#projectDialog')).toBeVisible();
+  await page.locator('#projectName').fill('QA Projekt');
+  await page.locator('#projectDescription').fill('Testprojekt für die Abnahme');
+  await page.locator('#projectStatus').selectOption('active');
+  await page.locator('#projectPriority').selectOption('high');
+  await page.locator('#projectForm button[type="submit"]').click();
+
+  await expect(page.getByText('QA Projekt', { exact:true }).first()).toBeVisible();
+
+  await page.locator('#addTaskBtn').click();
+  await expect(page.locator('#projectTaskDialog')).toBeVisible();
+  await page.locator('#projectTaskTitle').fill('QA Aufgabe');
+  await page.locator('#projectTaskProject').selectOption({ label:'QA Projekt' });
+  await page.locator('#projectTaskStatus').selectOption('progress');
+  await page.locator('#projectTaskPriority').selectOption('high');
+  await page.locator('#projectTaskForm button[type="submit"]').click();
+
+  await page.locator('#projectsBoardBtn').click();
+  await expect(page.getByText('QA Aufgabe', { exact:true }).first()).toBeVisible();
+
+  await page.reload();
+  await page.locator('#moduleProjectsBtn').click();
+  await expect(page.getByText('QA Projekt', { exact:true }).first()).toBeVisible();
+  await page.locator('#projectsBoardBtn').click();
+  await expect(page.getByText('QA Aufgabe', { exact:true }).first()).toBeVisible();
+});
+
+test('Schnellaufgaben Vorlagen und Notizboard funktionieren lokal', async ({ page }) => {
+  await bootLocal(page);
+  await page.locator('#moduleProjectsBtn').click();
+
+  await expect(page.locator('#projectsTemplateSelect option')).toContainText(['Dienstplan schreiben']);
+  await page.locator('#projectsTemplateSelect').selectOption({ label:'Dienstplan schreiben' });
+  await expect(page.locator('#projectTaskDialog')).toBeVisible();
+  await expect(page.locator('#projectTaskTitle')).toHaveValue('Dienstplan schreiben');
+  await page.locator('#projectTaskDialog .close-dialog').first().click();
+
+  await page.locator('#addNoteBtn').click();
+  await page.locator('#projectNoteTitle').fill('QA Notiz');
+  await page.locator('#projectNoteBody').fill('Das Notizboard funktioniert.');
+  await page.locator('#projectNoteCategory').selectOption('idea');
+  await page.locator('#projectNoteForm button[type="submit"]').click();
+  await page.locator('#projectsNotesBtn').click();
+  await expect(page.getByText('QA Notiz', { exact:true })).toBeVisible();
+  await expect(page.getByText('Das Notizboard funktioniert.', { exact:true })).toBeVisible();
+});
+
+test('Projekt Rollenrechte werden in der Oberfläche berücksichtigt', async ({ page }) => {
+  await bootLocal(page);
+  await page.locator('#moduleProjectsBtn').click();
+  const role=page.locator('#roleSelect');
+
+  await role.selectOption('admin');
+  await expect(page.locator('#addProjectBtn')).toBeVisible();
+  await expect(page.locator('#addTaskBtn')).toBeVisible();
+
+  await role.selectOption('planner');
+  await expect(page.locator('#addProjectBtn')).toBeVisible();
+  await expect(page.locator('#addTaskBtn')).toBeVisible();
+
+  await role.selectOption('employee');
+  await expect(page.locator('#addProjectBtn')).toBeHidden();
+  await expect(page.locator('#addTaskBtn')).toBeHidden();
+  await expect(page.locator('#addNoteBtn')).toBeVisible();
+
+  await role.selectOption('viewer');
+  await expect(page.locator('#addProjectBtn')).toBeHidden();
+  await expect(page.locator('#addTaskBtn')).toBeHidden();
+});
+
+test('Projektkalender kann zwischen Monat und Jahr wechseln', async ({ page }) => {
+  await bootLocal(page);
+  await page.locator('#moduleProjectsBtn').click();
+  await page.locator('#projectsCalendarBtn').click();
+
+  await expect(page.locator('#projectsCalendarBody')).toBeVisible();
+  await page.locator('#projectsCalendarYearBtn').click();
+  await expect(page.locator('.projects-calendar-year')).toBeVisible();
+  await page.locator('#projectsCalendarMonthBtn').click();
+  await expect(page.locator('.projects-calendar-month')).toBeVisible();
+});
