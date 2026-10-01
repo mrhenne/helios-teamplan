@@ -4109,3 +4109,46 @@ body.dark-mode .project-note-card.info{background:#1c4439}
     flex:0 0 10px!important;
   }
 }
+
+
+/* === 2026-10-01 PROJECT MOBILE NAV FINAL === */
+@media(max-width:700px){
+  .projects-toolbar .projects-view-switch{
+    display:grid!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    grid-template-rows:30px 30px!important;
+    width:100%!important;
+    min-width:0!important;
+    height:65px!important;
+    min-height:65px!important;
+    align-items:stretch!important;
+    justify-items:stretch!important;
+    gap:3px!important;
+    position:relative!important;
+  }
+  .projects-toolbar .projects-view-switch>.segment{
+    position:relative!important;
+    inset:auto!important;
+    left:auto!important;
+    right:auto!important;
+    top:auto!important;
+    bottom:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    height:30px!important;
+    min-height:30px!important;
+    max-height:30px!important;
+    margin:0!important;
+    transform:none!important;
+    box-sizing:border-box!important;
+    flex:none!important;
+    z-index:1!important;
+  }
+  #projectsOverviewBtn{grid-column:1!important;grid-row:1!important}
+  #projectsRoadmapBtn{grid-column:2!important;grid-row:1!important}
+  #projectsBoardBtn{grid-column:3!important;grid-row:1!important}
+  #projectsCalendarBtn{grid-column:1!important;grid-row:2!important}
+  #projectsTeamBtn{grid-column:2!important;grid-row:2!important}
+  #projectsNotesBtn{grid-column:3!important;grid-row:2!important}
+}
