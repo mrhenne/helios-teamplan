@@ -3872,3 +3872,48 @@ body.dark-mode .top-action-section{
 .role-stack #roleEmployeeSelect.hidden{
   display:none!important;
 }
+
+
+/* === 2026-10-01 FINAL VISIBILITY + MOBILE TRAINING HARDENING === */
+/* Höhere Spezifität als komponentenspezifische #id { display:...!important } Regeln.
+   Ein Element mit .hidden bleibt damit zuverlässig unsichtbar. */
+body .hidden:not(#teamplan-never-match){
+  display:none!important;
+}
+
+/* Auf kleinen Displays werden die sechs Fortbildungsansichten bewusst auf zwei
+   Reihen verteilt. So gibt es weder Überlagerungen noch winzige Touch-Ziele. */
+@media(max-width:700px){
+  .training-view-switch{
+    width:100%!important;
+    max-width:100%!important;
+    display:grid!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:3px!important;
+    overflow:visible!important;
+  }
+  .training-view-switch .segment{
+    width:100%!important;
+    min-width:0!important;
+    padding:0 5px!important;
+    overflow:hidden!important;
+    white-space:nowrap!important;
+  }
+  .training-view-switch .segment span{
+    min-width:0!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+}
+@media(max-width:430px){
+  .training-view-switch .segment{
+    font-size:7.5px!important;
+    gap:3px!important;
+  }
+  .training-view-switch .segment .ui-icon{
+    width:10px!important;
+    height:10px!important;
+    flex:0 0 10px!important;
+  }
+}
