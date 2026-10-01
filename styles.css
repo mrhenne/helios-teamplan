@@ -1987,3 +1987,186 @@ body.dark-mode .training-month-item.undated{background:#172723}
   body.training-focus .training-toolbar{padding:6px!important}
   .training-undated .training-month-items{grid-template-columns:1fr}
 }
+
+
+/* Oberste TeamPlan-Leiste bleibt beim Modulwechsel geometrisch stabil */
+.topbar{min-height:82px;box-sizing:border-box}
+.organized-actions{min-height:48px}
+.status-cluster{min-width:300px;justify-content:flex-end}
+.action-groups{min-width:470px}
+body.training-module-active .action-group[aria-label="Planung"],
+body.training-module-active .action-group[aria-label="Daten"]{
+  display:flex!important;
+  visibility:hidden!important;
+  pointer-events:none!important
+}
+
+/* Fortbildungs-Zoom */
+.training-zoom-control{
+  height:29px;
+  display:flex;align-items:center;gap:3px;
+  padding:2px 5px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:rgba(255,255,255,.52)
+}
+.training-zoom-control button{
+  width:23px;height:23px;padding:0;border:0;border-radius:6px;
+  background:transparent;color:var(--ink);
+  font-size:13px;font-weight:800;cursor:pointer
+}
+.training-zoom-control input{width:74px;height:3px}
+.training-zoom-control strong{
+  min-width:28px;text-align:right;
+  font-size:6.5px;color:var(--muted)
+}
+body.dark-mode .training-zoom-control{background:#172723;border-color:rgba(200,235,226,.12)}
+#trainingModule .training-view{
+  zoom:var(--training-scale,1)
+}
+
+/* Wiederkehrende Fortbildungen */
+.training-recurring-toggle{
+  display:flex!important;
+  align-items:flex-end
+}
+.training-recurring-toggle>span{
+  width:100%;min-height:30px;padding:0 8px;
+  display:flex;align-items:center;gap:7px;
+  border:1px solid var(--line);border-radius:9px;
+  background:rgba(237,244,241,.66);
+  font-size:8px;font-weight:750
+}
+.training-recurring-toggle input{
+  width:14px!important;height:14px!important;min-height:0!important;padding:0!important
+}
+#trainingRecurrenceField{position:relative}
+#trainingRecurrenceField small{
+  position:absolute;right:8px;bottom:8px;
+  font-size:6px;color:var(--muted)
+}
+.training-repeat-inline{
+  display:inline-flex!important;
+  margin-left:3px;
+  color:#557ca0!important;
+  font-size:8px!important;font-weight:900!important
+}
+.training-repeat-badge{
+  display:inline-flex;align-items:center;
+  min-height:19px;padding:0 6px;border-radius:999px;
+  background:#eef1f0;color:var(--muted);
+  font-size:6.5px;font-weight:800;white-space:nowrap
+}
+.training-repeat-badge.active{
+  background:#e5eef8;color:#426b91
+}
+.training-entry.virtual{
+  border-style:dashed!important;
+  opacity:.76
+}
+.training-month-item.virtual{
+  border-style:dashed!important;
+  opacity:.78
+}
+body.dark-mode .training-recurring-toggle>span{background:#172723}
+body.dark-mode .training-repeat-badge.active{background:#243b50;color:#a7c9e8}
+
+/* Drag & Drop Status */
+.training-status-dropzones{
+  display:flex;align-items:center;gap:5px;
+  min-height:34px;padding:5px 7px;margin-bottom:7px;
+  border:1px dashed rgba(95,120,111,.2);
+  border-radius:10px;
+  background:rgba(255,255,255,.32)
+}
+.training-status-dropzones>span{
+  margin-right:2px;
+  font-size:6.5px;font-weight:800;color:var(--muted)
+}
+.training-status-dropzone{
+  min-height:23px;padding:0 8px;
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--line);border-radius:7px;
+  font-size:6.5px;font-weight:850;
+  transition:.15s ease
+}
+.training-status-dropzone.planned{background:#edf2f8;color:#45688d}
+.training-status-dropzone.completed{background:#e6f3ee;color:#176e58}
+.training-status-dropzone.cancelled{background:#f2eeee;color:#766164}
+.training-status-dropzone.drag-over{
+  transform:scale(1.04);
+  box-shadow:0 0 0 2px rgba(0,107,91,.16);
+  border-color:rgba(0,107,91,.35)
+}
+[draggable="true"][data-training-id]{cursor:grab}
+[draggable="true"][data-training-id].dragging{opacity:.38}
+body.dark-mode .training-status-dropzones{background:#14231f}
+body.dark-mode .training-status-dropzone.planned{background:#24384b;color:#a8c7e3}
+body.dark-mode .training-status-dropzone.completed{background:#1d4136;color:#9de1ca}
+body.dark-mode .training-status-dropzone.cancelled{background:#352c2e;color:#cbb5b8}
+
+/* Klassische Fortbildungsansicht */
+.training-classic-wrap{
+  border-radius:13px;
+  overflow:auto;
+  max-height:68vh
+}
+.training-classic-table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  min-width:820px;
+  font-size:7.5px
+}
+.training-classic-table th{
+  position:sticky;top:0;z-index:2;
+  padding:8px 9px;
+  text-align:left;
+  background:#edf4f1;
+  color:#58716a;
+  font-size:6.5px;font-weight:850;
+  text-transform:uppercase;letter-spacing:.04em;
+  border-bottom:1px solid var(--line)
+}
+.training-classic-table td{
+  padding:7px 9px;
+  border-bottom:1px solid rgba(105,130,121,.1);
+  vertical-align:middle
+}
+.training-classic-table tr:last-child td{border-bottom:0}
+.training-classic-table tbody tr:not(.virtual):hover{background:rgba(232,243,239,.58)}
+.training-classic-table tbody tr[draggable="true"]{cursor:grab}
+.training-classic-table td strong{display:block;font-size:8px}
+.training-classic-table td small{display:block;margin-top:2px;font-size:6px;color:var(--muted)}
+.training-classic-table tr.virtual{opacity:.68;font-style:italic}
+body.dark-mode .training-classic-table th{background:#1a2d27;color:#a9beb7}
+body.dark-mode .training-classic-table td{border-color:rgba(200,235,226,.07)}
+body.dark-mode .training-classic-table tbody tr:not(.virtual):hover{background:#1b302a}
+
+/* Fokusmodus behält Zoom und Ansichten verfügbar */
+body.training-focus .training-zoom-control{display:flex!important}
+body.training-focus .training-status-dropzones{margin-bottom:5px}
+
+/* Stabilität auf kleineren Displays */
+@media(max-width:1250px){
+  .status-cluster{min-width:260px}
+  .action-groups{min-width:360px}
+}
+@media(max-width:900px){
+  .topbar{min-height:104px}
+  .organized-actions{width:100%;display:flex!important}
+  .status-cluster{min-width:0;width:auto;justify-content:flex-end}
+  .action-groups{min-width:0}
+  body.training-module-active .action-group[aria-label="Planung"],
+  body.training-module-active .action-group[aria-label="Daten"]{
+    visibility:hidden!important
+  }
+  .training-zoom-control input{width:55px}
+}
+@media(max-width:700px){
+  .training-zoom-control{order:4}
+  .training-status-dropzones{overflow-x:auto;white-space:nowrap}
+  .training-status-dropzones>span{display:none}
+  .training-status-dropzone{flex:1;min-width:86px}
+  #trainingModule .training-view{zoom:1!important}
+}
