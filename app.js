@@ -320,7 +320,7 @@ function clearAutoWeekendX(empId){
   Object.entries(entries).forEach(([key,v])=>{
     if(!v?.autoX)return;
     const codes=(v.codes||[]).filter(c=>c!=='X');
-    if(codes.length||v.note||v.priority){entries[key]={...v,codes,autoX:false}}
+    if(codes.length||v.note||v.priority||(v.plannerMarkers||[]).length){entries[key]={...v,codes,autoX:false}}
     else delete entries[key];
   });
 }
