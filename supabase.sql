@@ -726,3 +726,22 @@ alter table public.teamplan_trainings
 
 create index if not exists teamplan_trainings_team_year_idx
   on public.teamplan_trainings(team_id,training_year);
+
+
+-- Wiederkehrende Fortbildungen pro Mitarbeiter/Fortbildungseintrag
+alter table public.teamplan_trainings
+  add column if not exists recurring boolean not null default false,
+  add column if not exists recurrence_months integer;
+
+alter table public.teamplan_trainings
+  drop constraint if exists teamplan_trainings_recurrence_check;
+
+alter table public.teamplan_trainings
+  add constraint teamplan_trainings_recurrence_check check (
+    (recurring = false and recurrence_months is null)
+    or
+    (recurring = true and recurrence_months between 1 and 240)
+  );
+
+create index if not exists teamplan_trainings_team_recurring_idx
+  on public.teamplan_trainings(team_id,recurring,recurrence_months);
