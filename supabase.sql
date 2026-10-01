@@ -498,3 +498,50 @@ $$;
 
 revoke all on function public.set_my_plan_entry(text,text,jsonb) from public, anon;
 grant execute on function public.set_my_plan_entry(text,text,jsonb) to authenticated;
+
+
+-- Lesestatus für Team-Chat / Direktnachrichten
+create table if not exists public.teamplan_discussion_reads (
+  team_id text not null,
+  discussion_id uuid not null references public.teamplan_discussions(id) on delete cascade,
+  user_id uuid not null default auth.uid(),
+  last_read_at timestamptz not null default now(),
+  primary key (team_id, discussion_id, user_id)
+);
+
+create index if not exists teamplan_discussion_reads_user_idx
+  on public.teamplan_discussion_reads(team_id,user_id,last_read_at);
+
+alter table public.teamplan_discussion_reads enable row level security;
+
+revoke all on table public.teamplan_discussion_reads from anon, authenticated;
+grant select, insert, update on table public.teamplan_discussion_reads to authenticated;
+
+drop policy if exists "discussion reads own select" on public.teamplan_discussion_reads;
+drop policy if exists "discussion reads own insert" on public.teamplan_discussion_reads;
+drop policy if exists "discussion reads own update" on public.teamplan_discussion_reads;
+
+create policy "discussion reads own select"
+on public.teamplan_discussion_reads for select to authenticated
+using (
+  user_id = (select auth.uid())
+  and (select private.is_team_member(team_id))
+);
+
+create policy "discussion reads own insert"
+on public.teamplan_discussion_reads for insert to authenticated
+with check (
+  user_id = (select auth.uid())
+  and (select private.is_team_member(team_id))
+);
+
+create policy "discussion reads own update"
+on public.teamplan_discussion_reads for update to authenticated
+using (
+  user_id = (select auth.uid())
+  and (select private.is_team_member(team_id))
+)
+with check (
+  user_id = (select auth.uid())
+  and (select private.is_team_member(team_id))
+);
