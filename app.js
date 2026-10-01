@@ -3159,6 +3159,23 @@ function initProjectModuleUI(){
 }
 
 
+async function completeSignedIn(user){
+  if(!user)throw new Error('Anmeldung erfolgreich, aber kein Benutzerkonto wurde zurückgegeben.');
+  authUser=user;
+  await loadAuthMembership();
+  await loadRemotePlan();
+  await loadTrainingData();
+  await loadProjectData();
+  await startPresence();
+  await startDiscussionRealtime();
+  await startTrainingRealtime();
+  await startProjectRealtime();
+  hideLogin();
+  setSync('live','● Live synchron');
+  switchModule(currentModule,true);
+}
+
+
 async function initRemote(){
   const cfg=window.TEAMPLAN_CONFIG||{};
   if(!authConfigured()){setSync('local','● Lokal');return}
@@ -3176,15 +3193,29 @@ async function initRemote(){
     const {data:{session}}=await supabaseClient.auth.getSession();
     if(!session){setSync('local','● Login erforderlich');showLogin()}
     else{
-      const {data:{user},error:userError}=await supabaseClient.auth.getUser();if(userError)throw userError;
-      authUser=user;await loadAuthMembership();await loadRemotePlan();await loadTrainingData();await loadProjectData();await startPresence();await startDiscussionRealtime();await startTrainingRealtime();await startProjectRealtime();hideLogin();setSync('live','● Live synchron');switchModule(currentModule,true);
+      const user=session.user;
+      await completeSignedIn(user);
     }
-    supabaseClient.auth.onAuthStateChange(async(event,session)=>{
-      if(event==='SIGNED_OUT'||!session){await stopProjectRealtime();await stopTrainingRealtime();await stopDiscussionRealtime();await stopPresence();authUser=null;authMembership=null;renderRoleControls();setSync('local','● Abgemeldet');showLogin();return}
-      if(event==='SIGNED_IN'||event==='TOKEN_REFRESHED'){
-        const {data:{user}}=await supabaseClient.auth.getUser();authUser=user;
-        try{await loadAuthMembership();await loadRemotePlan();await loadTrainingData();await loadProjectData();await startPresence();await startDiscussionRealtime();await startTrainingRealtime();await startProjectRealtime();hideLogin();setSync('live','● Live synchron');switchModule(currentModule,true)}catch(err){console.error(err);document.getElementById('loginError').textContent=err.message;document.getElementById('loginError').classList.remove('hidden');showLogin()}
-      }
+    supabaseClient.auth.onAuthStateChange((event,session)=>{
+      window.setTimeout(async()=>{
+        if(event==='SIGNED_OUT'||!session){
+          await stopProjectRealtime();await stopTrainingRealtime();await stopDiscussionRealtime();await stopPresence();
+          authUser=null;authMembership=null;renderRoleControls();setSync('local','● Abgemeldet');showLogin();return;
+        }
+        if(event==='TOKEN_REFRESHED'){
+          authUser=session.user||authUser;
+          return;
+        }
+        if(event==='SIGNED_IN'&&authUser?.id!==session.user?.id){
+          try{await completeSignedIn(session.user)}
+          catch(err){
+            console.error(err);
+            const errEl=document.getElementById('loginError');
+            if(errEl){errEl.textContent=err.message||String(err);errEl.classList.remove('hidden')}
+            showLogin();
+          }
+        }
+      },0);
     });
     supabaseClient.channel('teamplan-live').on('postgres_changes',{event:'*',schema:'public',table:'team_plans',filter:`team_id=eq.${cfg.teamId}`},payload=>{const remote=payload.new?.data;if(remote&&remote.updatedAt!==state.updatedAt){isApplyingRemote=true;state=normalizeState(remote);localStorage.setItem('helios-teamplan-v1',JSON.stringify(state));isApplyingRemote=false;render();showToast('Plan wurde aktualisiert')}}).subscribe();
   }catch(err){console.error(err);setSync('error','● Login/Sync-Fehler');showLogin()}
@@ -3417,8 +3448,21 @@ document.getElementById('loginForm').addEventListener('submit',async e=>{
     }
     return;
   }
-  const {error}=await supabaseClient.auth.signInWithPassword({email,password});
-  if(error){errEl.textContent=error.message;errEl.classList.remove('hidden')}
+  const submitBtn=document.getElementById('loginSubmitBtn');
+  const originalText=submitBtn?.textContent||'Anmelden';
+  if(submitBtn){submitBtn.disabled=true;submitBtn.textContent='Anmeldung läuft…'}
+  try{
+    const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+    if(error)throw error;
+    if(!data?.user)throw new Error('Anmeldung fehlgeschlagen. Bitte erneut versuchen.');
+    await completeSignedIn(data.user);
+  }catch(err){
+    console.error(err);
+    errEl.textContent=err.message||String(err);
+    errEl.classList.remove('hidden');
+  }finally{
+    if(submitBtn){submitBtn.disabled=false;submitBtn.textContent=originalText}
+  }
 });
 document.getElementById('logoutBtn').addEventListener('click',async()=>{if(supabaseClient)await supabaseClient.auth.signOut()});
 document.getElementById('planner').addEventListener('contextmenu',e=>{
