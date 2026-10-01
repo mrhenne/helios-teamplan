@@ -1560,6 +1560,7 @@ function switchModule(module,silent=false){
   document.getElementById('moduleVacationBtn')?.classList.toggle('active',vacation);
   document.getElementById('moduleTrainingBtn')?.classList.toggle('active',!vacation);
   document.body.classList.toggle('training-module-active',!vacation);
+  document.body.classList.toggle('vacation-module-active',vacation);
   if(!vacation)renderTrainingModule();
   if(!silent)showToast(vacation?'Urlaubsplanung':'Fortbildungsplaner');
 }
@@ -1607,8 +1608,8 @@ function populateTrainingControls(){
   }
   const teamType=document.getElementById('trainingTeamStatusType');
   if(teamType){
-    teamType.innerHTML=activeTypes.map(t=>'<option value="'+t.id+'">'+escapeHtml(t.name)+'</option>').join('');
-    if(!trainingTeamStatusTypeId||!activeTypes.some(t=>t.id===trainingTeamStatusTypeId))trainingTeamStatusTypeId=activeTypes[0]?.id||'';
+    teamType.innerHTML='<option value="__all__">Alle Fortbildungen</option>'+activeTypes.map(t=>'<option value="'+t.id+'">'+escapeHtml(t.name)+'</option>').join('');
+    if(!trainingTeamStatusTypeId||(!activeTypes.some(t=>t.id===trainingTeamStatusTypeId)&&trainingTeamStatusTypeId!=='__all__'))trainingTeamStatusTypeId='__all__';
     teamType.value=trainingTeamStatusTypeId;
   }
   const teamYear=document.getElementById('trainingTeamStatusYear');
@@ -1788,20 +1789,103 @@ function teamStatusItemFor(empId,typeId,year){
   if(virtual)return {state:'planned',item:virtual,virtual:true};
   return {state:'open',item:null};
 }
+function uiIcon(name){return '<svg class="ui-icon" aria-hidden="true"><use href="#i-'+name+'"></use></svg>'}
+function trainingWriteRow(t){
+  return {
+    team_id:t.team_id,employee_id:t.employee_id,type_id:t.type_id||null,title:t.title,category:t.category||'Fortbildung',
+    date_precision:t.date_precision||'exact',training_year:Number(t.training_year||((t.start_date||'').slice(0,4))||trainingYear),
+    start_date:t.start_date||null,end_date:t.end_date||null,recurring:!!t.recurring,
+    recurrence_months:t.recurring?Number(t.recurrence_months||0)||null:null,status:t.status||'planned',
+    hours:Number(t.hours||0),cost:Number(t.cost||0),provider:t.provider||'',valid_until:t.valid_until||null,
+    note:t.note||'',updated_at:new Date().toISOString()
+  };
+}
+function shiftTrainingIsoYear(value,delta){
+  if(!value)return null;
+  const d=new Date(value+'T12:00:00'),month=d.getMonth(),day=d.getDate();
+  d.setDate(1);d.setFullYear(d.getFullYear()+delta);d.setMonth(month);
+  d.setDate(Math.min(day,new Date(d.getFullYear(),month+1,0).getDate()));
+  return dateKey(d);
+}
+async function moveOrDuplicateTraining(id,{employeeId='',year=null,date=''}={},duplicate=false){
+  if(!trainingCanManage())return;
+  const source=trainings.find(t=>t.id===id);if(!source)return;
+  const row=trainingWriteRow(source);
+  if(employeeId)row.employee_id=employeeId;
+  if(date){
+    const target=trainingDate(date);if(!target)return;
+    if(source.date_precision==='exact'&&source.start_date&&source.end_date){
+      const duration=Math.max(0,Math.round((trainingDate(source.end_date)-trainingDate(source.start_date))/86400000));
+      row.date_precision='exact';row.start_date=date;row.end_date=dateKey(addDays(target,duration));row.training_year=target.getFullYear();
+    }else{
+      row.date_precision='exact';row.start_date=date;row.end_date=date;row.training_year=target.getFullYear();
+    }
+  }else if(year){
+    const targetYear=Number(year);
+    if(source.date_precision==='year'){
+      row.training_year=targetYear;row.start_date=null;row.end_date=null;
+    }else if(source.start_date&&source.end_date){
+      const baseYear=Number(source.start_date.slice(0,4)),delta=targetYear-baseYear;
+      row.start_date=shiftTrainingIsoYear(source.start_date,delta);
+      row.end_date=shiftTrainingIsoYear(source.end_date,delta);
+      row.training_year=targetYear;
+    }
+  }
+  let res;
+  if(duplicate)res=await supabaseClient.from('teamplan_trainings').insert(row);
+  else res=await supabaseClient.from('teamplan_trainings').update(row).eq('id',id);
+  if(res.error){alert(res.error.message);return}
+  await loadTrainingData();
+  showToast(duplicate?'Fortbildung dupliziert':'Fortbildung verschoben');
+}
+function openTrainingDuplicate(id){
+  const t=trainings.find(x=>x.id===id);if(!t||!trainingCanManage())return;
+  openTraining(id);
+  document.getElementById('trainingId').value='';
+  document.getElementById('trainingDialogTitle').textContent='Fortbildung duplizieren';
+}
+async function setTeamStatusEmployee(empId,typeId,year,status){
+  if(!trainingCanManage()||!empId||!typeId||typeId==='__all__')return;
+  const real=trainings.find(t=>t.employee_id===empId&&t.type_id===typeId&&!t._virtual&&trainingIntersectsYear(t,year));
+  if(real){
+    const {error}=await supabaseClient.from('teamplan_trainings').update({status,updated_at:new Date().toISOString()}).eq('id',real.id);
+    if(error){alert(error.message);return}
+    await loadTrainingData();showToast(status==='completed'?'Als absolviert markiert':'Fortbildung eingeplant');return;
+  }
+  await quickCreateTrainingStatus(empId,typeId,year,status);
+}
+function renderTrainingTeamStatusAll(types,employees){
+  const metrics=document.getElementById('trainingTeamStatusMetrics'),board=document.getElementById('trainingTeamStatusBoard');
+  const matrix=types.flatMap(type=>employees.map(employee=>({type,employee,...teamStatusItemFor(employee.id,type.id,trainingTeamStatusYear)})));
+  const completed=matrix.filter(x=>x.state==='completed').length,planned=matrix.filter(x=>x.state==='planned').length,open=matrix.filter(x=>x.state==='open').length,total=matrix.length;
+  metrics.innerHTML='<article><span>Fortbildungen</span><strong>'+types.length+'</strong></article><article><span>Absolviert</span><strong>'+completed+'</strong></article><article><span>In Planung</span><strong>'+planned+'</strong></article><article><span>Noch offen</span><strong>'+open+'</strong></article>';
+  const pool='<section class="training-teamstatus-pool"><header><div><strong>Mitarbeiter</strong><span>Auf eine Fortbildung ziehen → sofort vormerken</span></div></header><div>'+
+    employees.map(e=>'<div class="training-employee-chip" draggable="'+(trainingCanManage()?'true':'false')+'" data-teamstatus-employee-drag="'+e.id+'"><span>'+uiIcon('users')+'</span><b>'+escapeHtml(e.name)+'</b>'+(trainingCanManage()?'<button type="button" class="training-employee-edit-inline" data-employee-edit="'+e.id+'" title="Mitarbeiter bearbeiten">'+uiIcon('edit')+'</button>':'')+'</div>').join('')+'</div></section>';
+  const cards='<div class="training-teamstatus-all-grid">'+types.map(type=>{
+    const rows=matrix.filter(x=>x.type.id===type.id),c=rows.filter(x=>x.state==='completed').length,p=rows.filter(x=>x.state==='planned').length,o=rows.filter(x=>x.state==='open').length,coverage=rows.length?Math.round(c/rows.length*100):0;
+    return '<article class="training-teamstatus-type-card" data-teamstatus-type-drop="'+type.id+'" data-teamstatus-year="'+trainingTeamStatusYear+'"><header><div><strong>'+escapeHtml(type.name)+'</strong><span>'+escapeHtml(type.category||'Fortbildung')+(type.interval_months?' · ↻ '+type.interval_months+' Monate':'')+'</span></div><b>'+coverage+' %</b></header><div class="training-type-card-stats"><span><b>'+c+'</b> absolviert</span><span><b>'+p+'</b> geplant</span><span><b>'+o+'</b> offen</span></div><div class="training-type-drop-hint">'+uiIcon('plus')+' Mitarbeiter hierher ziehen</div><button type="button" class="training-type-open-btn" data-teamstatus-open-type="'+type.id+'">Details öffnen</button></article>';
+  }).join('')+'</div>';
+  board.className='training-teamstatus-board all-mode';
+  board.innerHTML=pool+cards;
+}
 function renderTrainingTeamStatus(){
   const metrics=document.getElementById('trainingTeamStatusMetrics'),board=document.getElementById('trainingTeamStatusBoard');
   if(!metrics||!board)return;
-  const type=trainingTypeById(trainingTeamStatusTypeId),employees=trainingVisibleEmployees();
-  if(!type){metrics.innerHTML='';board.innerHTML='<div class="empty-state">Bitte zuerst eine Fortbildungsart im Katalog anlegen.</div>';return}
+  const types=trainingTypes.filter(t=>t.active!==false),employees=trainingVisibleEmployees();
+  if(!types.length){metrics.innerHTML='';board.innerHTML='<div class="empty-state">Bitte zuerst eine Fortbildungsart im Katalog anlegen.</div>';return}
+  if(trainingTeamStatusTypeId==='__all__'){renderTrainingTeamStatusAll(types,employees);return}
+  const type=trainingTypeById(trainingTeamStatusTypeId);
+  if(!type){trainingTeamStatusTypeId='__all__';renderTrainingTeamStatusAll(types,employees);return}
   let rows=employees.map(e=>({employee:e,...teamStatusItemFor(e.id,type.id,trainingTeamStatusYear)}));
   if(trainingTeamStatusSort==='name')rows.sort((a,b)=>a.employee.name.localeCompare(b.employee.name,'de'));
   else rows.sort((a,b)=>({completed:0,planned:1,open:2}[a.state]-({completed:0,planned:1,open:2}[b.state])||a.employee.name.localeCompare(b.employee.name,'de')));
   const completed=rows.filter(r=>r.state==='completed'),planned=rows.filter(r=>r.state==='planned'),open=rows.filter(r=>r.state==='open'),coverage=rows.length?Math.round(completed.length/rows.length*100):0;
   metrics.innerHTML='<article><span>Teamabdeckung</span><strong>'+coverage+' %</strong></article><article><span>Absolviert</span><strong>'+completed.length+'</strong></article><article><span>In Planung</span><strong>'+planned.length+'</strong></article><article><span>Noch offen</span><strong>'+open.length+'</strong></article>';
-  const col=(title,arr,state)=>'<section class="training-teamstatus-column '+state+'"><header><strong>'+title+'</strong><b>'+arr.length+'</b></header><div>'+ (arr.length?arr.map(r=>{
+  const col=(title,arr,state)=>'<section class="training-teamstatus-column '+state+'" data-teamstatus-drop-state="'+state+'" data-training-type="'+type.id+'" data-training-year="'+trainingTeamStatusYear+'"><header><strong>'+title+'</strong><b>'+arr.length+'</b></header><div>'+ (arr.length?arr.map(r=>{
     const t=r.item;
-    return '<article class="training-teamstatus-person" data-training-employee="'+r.employee.id+'" data-training-type="'+type.id+'" data-training-year="'+trainingTeamStatusYear+'" '+(t&&!t._virtual?'data-training-id="'+t.id+'"':'')+'><div><strong>'+escapeHtml(r.employee.name)+'</strong><span>'+escapeHtml(r.employee.role||'Mitarbeiter')+' · '+(t?escapeHtml(t._virtual?'Wiederholung vorgemerkt':formatTrainingDateRange(t)):'noch kein Eintrag')+'</span></div><button type="button" class="training-person-action" title="Schnellaktionen">⋯</button></article>';
+    return '<article class="training-teamstatus-person" draggable="'+(trainingCanManage()?'true':'false')+'" data-teamstatus-employee-drag="'+r.employee.id+'" data-training-employee="'+r.employee.id+'" data-training-type="'+type.id+'" data-training-year="'+trainingTeamStatusYear+'" '+(t&&!t._virtual?'data-training-id="'+t.id+'"':'')+'><div><strong>'+escapeHtml(r.employee.name)+'</strong><span>'+escapeHtml(r.employee.role||'Mitarbeiter')+' · '+(t?escapeHtml(t._virtual?'Wiederholung vorgemerkt':formatTrainingDateRange(t)):'noch kein Eintrag')+'</span></div><div class="training-person-buttons">'+(trainingCanManage()?'<button type="button" class="training-employee-edit-inline" data-employee-edit="'+r.employee.id+'" title="Mitarbeiter bearbeiten">'+uiIcon('edit')+'</button>':'')+'<button type="button" class="training-person-action" title="Schnellaktionen">•••</button></div></article>';
   }).join(''):'<div class="empty-state">'+(state==='completed'?'Noch niemand absolviert.':state==='planned'?'Niemand in Planung.':'Alle berücksichtigt.')+'</div>')+'</div></section>';
+  board.className='training-teamstatus-board';
   board.innerHTML=col('Absolviert',completed,'completed')+col('In Planung',planned,'planned')+col('Noch ohne Eintrag',open,'open');
 }
 function renderTrainingClassic(items){
