@@ -1743,10 +1743,12 @@ function renderTrainingCalendar(items){
     for(let i=0;i<firstDow;i++)cells+='<span class="training-day blank"></span>';
     for(let day=1;day<=days;day++){
       const key=trainingYear+'-'+String(m+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
-      const matches=monthItems.filter(t=>t.start_date<=key&&t.end_date>=key);
+      const matches=monthItems.filter(t=>t.start_date<=key&&t.end_date>=key),realMatches=matches.filter(t=>!t._virtual);
+      const uniqueReal=[...new Map(realMatches.map(t=>[t.id,t])).values()];
       const statusClass=matches.some(t=>t.status==='completed')?'completed':matches.some(t=>t.status==='planned')?'planned':matches.length?'cancelled':'';
       const titles=matches.map(t=>trainingEmployeeName(t.employee_id)+': '+t.title).join(' · ');
-      cells+='<button type="button" class="training-day '+(matches.length?'has-training '+statusClass:'')+'" data-date="'+key+'" title="'+escapeHtml(titles)+'"><span>'+day+'</span>'+(matches.length?'<b>'+matches.length+'</b>':'')+'</button>';
+      const dragAttrs=trainingCanManage()&&uniqueReal.length===1?' draggable="true" data-training-id="'+uniqueReal[0].id+'"':'';
+      cells+='<button type="button" class="training-day '+(matches.length?'has-training '+statusClass:'')+'" data-date="'+key+'" title="'+escapeHtml(titles)+'"'+dragAttrs+'><span>'+day+'</span>'+(matches.length?'<b>'+matches.length+'</b>':'')+'</button>';
     }
     return '<article class="training-month training-calendar-month glass"><div class="training-month-head"><strong>'+month+'</strong><span>'+monthItems.length+' · '+escapeHtml(euro(cost))+'</span></div><div class="training-weekdays"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div><div class="training-day-grid">'+cells+'</div></article>';
   }).join('');
@@ -1939,6 +1941,7 @@ function bindTrainingRenderedEvents(){
 function renderTrainingModule(){
   if(!document.getElementById('trainingModule'))return;
   populateTrainingControls();applyTrainingRoleUI();
+  document.querySelector('.training-filterbar')?.classList.toggle('hidden',trainingView==='multiyear'||trainingView==='teamstatus');
   document.getElementById('trainingOverviewView').classList.toggle('hidden',trainingView!=='overview');
   document.getElementById('trainingCalendarView').classList.toggle('hidden',trainingView!=='calendar');
   document.getElementById('trainingMultiYearView').classList.toggle('hidden',trainingView!=='multiyear');
