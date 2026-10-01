@@ -543,6 +543,8 @@ function render(){
   const dates=activePlannerDates(), holidays=holidaysNRW(viewDate.getFullYear());
   document.getElementById('monthLabel').textContent=MONTHS[viewDate.getMonth()];
   document.getElementById('yearLabel').textContent=viewDate.getFullYear();
+  const vacationHeadingSub=document.getElementById('vacationHeadingSub');
+  if(vacationHeadingSub)vacationHeadingSub.textContent='Teamübersicht · '+viewDate.getFullYear();
   const filter=document.getElementById('searchInput').value.trim().toLowerCase();
   const employees=[...state.employees].sort((a,b)=>a.order-b.order).filter(e=>!filter||e.name.toLowerCase().includes(filter));
   let html='<table class="plan-table"><thead><tr class="month-band-row"><th class="employee-col month-band-label">Jahresverlauf</th>';
