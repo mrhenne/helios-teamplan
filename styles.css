@@ -5215,3 +5215,135 @@ body.dark-mode .compact-drawer-toggle{background:#172723;color:#e7f0ed}
     max-width:none!important;
   }
 }
+
+
+/* === 2026-10-01 TOPBAR CLARITY PASS === */
+[hidden]{display:none!important}
+
+/* Kopfzeile: verständliche Beschriftungen statt Icon-Rätsel */
+@media(min-width:1000px){
+  .topbar{
+    min-height:48px!important;
+    height:48px!important;
+    max-height:48px!important;
+    padding:6px 9px!important;
+    overflow:visible!important;
+  }
+
+  .brand{
+    height:36px!important;
+    min-width:250px!important;
+    gap:8px!important;
+  }
+  .brand-mark{
+    width:38px!important;
+    min-width:38px!important;
+    height:28px!important;
+    min-height:28px!important;
+    padding:0 5px!important;
+    border-radius:8px!important;
+    font-size:9px!important;
+    font-weight:900!important;
+    letter-spacing:.04em!important;
+    display:grid!important;
+    place-items:center!important;
+    line-height:1!important;
+    overflow:visible!important;
+  }
+  .brand-copy{
+    min-width:200px!important;
+    overflow:visible!important;
+  }
+  .brand-copy h1{
+    font-size:11px!important;
+    line-height:1.1!important;
+    overflow:visible!important;
+    text-overflow:clip!important;
+    white-space:nowrap!important;
+  }
+
+  .top-global{
+    height:36px!important;
+    gap:5px!important;
+    overflow:visible!important;
+  }
+  .top-status-grid,
+  .top-action-grid{
+    height:36px!important;
+    gap:5px!important;
+    overflow:visible!important;
+  }
+
+  .top-status-item,
+  .top-action-section{
+    height:30px!important;
+    min-height:30px!important;
+    overflow:visible!important;
+  }
+
+  .top-status-item .sync-pill{
+    height:28px!important;
+    min-height:28px!important;
+    max-height:28px!important;
+    padding:0 7px!important;
+    line-height:1!important;
+    overflow:hidden!important;
+  }
+
+  .role-stack .role-select{
+    height:28px!important;
+    min-height:28px!important;
+    max-height:28px!important;
+  }
+
+  .top-tool{
+    width:auto!important;
+    min-width:auto!important;
+    max-width:none!important;
+    height:28px!important;
+    min-height:28px!important;
+    max-height:28px!important;
+    padding:0 8px!important;
+    gap:4px!important;
+    overflow:visible!important;
+  }
+  .top-tool>span{
+    display:inline!important;
+    font-size:7px!important;
+    white-space:nowrap!important;
+  }
+  .top-tool .ui-icon{
+    width:10px!important;
+    height:10px!important;
+  }
+
+  .global-theme-control{
+    min-width:88px!important;
+    height:28px!important;
+    padding:0 6px!important;
+  }
+  .theme-switch{
+    width:60px!important;
+    min-width:60px!important;
+    height:21px!important;
+    min-height:21px!important;
+  }
+}
+
+/* Normale Desktopbreite: lange Begriffe kompakt, aber lesbar */
+@media(min-width:1000px) and (max-width:1299px){
+  .brand{min-width:220px!important}
+  .brand-copy{min-width:170px!important}
+  .brand-copy h1{font-size:9.5px!important}
+  #authUserPill{max-width:105px!important}
+  .top-tool{padding:0 6px!important}
+  .top-tool>span{font-size:6.5px!important}
+  .global-theme-control{min-width:78px!important}
+}
+
+/* Auf breiten Displays bewusst komfortabler */
+@media(min-width:1300px){
+  .brand-copy h1{font-size:11.5px!important}
+  #authUserPill{max-width:170px!important}
+  .top-tool>span{font-size:7.3px!important}
+}
