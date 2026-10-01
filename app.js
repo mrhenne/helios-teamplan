@@ -114,7 +114,7 @@ function updateDiscussionBadge(){
   const badge=document.getElementById('discussionBadge'),btn=document.getElementById('discussionsBtn');
   const openCount=discussions.filter(d=>d.status==='open').length;
   if(badge){badge.textContent=String(openCount);badge.classList.toggle('hidden',!openCount)}
-  if(btn){btn.classList.toggle('hidden',!authUser);btn.title=openCount?openCount+' offene Abstimmung'+(openCount===1?'':'en'):'Planungs-Abstimmungen'}
+  if(btn){btn.classList.toggle('hidden',!authUser);btn.title=openCount?openCount+' aktiven Chat'+(openCount===1?'':'en'):'Team-Chat'}
 }
 async function loadDiscussions(){
   if(!supabaseClient||!authUser)return;
@@ -184,7 +184,7 @@ async function createDiscussionFromForm(){
   if(error){alert(error.message);return}
   const {error:msgError}=await supabaseClient.from('teamplan_messages').insert({discussion_id:data.id,team_id:cfg.teamId,user_id:authUser.id,author_name:author,message});
   if(msgError){alert(msgError.message);return}
-  document.getElementById('newDiscussionDialog').close();activeDiscussionId=data.id;await loadDiscussions();await selectDiscussion(data.id);showToast('Abstimmung gestartet');
+  document.getElementById('newDiscussionDialog').close();activeDiscussionId=data.id;await loadDiscussions();await selectDiscussion(data.id);showToast('Chat gestartet');
 }
 async function sendDiscussionMessage(){
   if(!canDiscuss()||!activeDiscussionId)return;
@@ -200,7 +200,7 @@ async function toggleDiscussionResolved(){
   const status=d.status==='open'?'resolved':'open';
   const {error}=await supabaseClient.from('teamplan_discussions').update({status,updated_at:new Date().toISOString()}).eq('id',d.id);
   if(error){alert(error.message);return}
-  await loadDiscussions();await selectDiscussion(d.id);showToast(status==='resolved'?'Abstimmung erledigt':'Abstimmung wieder geöffnet');
+  await loadDiscussions();await selectDiscussion(d.id);showToast(status==='resolved'?'Chat erledigt':'Chat wieder geöffnet');
 }
 async function startDiscussionRealtime(){
   if(!supabaseClient||!authUser)return;
@@ -680,6 +680,14 @@ function updateDragActionBar(){
   document.getElementById('dragActionCount').textContent=`${dragSelectedKeys.size} ${dragSelectedKeys.size===1?'Tag':'Tage'}`;
   document.getElementById('dragActionEmployee').textContent=emp?.name||'';
   document.getElementById('dragApprovedVacationBtn').classList.toggle('hidden',!canApprove());
+  document.getElementById('dragPlannerMarkers').classList.toggle('hidden',!canManage());
+  if(canManage()){
+    document.querySelectorAll('[data-drag-marker]').forEach(btn=>{
+      const marker=btn.dataset.dragMarker;
+      const allHave=[...dragSelectedKeys].every(key=>(entryFor(dragEmployeeId,key).plannerMarkers||[]).includes(marker));
+      btn.classList.toggle('active',allHave);
+    });
+  }
   document.getElementById('dragApproveBtn').classList.toggle('hidden',!canApprove());
   document.getElementById('dragRejectBtn').classList.toggle('hidden',!canApprove());
   document.getElementById('dragActionBar').classList.remove('hidden');
@@ -704,9 +712,25 @@ function applyDragCode(code){
   if(!state.entries[dragEmployeeId])state.entries[dragEmployeeId]={};
   dragSelectedKeys.forEach(key=>{
     const old=entryFor(dragEmployeeId,key),codes=[...new Set([...(old.codes||[]),code])];
-    state.entries[dragEmployeeId][key]={codes,priority:old.priority||0,note:old.note||'',status:sessionRole==='employee'?'wish':(old.status||'wish')};
+    state.entries[dragEmployeeId][key]={...old,codes,priority:old.priority||0,note:old.note||'',status:sessionRole==='employee'?'wish':(old.status||'wish'),plannerMarkers:old.plannerMarkers||[]};
   });
   const changed=[...dragSelectedKeys];const count=changed.length;persist();changed.forEach(key=>saveRemoteEntry(dragEmployeeId,key,state.entries[dragEmployeeId][key]));clearDragSelection();render();showToast(`${code} für ${count} Tage eingetragen`);
+}
+function applyDragPlannerMarker(marker){
+  if(!canManage()||!dragEmployeeId||!dragSelectedKeys.size)return;
+  const keys=[...dragSelectedKeys];
+  const remove=keys.every(key=>(entryFor(dragEmployeeId,key).plannerMarkers||[]).includes(marker));
+  trackAction(remove?'Planungsstatus entfernt':'Planungsstatus gesetzt',marker+' · '+keys.length+' Tage');
+  if(!state.entries[dragEmployeeId])state.entries[dragEmployeeId]={};
+  keys.forEach(key=>{
+    const old=entryFor(dragEmployeeId,key),set=new Set(old.plannerMarkers||[]);
+    remove?set.delete(marker):set.add(marker);
+    const next={...old,plannerMarkers:[...set]};
+    if((next.codes||[]).length||next.priority||next.note||next.plannerMarkers.length)state.entries[dragEmployeeId][key]=next;
+    else delete state.entries[dragEmployeeId][key];
+  });
+  const count=keys.length;persist();clearDragSelection();render();
+  showToast(marker+' '+(remove?'entfernt':'gesetzt')+' · '+count+' Tage');
 }
 function applyApprovedVacation(){
   if(!canApprove()||!dragEmployeeId||!dragSelectedKeys.size)return;
@@ -770,7 +794,7 @@ function showCellContextMenu(event,empId,key){
     (canApprove()?'<button type="button" class="context-action approve-context" data-context-approved="1"><b>U✓</b><span>Urlaub genehmigt</span></button>':'')+
     markerButtons+
     '<div class="context-separator"></div>'+
-    (canDiscuss()?'<button type="button" class="context-action discussion-context" data-context-discussion="1"><b>◌</b><span>Abstimmung starten…</span></button>':'')+
+    (canDiscuss()?'<button type="button" class="context-action discussion-context" data-context-discussion="1"><b>◌</b><span>Team-Chat starten…</span></button>':'')+
     '<button type="button" class="context-action" data-context-edit="1"><b>✎</b><span>Vollständig bearbeiten…</span></button>'+
     '<button type="button" class="context-action danger-context" data-context-delete="1"><b>⌫</b><span>Eintrag löschen</span></button>';
   menu.querySelectorAll('[data-context-code]').forEach(b=>b.addEventListener('click',()=>quickCellCode(empId,key,b.dataset.contextCode)));
@@ -1172,7 +1196,7 @@ function renderConflicts(){
   const items=conflictItems(),summary=document.getElementById('conflictsSummary'),list=document.getElementById('conflictsList');
   const counts=items.reduce((a,x)=>(a[x.type]=(a[x.type]||0)+1,a),{});
   summary.innerHTML=`<div><strong>${items.length}</strong><span>gesamt</span></div><div><strong>${counts['Besetzung']||0}</strong><span>Besetzung</span></div><div><strong>${counts['Sperrzeit']||0}</strong><span>Sperrzeiten</span></div><div><strong>${counts['Offener Wunsch']||0}</strong><span>offene Wünsche</span></div>`;
-  list.innerHTML=items.length?items.slice(0,500).map(x=>`<div class="management-item conflict-item" data-date="${x.key}" data-type="${escapeHtml(x.type)}"><button type="button" class="conflict-jump"><div><strong>${x.key} · ${escapeHtml(x.type)}</strong><span>${escapeHtml(x.text)}</span></div></button>${canDiscuss()?'<button type="button" class="btn ghost conflict-discuss">◌ Abstimmen</button>':''}</div>`).join(''):'<div class="empty-state success-state">Keine Konflikte gefunden.</div>';
+  list.innerHTML=items.length?items.slice(0,500).map(x=>`<div class="management-item conflict-item" data-date="${x.key}" data-type="${escapeHtml(x.type)}"><button type="button" class="conflict-jump"><div><strong>${x.key} · ${escapeHtml(x.type)}</strong><span>${escapeHtml(x.text)}</span></div></button>${canDiscuss()?'<button type="button" class="btn ghost conflict-discuss">✉ Chat</button>':''}</div>`).join(''):'<div class="empty-state success-state">Keine Konflikte gefunden.</div>';
   list.querySelectorAll('.conflict-jump').forEach(btn=>btn.addEventListener('click',()=>{const item=btn.closest('.conflict-item'),d=new Date(item.dataset.date+'T12:00:00');viewDate=new Date(d.getFullYear(),d.getMonth(),1);currentView='month';document.getElementById('conflictsDialog').close();render()}));
   list.querySelectorAll('.conflict-discuss').forEach(btn=>btn.addEventListener('click',()=>{const item=btn.closest('.conflict-item');document.getElementById('conflictsDialog').close();openNewDiscussion({date:item.dataset.date,title:item.dataset.type+' · '+item.dataset.date,message:'Bitte hierzu abstimmen.'})}));
 }
@@ -1492,6 +1516,7 @@ document.getElementById('blackoutsForm').addEventListener('submit',e=>{
   state.blackouts.push({id:uid(),name,start,end,mode});persist();renderBlackouts();render();e.target.reset();showToast('Sperrzeit gespeichert');
 });
 document.querySelectorAll('[data-drag-code]').forEach(b=>b.addEventListener('click',()=>applyDragCode(b.dataset.dragCode)));
+document.querySelectorAll('[data-drag-marker]').forEach(b=>b.addEventListener('click',()=>applyDragPlannerMarker(b.dataset.dragMarker)));
 document.getElementById('dragApprovedVacationBtn').addEventListener('click',applyApprovedVacation);
 document.getElementById('dragApproveBtn').addEventListener('click',()=>applyDragStatus('approved'));
 document.getElementById('dragRejectBtn').addEventListener('click',()=>applyDragStatus('rejected'));
