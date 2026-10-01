@@ -1758,7 +1758,7 @@ function trainingItemsForMonth(items,year,month){
 function renderTrainingCalendar(items){
   const box=document.getElementById('trainingYearCalendar');if(!box)return;
   const undated=items.filter(t=>t.date_precision==='year'&&Number(t.training_year)===Number(trainingYear));
-  const undatedHtml=undated.length?'<article class="training-undated glass"><div class="training-month-head"><strong>Termin noch offen</strong><span>'+undated.length+'</span></div><div class="training-month-items">'+undated.map(t=>'<button type="button" class="training-month-item undated '+t.status+(t._virtual?' virtual':'')+'" data-training-id="'+(t._sourceId||t.id)+'" data-training-virtual="'+(t._virtual?'1':'0')+'" '+(trainingCanManage()&&!t._virtual?'draggable="true"':'')+'><b>'+escapeHtml(t.title)+(trainingRecurrenceLabel(t)?' <span class="training-repeat-inline">↻</span>':'')+'</b><span>'+escapeHtml(trainingEmployeeName(t.employee_id))+'</span><small>im Jahr '+escapeHtml(String(t.training_year))+(trainingRecurrenceLabel(t)?' · '+escapeHtml(trainingRecurrenceLabel(t)):'')+'</small></button>').join('')+'</div></article>':'';
+  const undatedHtml=undated.length?'<article class="training-undated glass"><div class="training-month-head"><strong>Termin noch offen</strong><span>'+undated.length+'</span></div><div class="training-month-items">'+undated.map(t=>'<button type="button" class="training-month-item undated '+t.status+(t._virtual?' virtual':'')+'" style="--training-color:'+escapeHtml(trainingColor(t))+'" data-training-id="'+(t._sourceId||t.id)+'" data-training-virtual="'+(t._virtual?'1':'0')+'" '+(trainingCanManage()&&!t._virtual?'draggable="true"':'')+'><b>'+escapeHtml(t.title)+(trainingRecurrenceLabel(t)?' <span class="training-repeat-inline">↻</span>':'')+'</b><span>'+escapeHtml(trainingEmployeeName(t.employee_id))+'</span><small>im Jahr '+escapeHtml(String(t.training_year))+(trainingRecurrenceLabel(t)?' · '+escapeHtml(trainingRecurrenceLabel(t)):'')+'</small></button>').join('')+'</div></article>':'';
   box.innerHTML=undatedHtml+MONTHS.map((month,m)=>{
     const monthItems=trainingItemsForMonth(items,trainingYear,m);
     const cost=monthItems.filter((t,i,a)=>a.findIndex(x=>(x._sourceId||x.id)===(t._sourceId||t.id))===i).reduce((s,t)=>s+Number(t.cost||0),0);
@@ -1772,7 +1772,8 @@ function renderTrainingCalendar(items){
       const statusClass=matches.some(t=>t.status==='completed')?'completed':matches.some(t=>t.status==='planned')?'planned':matches.length?'cancelled':'';
       const titles=matches.map(t=>trainingEmployeeName(t.employee_id)+': '+t.title).join(' · ');
       const dragAttrs=trainingCanManage()&&uniqueReal.length===1?' draggable="true" data-training-id="'+uniqueReal[0].id+'"':'';
-      cells+='<button type="button" class="training-day '+(matches.length?'has-training '+statusClass:'')+'" data-date="'+key+'" title="'+escapeHtml(titles)+'"'+dragAttrs+'><span>'+day+'</span>'+(matches.length?'<b>'+matches.length+'</b>':'')+'</button>';
+      const colorStyle=matches.length===1?' style="--training-color:'+escapeHtml(trainingColor(matches[0]))+'"':'';
+      cells+='<button type="button" class="training-day '+(matches.length?'has-training '+statusClass:'')+'" data-date="'+key+'" title="'+escapeHtml(titles)+'"'+colorStyle+dragAttrs+'><span>'+day+'</span>'+(matches.length?'<b>'+matches.length+'</b>':'')+'</button>';
     }
     return '<article class="training-month training-calendar-month glass"><div class="training-month-head"><strong>'+month+'</strong><span>'+monthItems.length+' · '+escapeHtml(euro(cost))+'</span></div><div class="training-weekdays"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div><div class="training-day-grid">'+cells+'</div></article>';
   }).join('');
@@ -1794,7 +1795,7 @@ function renderTrainingMultiYear(){
         (trainingCanManage()?'<button type="button" class="training-my-add" data-training-add-employee="'+e.id+'" data-training-add-year="'+y+'">+ Fortbildung</button>':'')+
         rows.map(t=>{
           const recurrence=trainingRecurrenceLabel(t),multi=t.date_precision!=='year'&&t.start_date&&t.end_date&&t.start_date.slice(0,4)!==t.end_date.slice(0,4);
-          return '<button type="button" class="training-my-item '+t.status+(t._virtual?' virtual':'')+'" data-training-id="'+(t._sourceId||t.id)+'" data-training-virtual="'+(t._virtual?'1':'0')+'" data-training-employee="'+e.id+'" data-training-type="'+(t.type_id||'')+'" data-training-year="'+y+'" '+(trainingCanManage()&&!t._virtual?'draggable="true"':'')+'><b>'+(t._virtual?'◇ ':'● ')+escapeHtml(t.title)+'</b><small>'+escapeHtml(t._virtual?'voraussichtlich':trainingStatusLabel(t))+(recurrence?' · '+escapeHtml(recurrence):'')+(multi?' · ↔ mehrjährig':'')+'</small></button>';
+          return '<button type="button" class="training-my-item '+t.status+(t._virtual?' virtual':'')+'" style="--training-color:'+escapeHtml(trainingColor(t))+'" data-training-id="'+(t._sourceId||t.id)+'" data-training-virtual="'+(t._virtual?'1':'0')+'" data-training-employee="'+e.id+'" data-training-type="'+(t.type_id||'')+'" data-training-year="'+y+'" '+(trainingCanManage()&&!t._virtual?'draggable="true"':'')+'><b>'+(t._virtual?'◇ ':'● ')+escapeHtml(t.title)+'</b><small>'+escapeHtml(t._virtual?'voraussichtlich':trainingStatusLabel(t))+(recurrence?' · '+escapeHtml(recurrence):'')+(multi?' · ↔ mehrjährig':'')+'</small></button>';
         }).join('')+
       '</div>';
     });
@@ -1919,7 +1920,7 @@ function renderTrainingClassic(items){
     const due=trainingDueDate(t),rec=trainingRecurrenceLabel(t)||'—';
     return '<tr class="'+(t._virtual?'virtual':'')+'" data-training-id="'+(t._sourceId||t.id)+'" data-training-virtual="'+(t._virtual?'1':'0')+'" '+(trainingCanManage()&&!t._virtual?'draggable="true"':'')+'>'+
       '<td>'+escapeHtml(trainingEmployeeName(t.employee_id))+'</td>'+
-      '<td><strong>'+escapeHtml(t.title)+'</strong><small>'+escapeHtml(t.category||'')+'</small></td>'+
+      '<td class="training-classic-title" style="--training-color:'+escapeHtml(trainingColor(t))+'"><strong><i class="training-kind-dot"></i>'+escapeHtml(t.title)+'</strong><small>'+escapeHtml(t.category||'')+'</small></td>'+
       '<td>'+escapeHtml(formatTrainingDateRange(t))+'</td>'+
       '<td><span class="training-repeat-badge '+(t.recurring?'active':'')+'">'+escapeHtml(rec)+'</span></td>'+
       '<td><span class="training-status '+(trainingDueState(t)||t.status)+'">'+escapeHtml(t._virtual?'Vorschau':trainingStatusLabel(t))+'</span></td>'+
@@ -1981,7 +1982,7 @@ function showTrainingContextMenu(x,y,{trainingId='',employeeId='',typeId='',year
   const resolvedYear=Number(year||item?.training_year||trainingYear);
   menu.innerHTML='<div class="training-context-head"><strong>'+escapeHtml(emp?.name||'Fortbildung')+'</strong><span>'+(item?escapeHtml(item.title):escapeHtml(trainingTypeById(resolvedType)?.name||String(resolvedYear)))+'</span></div>'+
     (item?'<button data-training-context-status="planned">'+uiIcon('calendar')+'<span>Auf Geplant setzen</span></button><button data-training-context-status="in_progress">'+uiIcon('focus')+'<span>In Durchführung</span></button><button data-training-context-status="completed">'+uiIcon('check')+'<span>Als absolviert markieren</span></button><button data-training-context-status="cancelled">'+uiIcon('x')+'<span>Als abgesagt markieren</span></button><div class="training-context-sep"></div><button data-training-context-edit="1">'+uiIcon('edit')+'<span>Fortbildung bearbeiten…</span></button><button data-training-context-copy="1">'+uiIcon('copy')+'<span>Fortbildung duplizieren…</span></button>':
-      (resolvedType?'<button data-training-context-create="planned">'+uiIcon('calendar')+'<span>Geplant vormerken</span></button><button data-training-context-create="completed">'+uiIcon('check')+'<span>Als absolviert erfassen</span></button><div class="training-context-sep"></div>':'')+
+      (resolvedType?'<button data-training-context-create="planned">'+uiIcon('calendar')+'<span>Geplant vormerken</span></button><button data-training-context-create="in_progress">'+uiIcon('focus')+'<span>In Durchführung erfassen</span></button><button data-training-context-create="completed">'+uiIcon('check')+'<span>Als absolviert erfassen</span></button><div class="training-context-sep"></div>':'')+
       '<button data-training-context-new="1">'+uiIcon('plus')+'<span>Fortbildung detailliert anlegen…</span></button>')+
     '<div class="training-context-sep"></div><button data-training-context-employee="1">'+uiIcon('users')+'<span>Mitarbeiteransicht öffnen</span></button>'+
     (resolvedEmp&&canEditEmployees()?'<button data-training-context-edit-employee="1">'+uiIcon('edit')+'<span>Mitarbeiter bearbeiten…</span></button>':'');
