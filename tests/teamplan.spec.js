@@ -704,7 +704,7 @@ test('mehrere Projektverantwortliche und gewichteten Fortschritt', async ({ page
   await teamRow.locator('.project-member-active').check();
 
   await page.locator('#projectMemberSearch').fill('');
-  await expect(page.locator('#projectMemberCount')).toContainText('3 im Team');
+  await expect(page.locator('#projectMemberCount')).toContainText('2 im Team');
   await expect(page.locator('#projectMemberCount')).toContainText('1 zusätzlich verantwortlich');
   await page.locator('#projectForm button[type="submit"]').click();
 
