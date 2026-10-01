@@ -2663,7 +2663,7 @@ function renderProjectTeam(){
     const memberProjectIds=new Set(projectMembers.filter(m=>m.employee_id===e.id).map(m=>m.project_id));
     const projects=projectProjects.filter(p=>(p.lead_employee_id===e.id||memberProjectIds.has(p.id))&&p.status!=='done');
     const initials=e.name.split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase();
-    return '<article class="project-team-card"><header><div class="project-team-avatar">'+escapeHtml(initials)+'</div><div><h3>'+escapeHtml(e.name)+'</h3><small>'+projects.length+' Projekte · '+tasks.length+' offene Aufgaben</small></div></header><div class="project-team-list">'+projects.map(p=>'<button type="button" data-project-id="'+p.id+'"><span>▣ '+escapeHtml(p.name)+'</span><b>'+(p.lead_employee_id===e.id?'Leitung':'Team')+'</b></button>').join('')+tasks.slice(0,6).map(t=>'<button type="button" data-project-task-id="'+t.id+'"><span>✓ '+escapeHtml(t.title)+'</span><b>'+escapeHtml(projectTaskStatusLabel(t.status))+'</b></button>').join('')+'</div></article>';
+    return '<article class="project-team-card"><header><div class="project-team-avatar">'+escapeHtml(initials)+'</div><div><h3>'+escapeHtml(e.name)+'</h3><small>'+projects.length+' Projekte · '+tasks.length+' offene Aufgaben</small></div></header><div class="project-team-list">'+projects.map(p=>'<button type="button" data-project-id="'+p.id+'"><span>▣ '+escapeHtml(p.name)+'</span><b>'+(p.lead_employee_id===e.id?'Leitung':projectMembers.some(m=>m.project_id===p.id&&m.employee_id===e.id&&m.is_responsible)?'Verantwortlich':'Team')+'</b></button>').join('')+tasks.slice(0,6).map(t=>'<button type="button" data-project-task-id="'+t.id+'"><span>✓ '+escapeHtml(t.title)+'</span><b>'+escapeHtml(projectTaskStatusLabel(t.status))+'</b></button>').join('')+'</div></article>';
   }).join('');
 }
 function renderProjectNotes(){
@@ -2695,55 +2695,32 @@ function renderProjectModule(){
 }
 function setProjectView(view){projectView=view;localStorage.setItem('teamplan-project-view',view);renderProjectModule()}
 function updateProjectMemberCount(){
-  const count=document.querySelectorAll('#projectMembersList input[type="checkbox"]:checked').length;
+  const selected=document.querySelectorAll('#projectMembersList .project-member-active:checked').length;
+  const responsible=document.querySelectorAll('#projectMembersList .project-member-responsible:checked').length;
   const label=document.getElementById('projectMemberCount');
-  if(label)label.textContent=count+' '+(count===1?'Mitarbeiter':'Mitarbeitende')+' ausgewählt';
+  if(label)label.textContent=selected+' im Team · '+responsible+' zusätzlich verantwortlich';
 }
 function renderProjectMemberChoices(projectId){
   const box=document.getElementById('projectMembersList');if(!box)return;
-  const selected=new Set(projectMembers.filter(m=>m.project_id===projectId).map(m=>m.employee_id));
-  document.querySelectorAll('#projectMembersList input[type="checkbox"]:checked').forEach(x=>selected.add(x.value));
+  const current=new Map(projectMembers.filter(m=>m.project_id===projectId).map(m=>[m.employee_id,{employee_id:m.employee_id,is_responsible:!!m.is_responsible,_checked:true}]));
+  document.querySelectorAll('#projectMembersList .project-member-row').forEach(row=>{
+    const id=row.dataset.employeeId;if(!id)return;
+    current.set(id,{employee_id:id,is_responsible:row.querySelector('.project-member-responsible')?.checked===true,_checked:row.querySelector('.project-member-active')?.checked===true});
+  });
   const q=(document.getElementById('projectMemberSearch')?.value||'').trim().toLowerCase();
-  box.innerHTML=[...state.employees].sort((a,b)=>a.order-b.order).filter(emp=>!q||emp.name.toLowerCase().includes(q)).map(emp=>'<label><input type="checkbox" value="'+emp.id+'" '+(selected.has(emp.id)?'checked':'')+'> <span>'+escapeHtml(emp.name)+'</span></label>').join('');
-  box.querySelectorAll('input[type="checkbox"]').forEach(input=>input.addEventListener('change',updateProjectMemberCount));
+  box.innerHTML=[...state.employees].sort((a,b)=>a.order-b.order).filter(emp=>!q||emp.name.toLowerCase().includes(q)).map(emp=>{
+    const saved=current.get(emp.id),checked=!!saved?('_checked' in saved?saved._checked:true):false,responsible=!!saved?.is_responsible;
+    return '<div class="project-member-row" data-employee-id="'+emp.id+'"><label class="project-member-main"><input class="project-member-active" type="checkbox" value="'+emp.id+'" '+(checked?'checked':'')+'><span>'+escapeHtml(emp.name)+'</span></label><label class="project-member-responsible-label" title="Darf das Projekt wie die Projektleitung bearbeiten"><input class="project-member-responsible" type="checkbox" '+(responsible?'checked':'')+'><span>Verantwortlich</span></label></div>';
+  }).join('');
+  box.querySelectorAll('.project-member-active').forEach(input=>input.addEventListener('change',()=>{const row=input.closest('.project-member-row');if(!input.checked){const r=row?.querySelector('.project-member-responsible');if(r)r.checked=false}updateProjectMemberCount()}));
+  box.querySelectorAll('.project-member-responsible').forEach(input=>input.addEventListener('change',()=>{if(input.checked){const active=input.closest('.project-member-row')?.querySelector('.project-member-active');if(active)active.checked=true}updateProjectMemberCount()}));
   updateProjectMemberCount();
 }
+function collectProjectMemberRows(){
+  return [...document.querySelectorAll('#projectMembersList .project-member-row')].filter(row=>row.querySelector('.project-member-active')?.checked).map(row=>({employee_id:row.dataset.employeeId,is_responsible:row.querySelector('.project-member-responsible')?.checked===true}));
+}
 function collectProjectMemberChoices(){
-  return [...document.querySelectorAll('#projectMembersList input[type="checkbox"]:checked')].map(x=>x.value);
-}
-function projectRecencyBadge(item){
-  const now=Date.now(),created=item?.created_at?new Date(item.created_at).getTime():0,updated=item?.updated_at?new Date(item.updated_at).getTime():0;
-  if(created&&now-created<48*3600*1000)return '<span class="project-change-badge new">Neu</span>';
-  if(updated&&now-updated<48*3600*1000)return '<span class="project-change-badge updated">Aktualisiert</span>';
-  return '';
-}
-function renderProjectDialogTasks(projectId){
-  const box=document.getElementById('projectTasksBox'),list=document.getElementById('projectDialogTasks');
-  if(!box||!list)return;
-  box.classList.toggle('hidden',!projectId);
-  if(!projectId){list.innerHTML='';return}
-  const rows=projectTasks.filter(t=>t.project_id===projectId).sort((a,b)=>(a.status==='done')-(b.status==='done')||(a.due_date||'9999').localeCompare(b.due_date||'9999'));
-  list.innerHTML=rows.length?rows.map(t=>'<button type="button" class="project-dialog-task" data-project-task-id="'+t.id+'"><span><strong>'+escapeHtml(t.title)+'</strong><small>'+escapeHtml(projectEmployeeName(t.assignee_employee_id))+(t.due_date?' · bis '+escapeHtml(projectDateLabel(t.due_date)):'')+'</small></span><span class="project-task-status '+escapeHtml(t.status)+'">'+escapeHtml(projectTaskStatusLabel(t.status))+'</span></button>').join(''):'<div class="empty-state">Noch keine Aufgaben. Lege die erste Aufgabe für dieses Projekt an.</div>';
-  list.querySelectorAll('[data-project-task-id]').forEach(btn=>btn.addEventListener('click',()=>{document.getElementById('projectDialog')?.close();openProjectTask(btn.dataset.projectTaskId)}));
-}
-function populateProjectAssigneeForProject(projectId,selected=''){
-  const el=document.getElementById('projectTaskAssignee');if(!el)return;
-  const memberIds=new Set(projectMembers.filter(m=>m.project_id===projectId).map(m=>m.employee_id));
-  const project=projectProjects.find(p=>p.id===projectId);if(project?.lead_employee_id)memberIds.add(project.lead_employee_id);
-  const employees=[...state.employees].sort((a,b)=>a.order-b.order);
-  const team=employees.filter(e=>memberIds.has(e.id)),others=employees.filter(e=>!memberIds.has(e.id));
-  el.innerHTML='<option value="">Nicht zugewiesen</option>'+(team.length?'<optgroup label="Projektteam">'+team.map(e=>'<option value="'+e.id+'">'+escapeHtml(e.name)+'</option>').join('')+'</optgroup>':'')+(others.length?'<optgroup label="Weitere Mitarbeitende">'+others.map(e=>'<option value="'+e.id+'">'+escapeHtml(e.name)+'</option>').join('')+'</optgroup>':'');
-  if([...el.options].some(o=>o.value===selected))el.value=selected;
-}
-async function ensureProjectMember(projectId,employeeId){
-  if(!projectId||!employeeId||projectMembers.some(m=>m.project_id===projectId&&m.employee_id===employeeId))return;
-  const teamId=(window.TEAMPLAN_CONFIG||{}).teamId||'local';
-  if(supabaseClient&&authUser){
-    const {error}=await supabaseClient.from('teamplan_project_members').upsert({project_id:projectId,team_id:teamId,employee_id:employeeId},{onConflict:'project_id,employee_id',ignoreDuplicates:true});
-    if(error)throw error;
-  }else{
-    projectMembers.push({project_id:projectId,team_id:teamId,employee_id:employeeId,created_at:new Date().toISOString()});
-  }
+  return collectProjectMemberRows().map(x=>x.employee_id);
 }
 async function logProjectActivity(entityType,entityId,action,details=''){
   const row={team_id:(window.TEAMPLAN_CONFIG||{}).teamId||'local',entity_type:entityType,entity_id:entityId||null,action,details,actor_name:authMembership?.display_name||actorName(),created_at:new Date().toISOString()};
@@ -2846,7 +2823,9 @@ async function saveProjectFromForm(){
   if((!id&&!projectCanManage())||(id&&!projectCanManageProject(id)))return;
   const row={name:document.getElementById('projectName').value.trim(),description:document.getElementById('projectDescription').value.trim(),status:document.getElementById('projectStatus').value,priority:document.getElementById('projectPriority').value,start_date:document.getElementById('projectStart').value||null,due_date:document.getElementById('projectDue').value||null,lead_employee_id:projectCanManage()?(document.getElementById('projectLead').value||null):(existing?.lead_employee_id||null),color:document.getElementById('projectColor').value||'#d8891c',updated_at:new Date().toISOString()};
   if(!row.name)return;
-  const selectedMembers=[...new Set([...collectProjectMemberChoices(),...(row.lead_employee_id?[row.lead_employee_id]:[])])];let savedId=id;
+  const selectedRows=collectProjectMemberRows();
+  if(row.lead_employee_id&&!selectedRows.some(x=>x.employee_id===row.lead_employee_id))selectedRows.push({employee_id:row.lead_employee_id,is_responsible:false});
+  const selectedMembers=[...new Set(selectedRows.map(x=>x.employee_id))];let savedId=id;
   if(supabaseClient&&authUser){
     row.team_id=(window.TEAMPLAN_CONFIG||{}).teamId;
     let res;
@@ -2855,12 +2834,12 @@ async function saveProjectFromForm(){
     if(res.error){alert(res.error.message);return}
     savedId=res.data.id;
     const del=await supabaseClient.from('teamplan_project_members').delete().eq('project_id',savedId);if(del.error){alert(del.error.message);return}
-    if(selectedMembers.length){const ins=await supabaseClient.from('teamplan_project_members').insert(selectedMembers.map(employee_id=>({project_id:savedId,team_id:row.team_id,employee_id})));if(ins.error){alert(ins.error.message);return}}
+    if(selectedRows.length){const ins=await supabaseClient.from('teamplan_project_members').insert(selectedRows.map(x=>({project_id:savedId,team_id:row.team_id,employee_id:x.employee_id,is_responsible:!!x.is_responsible})));if(ins.error){alert(ins.error.message);return}}
     await logProjectActivity('project',savedId,id?'Projekt aktualisiert':'Projekt angelegt',row.name);await loadProjectData();
   }else{
     if(id){const i=projectProjects.findIndex(x=>x.id===id);if(i>=0)projectProjects[i]={...projectProjects[i],...row}}
     else{savedId=uid();projectProjects.push({id:savedId,...row,created_at:new Date().toISOString()})}
-    projectMembers=projectMembers.filter(m=>m.project_id!==savedId).concat(selectedMembers.map(employee_id=>({project_id:savedId,team_id:'local',employee_id})));
+    projectMembers=projectMembers.filter(m=>m.project_id!==savedId).concat(selectedRows.map(x=>({project_id:savedId,team_id:'local',employee_id:x.employee_id,is_responsible:!!x.is_responsible})));
     await logProjectActivity('project',savedId,id?'Projekt aktualisiert':'Projekt angelegt',row.name);saveProjectLocal();renderProjectModule();
   }
   document.getElementById('projectDialog').close();showToast(id?'Projekt aktualisiert':'Projekt angelegt');
@@ -3054,8 +3033,8 @@ function initProjectModuleUI(){
   document.getElementById('addProjectBtn')?.addEventListener('click',()=>openProject());
   document.getElementById('addTaskBtn')?.addEventListener('click',()=>openProjectTask());
   document.getElementById('projectMemberSearch')?.addEventListener('input',()=>renderProjectMemberChoices(document.getElementById('projectId').value||''));
-  document.getElementById('projectMembersAllBtn')?.addEventListener('click',()=>{document.querySelectorAll('#projectMembersList input[type="checkbox"]').forEach(x=>x.checked=true);updateProjectMemberCount()});
-  document.getElementById('projectMembersNoneBtn')?.addEventListener('click',()=>{document.querySelectorAll('#projectMembersList input[type="checkbox"]').forEach(x=>x.checked=false);updateProjectMemberCount()});
+  document.getElementById('projectMembersAllBtn')?.addEventListener('click',()=>{document.querySelectorAll('#projectMembersList .project-member-active').forEach(x=>x.checked=true);updateProjectMemberCount()});
+  document.getElementById('projectMembersNoneBtn')?.addEventListener('click',()=>{document.querySelectorAll('#projectMembersList .project-member-active,#projectMembersList .project-member-responsible').forEach(x=>x.checked=false);updateProjectMemberCount()});
   document.getElementById('projectAddTaskBtn')?.addEventListener('click',()=>{const projectId=document.getElementById('projectId').value;if(!projectId)return;document.getElementById('projectDialog').close();openProjectTask(null,{project_id:projectId})});
   document.getElementById('projectBackBtn')?.addEventListener('click',()=>{document.getElementById('projectDialog')?.close();setProjectView('overview')});
   document.getElementById('projectTaskBackBtn')?.addEventListener('click',()=>{const pid=projectDialogReturnProjectId;document.getElementById('projectTaskDialog')?.close();if(pid)openProject(pid)});
