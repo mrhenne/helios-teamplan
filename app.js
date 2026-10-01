@@ -2569,9 +2569,70 @@ function renderProjectModule(){
   bindProjectRenderedEvents();
 }
 function setProjectView(view){projectView=view;localStorage.setItem('teamplan-project-view',view);renderProjectModule()}
+function renderProjectMemberChoices(projectId){
+  const box=document.getElementById('projectMembersList');if(!box)return;
+  const selected=new Set(projectMembers.filter(m=>m.project_id===projectId).map(m=>m.employee_id));
+  box.innerHTML=[...state.employees].sort((a,b)=>a.order-b.order).map(emp=>'<label><input type="checkbox" value="'+emp.id+'" '+(selected.has(emp.id)?'checked':'')+'> <span>'+escapeHtml(emp.name)+'</span></label>').join('');
+}
+function collectProjectMemberChoices(){
+  return [...document.querySelectorAll('#projectMembersList input[type="checkbox"]:checked')].map(x=>x.value);
+}
+async function logProjectActivity(entityType,entityId,action,details=''){
+  const row={team_id:(window.TEAMPLAN_CONFIG||{}).teamId||'local',entity_type:entityType,entity_id:entityId||null,action,details,actor_name:authMembership?.display_name||actorName(),created_at:new Date().toISOString()};
+  if(supabaseClient&&authUser){
+    row.actor_user_id=authUser.id;
+    const {error}=await supabaseClient.from('teamplan_project_activity').insert(row);
+    if(error)console.error('Projektaktivität',error);
+  }else{
+    projectActivity.unshift({id:uid(),...row});
+    saveProjectLocal();
+  }
+}
+function renderProjectChecklistEditor(list=[]){
+  const box=document.getElementById('projectTaskChecklist');if(!box)return;
+  const rows=Array.isArray(list)?list:[];
+  box.innerHTML=rows.map((item,i)=>'<div class="project-checklist-row" data-check-index="'+i+'"><input class="project-check-done" type="checkbox" '+(item.done?'checked':'')+'><input class="project-check-text" value="'+escapeHtml(item.text||'')+'" maxlength="180" placeholder="Checklistenpunkt"><button class="icon-btn project-check-remove" type="button" title="Entfernen">×</button></div>').join('');
+  box.querySelectorAll('.project-check-remove').forEach(btn=>btn.addEventListener('click',()=>{btn.closest('.project-checklist-row').remove()}));
+}
+function addProjectChecklistRow(){
+  const box=document.getElementById('projectTaskChecklist');if(!box)return;
+  const row=document.createElement('div');row.className='project-checklist-row';row.innerHTML='<input class="project-check-done" type="checkbox"><input class="project-check-text" maxlength="180" placeholder="Checklistenpunkt"><button class="icon-btn project-check-remove" type="button" title="Entfernen">×</button>';
+  row.querySelector('.project-check-remove').addEventListener('click',()=>row.remove());box.appendChild(row);row.querySelector('.project-check-text').focus();
+}
+function collectProjectChecklist(){
+  return [...document.querySelectorAll('#projectTaskChecklist .project-checklist-row')].map(row=>({text:row.querySelector('.project-check-text').value.trim(),done:row.querySelector('.project-check-done').checked})).filter(x=>x.text);
+}
+function updateProjectTaskConflictWarning(){
+  const task={assignee_employee_id:document.getElementById('projectTaskAssignee')?.value||null,due_date:document.getElementById('projectTaskDue')?.value||null};
+  const info=projectTaskConflictInfo(task),box=document.getElementById('projectTaskConflictWarning');
+  if(!box)return;
+  box.classList.toggle('hidden',!info);box.textContent=info?'⚠ '+info:'';
+}
+function renderProjectTaskCollaboration(task){
+  const collab=document.getElementById('projectTaskCollaboration'),activitySection=document.getElementById('projectTaskActivitySection');
+  if(!task){collab?.classList.add('hidden');activitySection?.classList.add('hidden');return}
+  collab?.classList.remove('hidden');activitySection?.classList.remove('hidden');
+  const comments=projectComments.filter(c=>c.task_id===task.id);
+  const list=document.getElementById('projectTaskComments'),count=document.getElementById('projectTaskCommentCount');
+  if(count)count.textContent=comments.length+' Kommentare';
+  if(list)list.innerHTML=comments.length?comments.map(c=>'<div class="project-comment"><strong>'+escapeHtml(c.author_name||'Team')+'</strong><span>'+escapeHtml(c.body)+'</span><small>'+new Date(c.created_at||Date.now()).toLocaleString('de-DE')+'</small></div>').join(''):'<div class="empty-state">Noch keine Kommentare.</div>';
+  const acts=projectActivity.filter(a=>a.entity_type==='task'&&a.entity_id===task.id).slice(0,12),activity=document.getElementById('projectTaskActivity');
+  if(activity)activity.innerHTML=acts.length?acts.map(a=>'<div class="project-activity-item"><strong>'+escapeHtml(a.action)+'</strong><span>'+escapeHtml(a.details||'')+'</span><small>'+escapeHtml(a.actor_name||'Team')+' · '+new Date(a.created_at||Date.now()).toLocaleString('de-DE')+'</small></div>').join(''):'<div class="empty-state">Noch keine Aktivität.</div>';
+  const input=document.getElementById('projectTaskCommentInput'),add=document.getElementById('projectTaskCommentAdd');
+  if(input)input.disabled=sessionRole==='viewer';if(add)add.disabled=sessionRole==='viewer';
+}
+async function addProjectTaskComment(){
+  const taskId=document.getElementById('projectTaskId').value,input=document.getElementById('projectTaskCommentInput');
+  const body=input?.value.trim();if(!taskId||!body||sessionRole==='viewer')return;
+  const row={team_id:(window.TEAMPLAN_CONFIG||{}).teamId||'local',task_id:taskId,body,author_name:authMembership?.display_name||actorName(),created_at:new Date().toISOString()};
+  if(supabaseClient&&authUser){row.author_user_id=authUser.id;const {error}=await supabaseClient.from('teamplan_task_comments').insert(row);if(error){alert(error.message);return}await logProjectActivity('task',taskId,'Kommentar hinzugefügt',body.slice(0,120));await loadProjectData()}
+  else{projectComments.push({id:uid(),...row});await logProjectActivity('task',taskId,'Kommentar hinzugefügt',body.slice(0,120));saveProjectLocal()}
+  input.value='';renderProjectTaskCollaboration(projectTasks.find(t=>t.id===taskId));
+}
 function openProject(id=null){
-  if(!projectCanManage())return;
   const p=id?projectProjects.find(x=>x.id===id):null;
+  if(!p&&!projectCanManage())return;
+  if(p&&!projectCanManageProject(p.id))return;
   populateProjectControls();
   document.getElementById('projectDialogTitle').textContent=p?'Projekt bearbeiten':'Projekt anlegen';
   document.getElementById('projectId').value=p?.id||'';
@@ -2582,59 +2643,97 @@ function openProject(id=null){
   document.getElementById('projectStart').value=p?.start_date||'';
   document.getElementById('projectDue').value=p?.due_date||'';
   document.getElementById('projectLead').value=p?.lead_employee_id||'';
+  document.getElementById('projectLead').disabled=!!p&&!projectCanManage();
   document.getElementById('projectColor').value=p?.color||'#d8891c';
-  document.getElementById('deleteProjectBtn').classList.toggle('hidden',!p);
+  document.getElementById('deleteProjectBtn').classList.toggle('hidden',!p||!projectCanManage());
+  renderProjectMemberChoices(p?.id||'');
   safeShowDialog('projectDialog');
 }
 async function saveProjectFromForm(){
-  if(!projectCanManage())return;
-  const id=document.getElementById('projectId').value||null,row={name:document.getElementById('projectName').value.trim(),description:document.getElementById('projectDescription').value.trim(),status:document.getElementById('projectStatus').value,priority:document.getElementById('projectPriority').value,start_date:document.getElementById('projectStart').value||null,due_date:document.getElementById('projectDue').value||null,lead_employee_id:document.getElementById('projectLead').value||null,color:document.getElementById('projectColor').value||'#d8891c',updated_at:new Date().toISOString()};
+  const id=document.getElementById('projectId').value||null,existing=id?projectProjects.find(x=>x.id===id):null;
+  if((!id&&!projectCanManage())||(id&&!projectCanManageProject(id)))return;
+  const row={name:document.getElementById('projectName').value.trim(),description:document.getElementById('projectDescription').value.trim(),status:document.getElementById('projectStatus').value,priority:document.getElementById('projectPriority').value,start_date:document.getElementById('projectStart').value||null,due_date:document.getElementById('projectDue').value||null,lead_employee_id:projectCanManage()?(document.getElementById('projectLead').value||null):(existing?.lead_employee_id||null),color:document.getElementById('projectColor').value||'#d8891c',updated_at:new Date().toISOString()};
   if(!row.name)return;
-  if(supabaseClient&&authUser){row.team_id=(window.TEAMPLAN_CONFIG||{}).teamId;const res=id?await supabaseClient.from('teamplan_projects').update(row).eq('id',id):await supabaseClient.from('teamplan_projects').insert(row);if(res.error){alert(res.error.message);return}await loadProjectData()}
-  else{if(id){const i=projectProjects.findIndex(x=>x.id===id);if(i>=0)projectProjects[i]={...projectProjects[i],...row}}else projectProjects.push({id:uid(),...row,created_at:new Date().toISOString()});saveProjectLocal();renderProjectModule()}
+  const selectedMembers=collectProjectMemberChoices();let savedId=id;
+  if(supabaseClient&&authUser){
+    row.team_id=(window.TEAMPLAN_CONFIG||{}).teamId;
+    let res;
+    if(id)res=await supabaseClient.from('teamplan_projects').update(row).eq('id',id).select('id').single();
+    else res=await supabaseClient.from('teamplan_projects').insert(row).select('id').single();
+    if(res.error){alert(res.error.message);return}
+    savedId=res.data.id;
+    const del=await supabaseClient.from('teamplan_project_members').delete().eq('project_id',savedId);if(del.error){alert(del.error.message);return}
+    if(selectedMembers.length){const ins=await supabaseClient.from('teamplan_project_members').insert(selectedMembers.map(employee_id=>({project_id:savedId,team_id:row.team_id,employee_id})));if(ins.error){alert(ins.error.message);return}}
+    await logProjectActivity('project',savedId,id?'Projekt aktualisiert':'Projekt angelegt',row.name);await loadProjectData();
+  }else{
+    if(id){const i=projectProjects.findIndex(x=>x.id===id);if(i>=0)projectProjects[i]={...projectProjects[i],...row}}
+    else{savedId=uid();projectProjects.push({id:savedId,...row,created_at:new Date().toISOString()})}
+    projectMembers=projectMembers.filter(m=>m.project_id!==savedId).concat(selectedMembers.map(employee_id=>({project_id:savedId,team_id:'local',employee_id})));
+    await logProjectActivity('project',savedId,id?'Projekt aktualisiert':'Projekt angelegt',row.name);saveProjectLocal();renderProjectModule();
+  }
   document.getElementById('projectDialog').close();showToast(id?'Projekt aktualisiert':'Projekt angelegt');
 }
 async function deleteProject(){
   const id=document.getElementById('projectId').value;if(!id||!projectCanManage()||!confirm('Projekt wirklich löschen? Zugeordnete Aufgaben bleiben ohne Projekt erhalten.'))return;
   if(supabaseClient&&authUser){const {error}=await supabaseClient.from('teamplan_projects').delete().eq('id',id);if(error){alert(error.message);return}await loadProjectData()}
-  else{projectProjects=projectProjects.filter(x=>x.id!==id);projectTasks=projectTasks.map(t=>t.project_id===id?{...t,project_id:null}:t);saveProjectLocal();renderProjectModule()}
+  else{projectProjects=projectProjects.filter(x=>x.id!==id);projectMembers=projectMembers.filter(x=>x.project_id!==id);projectTasks=projectTasks.map(t=>t.project_id===id?{...t,project_id:null}:t);saveProjectLocal();renderProjectModule()}
   document.getElementById('projectDialog').close();showToast('Projekt gelöscht');
 }
 function openProjectTask(id=null,defaults={}){
-  if(!projectCanManage()&&!(sessionRole==='employee'&&id))return;
   const t=id?projectTasks.find(x=>x.id===id):null;
-  if(sessionRole==='employee'&&t?.assignee_employee_id!==sessionEmployeeId)return;
+  const leadProjects=projectProjects.filter(p=>projectCanManageProject(p.id));
+  if(!t&&!projectCanManage()&&!leadProjects.length)return;
   populateProjectControls();
   document.getElementById('projectTaskDialogTitle').textContent=t?'Aufgabe bearbeiten':'Aufgabe anlegen';
   document.getElementById('projectTaskId').value=t?.id||'';
   document.getElementById('projectTaskTitle').value=defaults.title||t?.title||'';
   document.getElementById('projectTaskDescription').value=defaults.description||t?.description||'';
-  document.getElementById('projectTaskProject').value=defaults.project_id||t?.project_id||'';
+  document.getElementById('projectTaskProject').value=defaults.project_id||t?.project_id||(!projectCanManage()&&leadProjects[0]?.id)||'';
   document.getElementById('projectTaskAssignee').value=defaults.assignee_employee_id||t?.assignee_employee_id||'';
   document.getElementById('projectTaskStatus').value=defaults.status||t?.status||'open';
   document.getElementById('projectTaskPriority').value=defaults.priority||t?.priority||'medium';
   document.getElementById('projectTaskStart').value=defaults.start_date||t?.start_date||'';
   document.getElementById('projectTaskDue').value=defaults.due_date||t?.due_date||'';
   document.getElementById('projectTaskRecurrence').value=defaults.recurrence||t?.recurrence||'none';
-  document.getElementById('deleteProjectTaskBtn').classList.toggle('hidden',!t||!projectCanManage());
-  ['projectTaskTitle','projectTaskDescription','projectTaskProject','projectTaskAssignee','projectTaskPriority','projectTaskStart','projectTaskDue','projectTaskRecurrence'].forEach(x=>{const el=document.getElementById(x);if(el)el.disabled=sessionRole==='employee'});
+  renderProjectChecklistEditor(t?.checklist||defaults.checklist||[]);
+  renderProjectTaskCollaboration(t);
+  updateProjectTaskConflictWarning();
+  const full=t?projectCanManageProject(t.project_id):(projectCanManage()||projectIsLead(document.getElementById('projectTaskProject').value));
+  const own=t&&sessionRole==='employee'&&t.assignee_employee_id===currentProjectEmployeeId();
+  const readOnly=t&&!full&&!own;
+  ['projectTaskTitle','projectTaskDescription','projectTaskProject','projectTaskAssignee','projectTaskPriority','projectTaskStart','projectTaskDue','projectTaskRecurrence'].forEach(x=>{const el=document.getElementById(x);if(el)el.disabled=!full});
+  document.getElementById('projectTaskStatus').disabled=readOnly;
+  document.getElementById('projectTaskAddChecklist').disabled=readOnly;
+  document.querySelectorAll('#projectTaskChecklist input,#projectTaskChecklist button').forEach(el=>el.disabled=readOnly);
+  document.getElementById('projectTaskForm').querySelector('button[type="submit"]').classList.toggle('hidden',readOnly);
+  document.getElementById('deleteProjectTaskBtn').classList.toggle('hidden',!t||!projectCanManageProject(t.project_id));
   safeShowDialog('projectTaskDialog');
 }
 async function saveProjectTaskFromForm(){
-  const id=document.getElementById('projectTaskId').value||null;
-  const existing=id?projectTasks.find(x=>x.id===id):null;
-  if(!projectCanManage()&&!(sessionRole==='employee'&&existing?.assignee_employee_id===sessionEmployeeId))return;
-  const row={title:document.getElementById('projectTaskTitle').value.trim(),description:document.getElementById('projectTaskDescription').value.trim(),project_id:document.getElementById('projectTaskProject').value||null,assignee_employee_id:document.getElementById('projectTaskAssignee').value||null,status:document.getElementById('projectTaskStatus').value,priority:document.getElementById('projectTaskPriority').value,start_date:document.getElementById('projectTaskStart').value||null,due_date:document.getElementById('projectTaskDue').value||null,recurrence:document.getElementById('projectTaskRecurrence').value,updated_at:new Date().toISOString()};
+  const id=document.getElementById('projectTaskId').value||null,existing=id?projectTasks.find(x=>x.id===id):null;
+  const projectId=document.getElementById('projectTaskProject').value||null;
+  const full=projectCanManageProject(projectId),own=existing&&sessionRole==='employee'&&existing.assignee_employee_id===currentProjectEmployeeId();
+  if(!full&&!own)return;
+  const row={title:document.getElementById('projectTaskTitle').value.trim(),description:document.getElementById('projectTaskDescription').value.trim(),project_id:projectId,assignee_employee_id:document.getElementById('projectTaskAssignee').value||null,status:document.getElementById('projectTaskStatus').value,priority:document.getElementById('projectTaskPriority').value,start_date:document.getElementById('projectTaskStart').value||null,due_date:document.getElementById('projectTaskDue').value||null,recurrence:document.getElementById('projectTaskRecurrence').value,checklist:collectProjectChecklist(),completed_at:document.getElementById('projectTaskStatus').value==='done'?new Date().toISOString():null,updated_at:new Date().toISOString()};
   if(!row.title)return;
-  if(sessionRole==='employee'&&existing){row.title=existing.title;row.description=existing.description;row.project_id=existing.project_id;row.assignee_employee_id=existing.assignee_employee_id;row.priority=existing.priority;row.start_date=existing.start_date;row.due_date=existing.due_date;row.recurrence=existing.recurrence}
-  if(supabaseClient&&authUser){row.team_id=(window.TEAMPLAN_CONFIG||{}).teamId;const res=id?await supabaseClient.from('teamplan_tasks').update(row).eq('id',id):await supabaseClient.from('teamplan_tasks').insert(row);if(res.error){alert(res.error.message);return}await loadProjectData()}
-  else{if(id){const i=projectTasks.findIndex(x=>x.id===id);if(i>=0)projectTasks[i]={...projectTasks[i],...row}}else projectTasks.push({id:uid(),...row,created_at:new Date().toISOString()});saveProjectLocal();renderProjectModule()}
+  if(own&&!full){row.title=existing.title;row.description=existing.description;row.project_id=existing.project_id;row.assignee_employee_id=existing.assignee_employee_id;row.priority=existing.priority;row.start_date=existing.start_date;row.due_date=existing.due_date;row.recurrence=existing.recurrence}
+  let savedId=id;
+  if(supabaseClient&&authUser){
+    row.team_id=(window.TEAMPLAN_CONFIG||{}).teamId;
+    const res=id?await supabaseClient.from('teamplan_tasks').update(row).eq('id',id).select('id').single():await supabaseClient.from('teamplan_tasks').insert(row).select('id').single();
+    if(res.error){alert(res.error.message);return}
+    savedId=res.data.id;await logProjectActivity('task',savedId,id?'Aufgabe aktualisiert':'Aufgabe angelegt',row.title);await loadProjectData();
+  }else{
+    if(id){const i=projectTasks.findIndex(x=>x.id===id);if(i>=0)projectTasks[i]={...projectTasks[i],...row}}
+    else{savedId=uid();projectTasks.push({id:savedId,...row,created_at:new Date().toISOString()})}
+    await logProjectActivity('task',savedId,id?'Aufgabe aktualisiert':'Aufgabe angelegt',row.title);saveProjectLocal();renderProjectModule();
+  }
   document.getElementById('projectTaskDialog').close();showToast(id?'Aufgabe aktualisiert':'Aufgabe angelegt');
 }
 async function deleteProjectTask(){
-  const id=document.getElementById('projectTaskId').value;if(!id||!projectCanManage()||!confirm('Aufgabe wirklich löschen?'))return;
+  const id=document.getElementById('projectTaskId').value,t=projectTasks.find(x=>x.id===id);if(!id||!projectCanManageProject(t?.project_id)||!confirm('Aufgabe wirklich löschen?'))return;
   if(supabaseClient&&authUser){const {error}=await supabaseClient.from('teamplan_tasks').delete().eq('id',id);if(error){alert(error.message);return}await loadProjectData()}
-  else{projectTasks=projectTasks.filter(x=>x.id!==id);saveProjectLocal();renderProjectModule()}
+  else{projectTasks=projectTasks.filter(x=>x.id!==id);projectComments=projectComments.filter(x=>x.task_id!==id);saveProjectLocal();renderProjectModule()}
   document.getElementById('projectTaskDialog').close();showToast('Aufgabe gelöscht');
 }
 function openProjectNote(id=null){
