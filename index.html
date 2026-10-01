@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-44" />
+  <link rel="stylesheet" href="styles.css?v=20261001-45" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -353,6 +353,8 @@
           <button id="projectsNotesBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>Notizen</span></button>
         </div>
         <div class="controls-spacer"></div>
+        <button id="projectsSaveBtn" class="btn ghost icon-label-btn" type="button" title="Projektmodul als Sicherungsdatei speichern"><svg class="ui-icon"><use href="#i-download"></use></svg><span>Speichern</span></button>
+        <button id="projectsPdfBtn" class="btn ghost icon-label-btn" type="button" title="Projektübersichten als PDF exportieren"><svg class="ui-icon"><use href="#i-file"></use></svg><span>PDF</span></button>
         <button id="projectsTemplatesBtn" class="btn ghost project-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-copy"></use></svg><span>Vorlagen</span></button>
         <button id="addProjectBtn" class="btn ghost project-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-plus"></use></svg><span>Projekt</span></button>
         <button id="addTaskBtn" class="btn primary project-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-plus"></use></svg><span>Aufgabe</span></button>
@@ -435,6 +437,29 @@
   </main>
 
 
+
+
+  <dialog id="projectExportDialog" class="dialog glass-solid compact">
+    <form id="projectExportForm">
+      <div class="dialog-head">
+        <div><span class="eyebrow">PDF EXPORT</span><h2>Inhalt auswählen</h2><p class="dialog-subtext">Wähle nur die Bereiche aus, die wirklich in den Bericht sollen.</p></div>
+        <button type="button" class="icon-btn close-dialog">×</button>
+      </div>
+      <div class="project-export-options">
+        <label><input id="projectExportProjects" type="checkbox" checked><span><strong>Aktuelle Projekte</strong><small>Status, Fortschritt, Leitung und Verantwortliche</small></span></label>
+        <label><input id="projectExportTasks" type="checkbox" checked><span><strong>Aufgaben & Status</strong><small>Offene, laufende, wartende und erledigte Aufgaben</small></span></label>
+        <label><input id="projectExportMonth" type="checkbox"><span><strong>Monatsübersicht</strong><small>Aktuell ausgewählter Projektkalender-Monat</small></span></label>
+        <label><input id="projectExportYear" type="checkbox"><span><strong>Jahresübersicht</strong><small>Aktuell ausgewähltes Kalenderjahr</small></span></label>
+        <label><input id="projectExportTeam" type="checkbox"><span><strong>Projektteams</strong><small>Projektleitung, Verantwortliche und Beteiligte</small></span></label>
+        <label><input id="projectExportNotes" type="checkbox"><span><strong>Notizen</strong><small>Projektbezogene Notizen ergänzen</small></span></label>
+      </div>
+      <div class="dialog-actions">
+        <div class="controls-spacer"></div>
+        <button type="button" class="btn ghost close-dialog">Abbrechen</button>
+        <button type="submit" class="btn primary">PDF erstellen</button>
+      </div>
+    </form>
+  </dialog>
 
   <dialog id="projectDialog" class="dialog glass-solid">
     <form id="projectForm">
