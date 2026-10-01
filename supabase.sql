@@ -1203,3 +1203,44 @@ create index if not exists teamplan_notes_project_id_idx
 
 create index if not exists teamplan_tasks_template_id_idx
   on public.teamplan_tasks(template_id);
+
+
+-- === 2026-10-01 MULTIPLE PROJECT RESPONSIBLES ===
+alter table public.teamplan_project_members
+  add column if not exists is_responsible boolean not null default false;
+
+create index if not exists teamplan_project_members_project_responsible_idx
+  on public.teamplan_project_members(project_id,is_responsible)
+  where is_responsible = true;
+
+create or replace function private.is_project_lead(p_project_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, private
+as $$
+  select exists (
+    select 1
+    from public.teamplan_projects p
+    join public.team_members tm on tm.team_id=p.team_id
+    where p.id=p_project_id
+      and tm.user_id=(select auth.uid())
+      and tm.active=true
+      and tm.role='employee'
+      and tm.employee_id is not null
+      and (
+        tm.employee_id=p.lead_employee_id
+        or exists (
+          select 1
+          from public.teamplan_project_members pm
+          where pm.project_id=p.id
+            and pm.employee_id=tm.employee_id
+            and pm.is_responsible=true
+        )
+      )
+  );
+$$;
+
+revoke all on function private.is_project_lead(uuid) from public, anon;
+grant execute on function private.is_project_lead(uuid) to authenticated;
