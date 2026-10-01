@@ -1,0 +1,11 @@
+{
+  "name": "helios-teamplan",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test:qa": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  }
+}
