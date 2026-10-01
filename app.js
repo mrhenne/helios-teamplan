@@ -3180,7 +3180,8 @@ async function initRemote(){
   const cfg=window.TEAMPLAN_CONFIG||{};
   if(!authConfigured()){setSync('local','● Lokal');return}
   try{
-    supabaseClient=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey);
+    supabaseClient=window.TEAMPLAN_LOGIN_CLIENT || window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey);
+    window.TEAMPLAN_LOGIN_CLIENT=supabaseClient;
     const inviteParams=new URLSearchParams(window.location.search);
     const inviteToken=inviteParams.get('token_hash'),inviteType=inviteParams.get('type');
     if(inviteToken&&inviteType){
@@ -3435,6 +3436,7 @@ document.getElementById('dragDeleteBtn').addEventListener('click',deleteDragEntr
 document.getElementById('dragCancelBtn').addEventListener('click',clearDragSelection);
 document.getElementById('loginModeBtn').addEventListener('click',()=>{});
 document.getElementById('loginForm').addEventListener('submit',async e=>{
+  if(loginMode!=='bootstrap'&&window.TEAMPLAN_LOGIN_FALLBACK_ACTIVE)return;
   e.preventDefault();if(!supabaseClient)return;
   const errEl=document.getElementById('loginError');errEl.classList.add('hidden');
   const email=document.getElementById('loginEmail').value.trim(),password=document.getElementById('loginPassword').value;
