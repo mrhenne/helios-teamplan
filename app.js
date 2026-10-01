@@ -80,6 +80,7 @@ let projectComments = [];
 let projectActivity = [];
 let projectChannel = null;
 let projectDialogReturnProjectId = null;
+let projectMemberDraft = new Map();
 let trainingView = localStorage.getItem('teamplan-training-view') || 'overview';
 let trainingYear = Number(localStorage.getItem('teamplan-training-year')) || new Date().getFullYear();
 let trainingZoom = Math.max(.7,Math.min(1.3,Number(localStorage.getItem('teamplan-training-zoom')||1)));
@@ -2697,34 +2698,34 @@ function renderProjectModule(){
 }
 function setProjectView(view){projectView=view;localStorage.setItem('teamplan-project-view',view);renderProjectModule()}
 function updateProjectMemberCount(){
-  const selected=document.querySelectorAll('#projectMembersList .project-member-active:checked').length;
-  const responsible=document.querySelectorAll('#projectMembersList .project-member-responsible:checked').length;
+  const selected=[...projectMemberDraft.values()].filter(x=>x.checked).length;
+  const responsible=[...projectMemberDraft.values()].filter(x=>x.checked&&x.is_responsible).length;
   const label=document.getElementById('projectMemberCount');
   if(label)label.textContent=selected+' im Team · '+responsible+' zusätzlich verantwortlich';
 }
 function renderProjectMemberChoices(projectId){
   const box=document.getElementById('projectMembersList');if(!box)return;
-  const current=new Map(projectMembers.filter(m=>m.project_id===projectId).map(m=>[m.employee_id,{employee_id:m.employee_id,is_responsible:!!m.is_responsible,_checked:true}]));
-  document.querySelectorAll('#projectMembersList .project-member-row').forEach(row=>{
-    const id=row.dataset.employeeId;if(!id)return;
-    current.set(id,{employee_id:id,is_responsible:row.querySelector('.project-member-responsible')?.checked===true,_checked:row.querySelector('.project-member-active')?.checked===true});
-  });
+  if(!projectMemberDraft.size&&projectId){
+    projectMembers.filter(m=>m.project_id===projectId).forEach(m=>projectMemberDraft.set(m.employee_id,{employee_id:m.employee_id,checked:true,is_responsible:!!m.is_responsible}));
+  }
   const q=(document.getElementById('projectMemberSearch')?.value||'').trim().toLowerCase();
   box.innerHTML=[...state.employees].sort((a,b)=>a.order-b.order).filter(emp=>!q||emp.name.toLowerCase().includes(q)).map(emp=>{
-    const saved=current.get(emp.id),checked=!!saved?('_checked' in saved?saved._checked:true):false,responsible=!!saved?.is_responsible;
-    return '<div class="project-member-row" data-employee-id="'+emp.id+'"><label class="project-member-main"><input class="project-member-active" type="checkbox" value="'+emp.id+'" '+(checked?'checked':'')+'><span>'+escapeHtml(emp.name)+'</span></label><label class="project-member-responsible-label" title="Darf das Projekt wie die Projektleitung bearbeiten"><input class="project-member-responsible" type="checkbox" '+(responsible?'checked':'')+'><span>Verantwortlich</span></label></div>';
+    const saved=projectMemberDraft.get(emp.id)||{employee_id:emp.id,checked:false,is_responsible:false};
+    return '<div class="project-member-row" data-employee-id="'+emp.id+'"><label class="project-member-main"><input class="project-member-active" type="checkbox" value="'+emp.id+'" '+(saved.checked?'checked':'')+'><span>'+escapeHtml(emp.name)+'</span></label><label class="project-member-responsible-label" title="Darf das Projekt wie die Projektleitung bearbeiten"><input class="project-member-responsible" type="checkbox" '+(saved.is_responsible?'checked':'')+'><span>Verantwortlich</span></label></div>';
   }).join('');
-  box.querySelectorAll('.project-member-active').forEach(input=>input.addEventListener('change',()=>{const row=input.closest('.project-member-row');if(!input.checked){const r=row?.querySelector('.project-member-responsible');if(r)r.checked=false}updateProjectMemberCount()}));
-  box.querySelectorAll('.project-member-responsible').forEach(input=>input.addEventListener('change',()=>{if(input.checked){const active=input.closest('.project-member-row')?.querySelector('.project-member-active');if(active)active.checked=true}updateProjectMemberCount()}));
+  box.querySelectorAll('.project-member-row').forEach(row=>{
+    const id=row.dataset.employeeId,active=row.querySelector('.project-member-active'),resp=row.querySelector('.project-member-responsible');
+    active.addEventListener('change',()=>{if(!active.checked)resp.checked=false;projectMemberDraft.set(id,{employee_id:id,checked:active.checked,is_responsible:resp.checked});updateProjectMemberCount()});
+    resp.addEventListener('change',()=>{if(resp.checked)active.checked=true;projectMemberDraft.set(id,{employee_id:id,checked:active.checked,is_responsible:resp.checked});updateProjectMemberCount()});
+  });
   updateProjectMemberCount();
 }
 function collectProjectMemberRows(){
-  return [...document.querySelectorAll('#projectMembersList .project-member-row')].filter(row=>row.querySelector('.project-member-active')?.checked).map(row=>({employee_id:row.dataset.employeeId,is_responsible:row.querySelector('.project-member-responsible')?.checked===true}));
+  return [...projectMemberDraft.values()].filter(x=>x.checked).map(x=>({employee_id:x.employee_id,is_responsible:!!x.is_responsible}));
 }
 function collectProjectMemberChoices(){
   return collectProjectMemberRows().map(x=>x.employee_id);
-}
-function renderProjectDialogTasks(projectId){
+}function renderProjectDialogTasks(projectId){
   const box=document.getElementById('projectTasksBox'),list=document.getElementById('projectDialogTasks');
   if(!box||!list)return;
   box.classList.toggle('hidden',!projectId);
@@ -2734,8 +2735,8 @@ function renderProjectDialogTasks(projectId){
     const check=projectChecklistProgress(t),done=t.status==='done';
     return '<div class="project-dialog-task '+(done?'done':'')+'" data-project-task-id="'+t.id+'"><button type="button" class="project-task-quickcheck" aria-label="'+(done?'Aufgabe wieder öffnen':'Aufgabe erledigen')+'" title="'+(done?'Wieder öffnen':'Als erledigt markieren')+'">'+(done?'✓':'')+'</button><button type="button" class="project-dialog-task-main"><span><strong>'+escapeHtml(t.title)+'</strong><small>'+escapeHtml(projectEmployeeName(t.assignee_employee_id))+(t.due_date?' · bis '+escapeHtml(projectDateLabel(t.due_date)):'')+(check.total?' · Checkliste '+check.done+'/'+check.total:'')+'</small></span></button><span class="project-task-status '+escapeHtml(t.status)+'">'+escapeHtml(projectTaskStatusLabel(t.status))+'</span></div>';
   }).join(''):'<div class="empty-state">Noch keine Aufgaben. Lege die erste Aufgabe für dieses Projekt an.</div>';
-  list.querySelectorAll('.project-dialog-task-main').forEach(btn=>btn.addEventListener('click',()=>{const row=btn.closest('[data-project-task-id]');document.getElementById('projectDialog')?.close();openProjectTask(row.dataset.projectTaskId)}));
-  list.querySelectorAll('.project-task-quickcheck').forEach(btn=>btn.addEventListener('click',()=>{const row=btn.closest('[data-project-task-id]');toggleProjectTaskDone(row.dataset.projectTaskId)}));
+  list.querySelectorAll('.project-dialog-task').forEach(row=>row.addEventListener('click',e=>{if(e.target.closest('.project-task-quickcheck'))return;document.getElementById('projectDialog')?.close();openProjectTask(row.dataset.projectTaskId)}));
+  list.querySelectorAll('.project-task-quickcheck').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();const row=btn.closest('[data-project-task-id]');toggleProjectTaskDone(row.dataset.projectTaskId)}));
 }
 function populateProjectAssigneeForProject(projectId,selected=''){
   const el=document.getElementById('projectTaskAssignee');if(!el)return;
@@ -2844,6 +2845,7 @@ function openProject(id=null){
   document.getElementById('projectColor').value=p?.color||'#d8891c';
   document.getElementById('deleteProjectBtn').classList.toggle('hidden',!p||!projectCanManage());
   const memberSearch=document.getElementById('projectMemberSearch');if(memberSearch)memberSearch.value='';
+  projectMemberDraft=new Map(projectMembers.filter(m=>m.project_id===(p?.id||'')).map(m=>[m.employee_id,{employee_id:m.employee_id,checked:true,is_responsible:!!m.is_responsible}]));
   const teamBody=document.getElementById('projectTeamBody'),teamToggle=document.getElementById('projectTeamToggle');
   if(teamBody)teamBody.hidden=true;
   if(teamToggle)teamToggle.setAttribute('aria-expanded','false');
@@ -3124,8 +3126,8 @@ function initProjectModuleUI(){
   document.getElementById('addProjectBtn')?.addEventListener('click',()=>openProject());
   document.getElementById('addTaskBtn')?.addEventListener('click',()=>openProjectTask());
   document.getElementById('projectMemberSearch')?.addEventListener('input',()=>renderProjectMemberChoices(document.getElementById('projectId').value||''));
-  document.getElementById('projectMembersAllBtn')?.addEventListener('click',()=>{document.querySelectorAll('#projectMembersList .project-member-active').forEach(x=>x.checked=true);updateProjectMemberCount()});
-  document.getElementById('projectMembersNoneBtn')?.addEventListener('click',()=>{document.querySelectorAll('#projectMembersList .project-member-active,#projectMembersList .project-member-responsible').forEach(x=>x.checked=false);updateProjectMemberCount()});
+  document.getElementById('projectMembersAllBtn')?.addEventListener('click',()=>{state.employees.forEach(emp=>{const old=projectMemberDraft.get(emp.id)||{employee_id:emp.id,is_responsible:false};projectMemberDraft.set(emp.id,{...old,checked:true})});renderProjectMemberChoices(document.getElementById('projectId').value||'')});
+  document.getElementById('projectMembersNoneBtn')?.addEventListener('click',()=>{projectMemberDraft.forEach((v,k)=>projectMemberDraft.set(k,{...v,checked:false,is_responsible:false}));renderProjectMemberChoices(document.getElementById('projectId').value||'')});
   document.getElementById('projectAddTaskBtn')?.addEventListener('click',()=>{const projectId=document.getElementById('projectId').value;if(!projectId)return;document.getElementById('projectDialog').close();openProjectTask(null,{project_id:projectId})});
   document.getElementById('projectBackBtn')?.addEventListener('click',()=>{document.getElementById('projectDialog')?.close();setProjectView('overview')});
   document.getElementById('projectTaskBackBtn')?.addEventListener('click',()=>{const pid=projectDialogReturnProjectId;document.getElementById('projectTaskDialog')?.close();if(pid)openProject(pid)});
