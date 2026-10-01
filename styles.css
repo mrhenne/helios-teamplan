@@ -2925,3 +2925,227 @@ body.dark-mode .training-type-drop-hint{color:#a7c9e8;border-color:rgba(167,201,
 .view-switch .segment .ui-icon{
   width:11px;height:11px
 }
+
+
+/* =========================================================
+   Fortbildungs-Audit 2026-10-01: Status, Farben, Fokus, Topbar
+   ========================================================= */
+
+/* Oberste Leiste: feste Slots statt springender Breiten */
+@media(min-width:1101px){
+  .topbar{
+    min-height:86px!important;
+    display:grid!important;
+    grid-template-columns:minmax(245px,1fr) minmax(630px,710px)!important;
+    gap:18px!important;
+    align-items:center!important
+  }
+  .organized-actions{
+    width:100%!important;
+    min-width:0!important;
+    display:grid!important;
+    grid-template-columns:minmax(410px,1fr) auto!important;
+    gap:10px!important;
+    align-items:start!important
+  }
+  .status-cluster{
+    width:100%!important;
+    min-width:0!important;
+    min-height:50px!important;
+    padding-top:14px!important;
+    display:grid!important;
+    grid-template-columns:78px minmax(125px,1fr) 80px 145px!important;
+    gap:5px!important;
+    align-items:start!important
+  }
+  #syncPill{grid-column:1}
+  #authUserPill{grid-column:2;min-width:0!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #onlinePill{grid-column:3}
+  .role-stack{
+    grid-column:4;
+    width:145px;
+    height:31px;
+    position:relative
+  }
+  .role-stack #roleSelect,
+  .role-stack #roleEmployeeSelect{
+    width:145px!important;
+    max-width:145px!important;
+    box-sizing:border-box
+  }
+  .role-stack #roleEmployeeSelect:not(.hidden){
+    position:absolute!important;
+    left:0!important;
+    top:34px!important;
+    right:auto!important;
+    margin:0!important;
+    z-index:8
+  }
+  .action-groups{
+    width:auto!important;
+    min-width:205px!important;
+    flex-wrap:nowrap!important;
+    justify-content:flex-end!important
+  }
+  .action-group{
+    flex:0 0 auto
+  }
+}
+@media(min-width:1101px) and (max-width:1320px){
+  .topbar{grid-template-columns:minmax(220px,1fr) 610px!important}
+  .organized-actions{grid-template-columns:390px auto!important}
+  .status-cluster{grid-template-columns:72px minmax(105px,1fr) 72px 135px!important}
+  .role-stack,.role-stack #roleSelect,.role-stack #roleEmployeeSelect{width:135px!important;max-width:135px!important}
+  .brand h1{font-size:18px!important}
+}
+@media(max-width:1100px){
+  .role-stack{display:flex;gap:5px;align-items:center}
+  .role-stack #roleEmployeeSelect{max-width:150px}
+}
+
+/* Fokusmodus Fortbildung: Filter bleiben Arbeitswerkzeug */
+body.training-focus .training-filterbar:not(.hidden){
+  display:flex!important
+}
+body.training-focus #trainingModule{
+  grid-template-rows:auto auto minmax(0,1fr)!important
+}
+body.training-focus #trainingOverviewView{
+  grid-template-rows:auto auto minmax(0,1fr)!important
+}
+body.training-focus .training-filterbar{
+  margin:0!important;
+  padding:6px 8px!important;
+  border-radius:10px!important
+}
+body.training-focus .training-hint{display:none!important}
+
+/* Neuer Status */
+.training-status.in_progress{
+  background:#e8e1fb!important;
+  color:#7049a8!important
+}
+.training-status-dropzone.in-progress{
+  background:#eee8fb!important;
+  color:#7049a8!important
+}
+.training-teamstatus-column.in_progress>header b{
+  background:#eee8fb;
+  color:#7049a8
+}
+body.dark-mode .training-status.in_progress,
+body.dark-mode .training-status-dropzone.in-progress,
+body.dark-mode .training-teamstatus-column.in_progress>header b{
+  background:#392f50!important;
+  color:#cbb7ef!important
+}
+
+/* Typfarben */
+.training-entry{
+  border-left:3px solid var(--training-color,#5b8def)!important
+}
+.training-kind-dot{
+  display:inline-block;
+  width:6px;height:6px;border-radius:50%;
+  background:var(--training-color,#5b8def);
+  margin-right:4px;
+  vertical-align:0
+}
+.training-my-item{
+  border-left-color:var(--training-color,#5b8def)!important
+}
+.training-month-item{
+  border-left-color:var(--training-color,#5b8def)
+}
+.training-day.has-training{
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--training-color,#5b8def) 36%,transparent)!important
+}
+.training-day.has-training::after{
+  content:"";
+  position:absolute;left:3px;bottom:3px;
+  width:5px;height:5px;border-radius:50%;
+  background:var(--training-color,#5b8def)
+}
+.training-classic-title strong{
+  display:flex!important;
+  align-items:center;
+  gap:1px
+}
+.training-teamstatus-type-card{
+  border-top:3px solid var(--training-color,#5b8def)!important
+}
+.training-type-main{
+  display:flex;align-items:center;gap:8px;min-width:0
+}
+.training-type-main>div{min-width:0}
+.training-type-color{
+  width:12px;height:32px;border-radius:999px;
+  background:var(--training-color,#5b8def);
+  flex:0 0 12px
+}
+.training-color-input{
+  min-height:30px!important;
+  height:30px!important;
+  padding:3px!important;
+  cursor:pointer
+}
+
+/* Übersicht als Arbeits-Cockpit */
+.training-cockpit{
+  grid-template-columns:repeat(4,minmax(120px,1fr))!important;
+  margin-bottom:8px
+}
+.training-cockpit article{
+  min-height:54px!important;
+  padding:8px 9px!important
+}
+.training-overview-grid{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  align-items:start
+}
+.training-overview-grid .training-panel{
+  min-height:350px
+}
+.training-panel-head p{
+  margin:3px 0 0;
+  font-size:6.5px;
+  line-height:1.35;
+  color:var(--muted)
+}
+.training-panel-running{
+  border-top:3px solid #8b5cf6!important
+}
+.training-panel-attention{
+  border-top:3px solid #d85b63!important
+}
+.training-overview-grid .training-list{
+  max-height:58vh!important
+}
+
+/* Teamstatus mit vier Spalten */
+.training-teamstatus-board{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important
+}
+.training-teamstatus-board.all-mode{
+  display:block!important
+}
+.training-teamstatus-all-grid{
+  grid-template-columns:repeat(3,minmax(0,1fr))
+}
+
+/* Mobile / kleinere Desktopbreiten */
+@media(max-width:1200px){
+  .training-overview-grid{grid-template-columns:1fr 1fr!important}
+  .training-panel-attention{grid-column:1/-1}
+  .training-teamstatus-board{grid-template-columns:1fr 1fr!important}
+}
+@media(max-width:780px){
+  .training-cockpit{grid-template-columns:1fr 1fr!important}
+  .training-overview-grid{grid-template-columns:1fr!important}
+  .training-panel-attention{grid-column:auto}
+  .training-teamstatus-board{grid-template-columns:1fr!important}
+  body.training-focus .training-filterbar:not(.hidden){
+    display:flex!important;
+    flex-wrap:wrap
+  }
+}
