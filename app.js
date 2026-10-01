@@ -85,6 +85,7 @@ let projectActivity = [];
 let projectChannel = null;
 let projectLoadPromise = null;
 let projectReloadTimer = null;
+let projectUiInitialized = false;
 let projectDialogReturnProjectId = null;
 let projectMemberDraft = new Map();
 let trainingView = localStorage.getItem('teamplan-training-view') || 'overview';
@@ -2985,7 +2986,6 @@ function openProject(id=null){
   projectDialogReturnProjectId=id||null;
   const p=id?projectProjects.find(x=>x.id===id):null;
   if(!p&&!projectCanManage())return;
-  if(p&&!projectCanManageProject(p.id))return;
   populateProjectControls();
   document.getElementById('projectDialogTitle').textContent=p?'Projekt bearbeiten':'Projekt anlegen';
   document.getElementById('projectId').value=p?.id||'';
@@ -2998,6 +2998,13 @@ function openProject(id=null){
   document.getElementById('projectLead').value=p?.lead_employee_id||'';
   document.getElementById('projectLead').disabled=!!p&&!projectCanManage();
   document.getElementById('projectColor').value=p?.color||'#d8891c';
+  const canEditProject=!p||projectCanManageProject(p.id);
+  ['projectName','projectDescription','projectStatus','projectPriority','projectStart','projectDue','projectColor'].forEach(fid=>{const el=document.getElementById(fid);if(el)el.disabled=!canEditProject});
+  document.getElementById('projectLead').disabled=!!p&&!projectCanManage();
+  document.getElementById('projectMembersAllBtn')?.classList.toggle('hidden',!canEditProject);
+  document.getElementById('projectMembersNoneBtn')?.classList.toggle('hidden',!canEditProject);
+  document.getElementById('projectAddTaskBtn')?.classList.toggle('hidden',!canEditProject);
+  document.getElementById('projectForm')?.querySelector('button[type="submit"]')?.classList.toggle('hidden',!canEditProject);
   document.getElementById('deleteProjectBtn').classList.toggle('hidden',!p||!projectCanManage());
   const memberSearch=document.getElementById('projectMemberSearch');if(memberSearch)memberSearch.value='';
   projectMemberDraft=new Map(projectMembers.filter(m=>m.project_id===(p?.id||'')).map(m=>[m.employee_id,{employee_id:m.employee_id,checked:true,is_responsible:!!m.is_responsible}]));
@@ -3252,7 +3259,7 @@ async function deleteProjectTemplate(){
   renderProjectTemplatesList();resetProjectTemplateForm();populateProjectControls();showToast('Vorlage gelöscht');
 }
 function bindProjectRenderedEvents(){
-  document.querySelectorAll('[data-project-id]').forEach(el=>el.addEventListener('click',e=>{if(e.target.closest('[data-project-task-id]'))return;const id=el.dataset.projectId;if(projectCanManageProject(id))openProject(id)}));
+  document.querySelectorAll('[data-project-id]').forEach(el=>el.addEventListener('click',e=>{if(e.target.closest('[data-project-task-id]'))return;const id=el.dataset.projectId;if(id)openProject(id)}));
   document.querySelectorAll('[data-project-task-id]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();openProjectTask(el.dataset.projectTaskId)}));
   document.querySelectorAll('[data-project-note-id]').forEach(el=>el.addEventListener('click',()=>openProjectNote(el.dataset.projectNoteId)));
   document.querySelectorAll('.project-card[draggable="true"]').forEach(el=>{el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/project-id',el.dataset.projectId);el.classList.add('dragging')});el.addEventListener('dragend',()=>el.classList.remove('dragging'))});
@@ -3268,6 +3275,8 @@ function createTaskFromTemplate(id){
   openProjectTask(null,{title:t.name,description:t.description,priority:t.default_priority||'medium',recurrence:t.recurrence||'none'});
 }
 function initProjectModuleUI(){
+  if(projectUiInitialized)return;
+  projectUiInitialized=true;
   document.getElementById('moduleProjectsBtn')?.addEventListener('click',()=>switchModule('projects'));
   const map={projectsOverviewBtn:'overview',projectsMyBtn:'my',projectsRoadmapBtn:'roadmap',projectsBoardBtn:'board',projectsCalendarBtn:'calendar',projectsTeamBtn:'team',projectsNotesBtn:'notes'};
   Object.entries(map).forEach(([id,v])=>document.getElementById(id)?.addEventListener('click',()=>setProjectView(v)));
@@ -3450,6 +3459,7 @@ function setSync(cls,text){const p=document.getElementById('syncPill');if(!p)ret
 // Authentication must start before the optional UI listener wiring below.
 // That keeps login/session restoration working even if a later UI module throws.
 initRemote();
+initProjectModuleUI();
 
 // top controls
 document.getElementById('prevMonth')?.addEventListener('click',()=>{viewDate.setMonth(viewDate.getMonth()-1);saveLastViewDate();plannerScrollLeft=null;render()});
