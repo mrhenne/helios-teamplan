@@ -1,4 +1,4 @@
-const { defineConfig, devices } = require('@playwright/test');
+const { defineConfig } = require('@playwright/test');
 
 module.exports = defineConfig({
   testDir: './tests',
@@ -8,6 +8,7 @@ module.exports = defineConfig({
   retries: 1,
   reporter: [['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }]],
   use: {
+    browserName: 'chromium',
     baseURL: 'http://127.0.0.1:4173',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure'
@@ -19,9 +20,9 @@ module.exports = defineConfig({
     timeout: 15000
   },
   projects: [
-    { name: 'desktop-chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
-    { name: 'laptop-chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } } },
-    { name: 'tablet-chromium', use: { ...devices['iPad (gen 7)'] } },
-    { name: 'mobile-chromium', use: { ...devices['iPhone 13'] } }
+    { name: 'desktop', use: { viewport: { width: 1440, height: 900 } } },
+    { name: 'laptop', use: { viewport: { width: 1280, height: 800 } } },
+    { name: 'tablet', use: { viewport: { width: 820, height: 1180 }, isMobile: true, hasTouch: true } },
+    { name: 'mobile', use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } }
   ]
 });
