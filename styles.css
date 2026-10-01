@@ -1101,3 +1101,38 @@ body.dark-mode .conflict-summary>button.active{background:#20372f;border-color:r
   .conflict-sort-label select{flex:1}
   .conflict-kind{min-width:56px}
 }
+
+/* Konfliktfenster bleibt beim Filtern stabil */
+#conflictsDialog{
+  width:min(820px,calc(100vw - 28px))!important;
+  max-width:none!important;
+  height:min(620px,calc(100vh - 28px))!important;
+  max-height:none!important;
+  padding:0!important
+}
+#conflictsDialog .dialog-panel{
+  height:100%;
+  box-sizing:border-box;
+  display:flex;
+  flex-direction:column;
+  padding:18px!important
+}
+#conflictsDialog .dialog-head,
+#conflictsDialog .conflict-summary,
+#conflictsDialog .conflict-tools{
+  flex:0 0 auto
+}
+#conflictsDialog .conflict-list{
+  flex:1 1 auto;
+  min-height:0;
+  max-height:none!important;
+  overflow:auto;
+  margin-top:8px!important
+}
+@media(max-width:700px){
+  #conflictsDialog{
+    width:calc(100vw - 12px)!important;
+    height:min(620px,calc(100vh - 12px))!important
+  }
+  #conflictsDialog .dialog-panel{padding:12px!important}
+}
