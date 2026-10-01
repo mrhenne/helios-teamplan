@@ -235,6 +235,7 @@
         <div class="training-tools-group training-manager-action">
           <span class="training-tools-label">Export</span>
           <button id="trainingExportBtn" class="btn ghost training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-table"></use></svg><span>Excel</span></button>
+          <button id="trainingPdfBtn" class="btn ghost icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>PDF</span></button>
           <button id="trainingCsvBtn" class="btn ghost training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>CSV</span></button>
           <button id="trainingJsonBtn" class="btn ghost training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>JSON</span></button>
         </div>
@@ -438,6 +439,39 @@
 
 
 
+
+  <dialog id="vacationExportDialog" class="dialog glass-solid compact">
+    <form id="vacationExportForm">
+      <div class="dialog-head">
+        <div><span class="eyebrow">PDF EXPORT</span><h2>Urlaubsbericht</h2><p class="dialog-subtext">Wähle die Bereiche aus, die in den PDF-Bericht übernommen werden sollen.</p></div>
+        <button type="button" class="icon-btn close-dialog">×</button>
+      </div>
+      <div class="project-export-options">
+        <label><input id="vacationExportAccounts" type="checkbox" checked><span><strong>Urlaubskonten</strong><small>Anspruch, Verbrauch, Resturlaub und XU</small></span></label>
+        <label><input id="vacationExportMonth" type="checkbox" checked><span><strong>Monatsübersicht</strong><small>Aktuell ausgewählter Monat mit allen Einträgen</small></span></label>
+        <label><input id="vacationExportYear" type="checkbox"><span><strong>Jahresübersicht</strong><small>Alle Monate des ausgewählten Jahres kompakt</small></span></label>
+        <label><input id="vacationExportDetails" type="checkbox"><span><strong>Planungsdetails</strong><small>Datum, Kürzel, Status, Priorität und Notizen</small></span></label>
+      </div>
+      <div class="dialog-actions"><div class="controls-spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">PDF erstellen</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="trainingExportDialog" class="dialog glass-solid compact">
+    <form id="trainingExportForm">
+      <div class="dialog-head">
+        <div><span class="eyebrow">PDF EXPORT</span><h2>Fortbildungsbericht</h2><p class="dialog-subtext">Stelle deinen Fortbildungsbericht passend für Teamgespräch, Jahresplanung oder Dokumentation zusammen.</p></div>
+        <button type="button" class="icon-btn close-dialog">×</button>
+      </div>
+      <div class="project-export-options">
+        <label><input id="trainingExportOverview" type="checkbox" checked><span><strong>Jahresübersicht</strong><small>Kennzahlen, Status, Stunden und Gesamtkosten</small></span></label>
+        <label><input id="trainingExportList" type="checkbox" checked><span><strong>Fortbildungsliste</strong><small>Alle Termine und Status des ausgewählten Jahres</small></span></label>
+        <label><input id="trainingExportTeam" type="checkbox"><span><strong>Teamstatus</strong><small>Absolviert, laufend, geplant und überfällig je Mitarbeiter</small></span></label>
+        <label><input id="trainingExportBudget" type="checkbox"><span><strong>Budgetübersicht</strong><small>Budget, Kosten und verbleibender Betrag je Mitarbeiter</small></span></label>
+        <label><input id="trainingExportMultiYear" type="checkbox"><span><strong>Mehrjahresübersicht</strong><small>Planungszeitraum aus der Mehrjahresansicht</small></span></label>
+      </div>
+      <div class="dialog-actions"><div class="controls-spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">PDF erstellen</button></div>
+    </form>
+  </dialog>
 
   <dialog id="projectExportDialog" class="dialog glass-solid compact">
     <form id="projectExportForm">
@@ -1089,6 +1123,6 @@
       }, true);
     })();
   </script>
-  <script src="app.js?v=20261001-29"></script>
+  <script src="app.js?v=20261001-30"></script>
 </body>
 </html>
