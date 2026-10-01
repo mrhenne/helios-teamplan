@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-24" />
+  <link rel="stylesheet" href="styles.css?v=20261001-25" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -105,21 +105,21 @@
       <button id="nextYear" class="icon-btn" aria-label="Nächstes Jahr">›</button>
     </div>
     <div class="segmented view-switch" aria-label="Ansicht">
-      <button id="monthViewBtn" class="segment active" type="button">Monat</button>
-      <button id="yearViewBtn" class="segment" type="button">Jahr</button>
+      <button id="monthViewBtn" class="segment active" type="button"><svg class="ui-icon"><use href="#i-calendar"></use></svg><span>Monat</span></button>
+      <button id="yearViewBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-table"></use></svg><span>Jahr</span></button>
     </div>
-    <button id="todayBtn" class="btn ghost today-btn" type="button" title="Zum heutigen Monat">◎ Heute</button>
+    <button id="todayBtn" class="btn ghost today-btn icon-label-btn" type="button" title="Zum heutigen Monat"><svg class="ui-icon"><use href="#i-calendar"></use></svg><span>Heute</span></button>
     <div class="controls-spacer"></div>
     
   </div>
   <div class="controls-row controls-secondary">
     <div class="control-block zoom-block"><span class="control-caption">Zoom</span><button id="zoomOutBtn" class="zoom-btn" type="button">−</button><input id="zoomRange" type="range" min="10" max="140" step="5" value="100"><button id="zoomInBtn" class="zoom-btn" type="button">+</button><strong id="zoomLabel">100%</strong></div>
     <button id="fitEmployeesBtn" class="btn ghost view-tool-btn" type="button" title="Alle Mitarbeiter in die Höhe einpassen">↕ Alle einpassen</button>
-    <button id="focusModeBtn" class="btn ghost view-tool-btn" type="button" title="Nur Zeitraum und Planung anzeigen">◫ Fokusmodus</button>
+    <button id="focusModeBtn" class="btn ghost view-tool-btn icon-label-btn" type="button" title="Nur Zeitraum und Planung anzeigen"><svg class="ui-icon"><use href="#i-focus"></use></svg><span>Fokusmodus</span></button>
     <div class="control-block"><span class="control-caption">Urlaub</span><div class="segmented vacation-mode" title="Gesamt: jedes gesetzte U zählt 1,0. Anteilig: jedes U wird mit dem Stellenanteil gewichtet, z. B. 80 % = 0,8 je U. Der Jahresanspruch bleibt unverändert."><button id="vacationFullBtn" class="segment" type="button">Gesamt</button><button id="vacationActualBtn" class="segment active" type="button">Anteilig</button></div></div>
     <div class="controls-spacer"></div>
     <input id="searchInput" class="search control-search compact-employee-search" placeholder="Mitarbeiter suchen…" />
-    <button id="addEmployeeBtn" class="btn primary">+ Mitarbeiter</button>
+    <button id="addEmployeeBtn" class="btn primary icon-label-btn"><svg class="ui-icon"><use href="#i-plus"></use></svg><span>Mitarbeiter</span></button>
   </div>
     <div class="controls-row vacation-module-actions">
       <span class="module-tools-label"><svg class="ui-icon"><use href="#i-calendar"></use></svg> Urlaubsplanung</span>
@@ -189,12 +189,12 @@
           <button id="trainingNextYear" class="icon-btn" type="button" aria-label="Nächstes Jahr">›</button>
         </div>
         <div class="segmented training-view-switch">
-          <button id="trainingOverviewBtn" class="segment active" type="button">Übersicht</button>
-          <button id="trainingCalendarBtn" class="segment" type="button">Jahr</button>
-          <button id="trainingMultiYearBtn" class="segment" type="button">Mehrjahre</button>
-          <button id="trainingTeamStatusBtn" class="segment" type="button">Teamstatus</button>
-          <button id="trainingEmployeesBtn" class="segment" type="button">Mitarbeiter</button>
-          <button id="trainingClassicBtn" class="segment" type="button">Liste</button>
+          <button id="trainingOverviewBtn" class="segment active" type="button"><svg class="ui-icon"><use href="#i-grid"></use></svg><span>Übersicht</span></button>
+          <button id="trainingCalendarBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-calendar"></use></svg><span>Jahr</span></button>
+          <button id="trainingMultiYearBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-table"></use></svg><span>Mehrjahre</span></button>
+          <button id="trainingTeamStatusBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-users"></use></svg><span>Teamstatus</span></button>
+          <button id="trainingEmployeesBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-role"></use></svg><span>Mitarbeiter</span></button>
+          <button id="trainingClassicBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-list"></use></svg><span>Liste</span></button>
         </div>
         <div class="training-zoom-control">
           <button id="trainingZoomOutBtn" type="button" aria-label="Fortbildungsansicht verkleinern">−</button>
@@ -206,8 +206,8 @@
         <button id="trainingFocusBtn" class="btn ghost icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-focus"></use></svg><span>Fokusmodus</span></button>
         <button id="trainingExitFocusBtn" class="btn ghost hidden icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-x"></use></svg><span>Fokus beenden</span></button>
         <button id="trainingExportBtn" class="btn ghost training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-table"></use></svg><span>Excel</span></button>
-        <button id="trainingCsvBtn" class="btn ghost training-manager-action" type="button">CSV</button>
-        <button id="trainingJsonBtn" class="btn ghost training-manager-action" type="button">JSON</button>
+        <button id="trainingCsvBtn" class="btn ghost training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>CSV</span></button>
+        <button id="trainingJsonBtn" class="btn ghost training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>JSON</span></button>
         <button id="trainingTypesBtn" class="btn ghost training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-book"></use></svg><span>Katalog</span></button>
         <button id="addTrainingBtn" class="btn primary training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-plus"></use></svg><span>Fortbildung</span></button>
       </section>
@@ -763,6 +763,6 @@
 
   <div id="cellContextMenu" class="cell-context-menu hidden" role="menu" aria-label="Schnellaktionen"></div>
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20261001-24"></script>
+  <script src="app.js?v=20261001-25"></script>
 </body>
 </html>
