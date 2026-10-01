@@ -6781,3 +6781,19 @@ body.dark-mode .project-export-options>label{
     grid-template-columns:1fr!important;
   }
 }
+
+
+/* === 2026-10-01 Vacation heading + compact employee names === */
+.vacation-heading{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  min-width:160px;
+  flex:0 0 auto
+}
+.vacation-heading>.eyebrow{font-size:6px}
+.vacation-heading>div{display:flex;align-items:baseline;gap:6px}
+.vacation-heading strong{font-size:13px}
+.vacation-heading>div>span{font-size:7px;color:var(--muted)}
+.plan-table .employee-name{font-size:10.5px!important;line-height:1.15}
+.global-employee-btn{font-weight:800}
