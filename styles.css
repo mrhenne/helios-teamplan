@@ -6366,3 +6366,212 @@ body.dark-mode .project-back-btn{
     gap:5px!important;
   }
 }
+
+
+/* === 2026-10-01 PROJECT RESPONSIBILITY + EXPORT + PROGRESS === */
+/* Fortschritt wird aus Aufgaben + Checklisten berechnet */
+.project-progress>i{
+  background:var(--progress-color,var(--project-color,#d8891c))!important;
+  transition:width .2s ease,background-color .2s ease!important;
+}
+.project-detail-progress{
+  position:relative;
+  height:28px;
+  margin:7px 0 2px;
+  padding:4px 7px 4px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:rgba(255,255,255,.48);
+  overflow:hidden;
+}
+body.dark-mode .project-detail-progress{background:#172723}
+.project-detail-progress::before{
+  content:"";
+  position:absolute;
+  left:0;top:0;bottom:0;
+  width:var(--progress,0%);
+  background:color-mix(in srgb,var(--progress-color) 16%,transparent);
+  transition:width .2s ease;
+}
+.project-detail-progress>i{
+  position:absolute;
+  left:0;bottom:0;
+  width:var(--progress,0%);
+  height:4px;
+  background:var(--progress-color);
+  transition:width .2s ease,background .2s ease;
+}
+.project-detail-progress>span{
+  position:relative;
+  z-index:1;
+  font-size:6.2px;
+  font-weight:800;
+  color:var(--muted);
+}
+
+/* Projektteam: Mitgliedschaft und Verantwortlichkeit getrennt */
+.project-members-list{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:5px!important;
+}
+.project-member-row{
+  min-height:34px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:8px;
+  padding:4px 6px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:rgba(255,255,255,.55);
+}
+body.dark-mode .project-member-row{background:#172723}
+.project-member-main,
+.project-member-responsible-label{
+  margin:0!important;
+  padding:0!important;
+  min-height:24px!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:6px!important;
+  border:0!important;
+  background:transparent!important;
+  font-size:7.3px!important;
+  cursor:pointer!important;
+}
+.project-member-main{
+  min-width:0;
+  font-weight:800!important;
+}
+.project-member-main>span{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.project-member-responsible-label{
+  min-width:102px;
+  justify-content:flex-end;
+  color:#8a641a!important;
+}
+.project-member-main input,
+.project-member-responsible-label input{
+  width:14px!important;
+  height:14px!important;
+  margin:0!important;
+  flex:0 0 14px!important;
+}
+.project-member-responsible-label:has(input:checked){
+  color:#176e58!important;
+  font-weight:900!important;
+}
+
+/* Aufgaben direkt im Projekt abhaken */
+.project-dialog-task{
+  display:grid!important;
+  grid-template-columns:28px minmax(0,1fr) auto!important;
+  align-items:center!important;
+  gap:6px!important;
+  padding:6px 7px!important;
+}
+.project-dialog-task-main{
+  min-width:0;
+  width:100%;
+  border:0;
+  background:transparent;
+  color:inherit;
+  text-align:left;
+  cursor:pointer;
+  padding:0;
+}
+.project-dialog-task-main>span{
+  min-width:0;
+  display:grid;
+  gap:2px;
+}
+.project-dialog-task-main strong{
+  display:block;
+  font-size:8px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.project-dialog-task-main small{
+  display:block;
+  font-size:6px;
+  color:var(--muted);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.project-task-quickcheck{
+  width:26px;
+  height:26px;
+  min-width:26px;
+  border:1px solid var(--line);
+  border-radius:50%;
+  background:rgba(255,255,255,.78);
+  color:#176e58;
+  display:grid;
+  place-items:center;
+  cursor:pointer;
+  font-size:12px;
+  font-weight:900;
+}
+body.dark-mode .project-task-quickcheck{background:#20302b}
+.project-dialog-task.done{
+  opacity:.68;
+}
+.project-dialog-task.done .project-task-quickcheck{
+  background:#dff1e9;
+  border-color:#a9d9c8;
+}
+.project-dialog-task.done .project-dialog-task-main strong{
+  text-decoration:line-through;
+}
+
+/* Selektiver Projekt-PDF-Export */
+.dialog-subtext{
+  margin:4px 0 0;
+  color:var(--muted);
+  font-size:7px;
+}
+.project-export-options{
+  display:grid;
+  gap:6px;
+}
+.project-export-options>label{
+  display:grid!important;
+  grid-template-columns:18px minmax(0,1fr)!important;
+  align-items:start!important;
+  gap:8px!important;
+  padding:8px 9px!important;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:rgba(255,255,255,.55);
+  cursor:pointer;
+}
+body.dark-mode .project-export-options>label{background:#172723}
+.project-export-options input{
+  width:15px!important;
+  height:15px!important;
+  margin:1px 0 0!important;
+}
+.project-export-options label>span{
+  display:grid;
+  gap:2px;
+}
+.project-export-options strong{
+  font-size:8px;
+}
+.project-export-options small{
+  font-size:6.2px;
+  color:var(--muted);
+  font-weight:600;
+}
+
+@media(max-width:650px){
+  .project-member-row{grid-template-columns:1fr}
+  .project-member-responsible-label{justify-content:flex-start}
+}
