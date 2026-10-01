@@ -1434,3 +1434,50 @@ body.dark-mode .dialog label{color:#a9beb7!important}
 
 /* Entfernte KPI-Leiste: alte Regeln bewusst neutralisiert */
 .summary-grid{display:none!important}
+
+/* Urlaubsvorschau klarer und Mitarbeiter-Dialog Aktionen kompakter */
+.vacation-preview-main{
+  display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:4px
+}
+.vacation-preview-main strong{
+  display:inline-flex;align-items:center;min-height:24px;padding:0 8px;border-radius:7px;
+  background:rgba(15,139,120,.08);color:var(--green);font-size:8.5px!important
+}
+#vacationPreview>span{
+  display:block;color:var(--muted);font-size:7.5px;line-height:1.4
+}
+#employeeDialog .dialog-actions{
+  margin-top:11px!important
+}
+#employeeDialog .dialog-actions .btn{
+  min-height:28px!important;
+  height:28px!important;
+  padding:0 9px!important;
+  border-radius:8px!important;
+  font-size:8px!important;
+  line-height:1!important
+}
+#employeeDialog #deleteEmployeeBtn{
+  padding:0 8px!important
+}
+#employeeDialog .employee-dialog-tools .btn{
+  min-height:28px!important;
+  height:28px!important;
+  padding:0 8px!important;
+  border-radius:8px!important;
+  font-size:7.5px!important
+}
+body.dark-mode .vacation-preview-main strong{
+  background:rgba(77,179,150,.12);color:#9de1ca
+}
+@media(max-width:560px){
+  #employeeDialog .dialog-actions{
+    gap:5px!important;
+    flex-wrap:wrap
+  }
+  #employeeDialog .dialog-actions .spacer{display:none}
+  #employeeDialog .dialog-actions .btn{
+    flex:1 1 auto;
+    min-width:82px
+  }
+}
