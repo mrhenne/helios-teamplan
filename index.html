@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-21" />
+  <link rel="stylesheet" href="styles.css?v=20261001-22" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -165,9 +165,11 @@
         </div>
         <div class="segmented training-view-switch">
           <button id="trainingOverviewBtn" class="segment active" type="button">Übersicht</button>
-          <button id="trainingCalendarBtn" class="segment" type="button">Kalender</button>
+          <button id="trainingCalendarBtn" class="segment" type="button">Jahr</button>
+          <button id="trainingMultiYearBtn" class="segment" type="button">Mehrjahre</button>
+          <button id="trainingTeamStatusBtn" class="segment" type="button">Teamstatus</button>
           <button id="trainingEmployeesBtn" class="segment" type="button">Mitarbeiter</button>
-          <button id="trainingClassicBtn" class="segment" type="button">Klassisch</button>
+          <button id="trainingClassicBtn" class="segment" type="button">Liste</button>
         </div>
         <div class="training-zoom-control">
           <button id="trainingZoomOutBtn" type="button" aria-label="Fortbildungsansicht verkleinern">−</button>
@@ -179,6 +181,8 @@
         <button id="trainingFocusBtn" class="btn ghost" type="button">◫ Fokusmodus</button>
         <button id="trainingExitFocusBtn" class="btn ghost hidden" type="button">✕ Fokus beenden</button>
         <button id="trainingExportBtn" class="btn ghost training-manager-action" type="button">▦ Excel</button>
+        <button id="trainingCsvBtn" class="btn ghost training-manager-action" type="button">CSV</button>
+        <button id="trainingJsonBtn" class="btn ghost training-manager-action" type="button">JSON</button>
         <button id="trainingTypesBtn" class="btn ghost training-manager-action" type="button">Katalog</button>
         <button id="addTrainingBtn" class="btn primary training-manager-action" type="button">+ Fortbildung</button>
       </section>
@@ -186,6 +190,8 @@
       <section class="training-filterbar glass">
         <input id="trainingSearchInput" class="search" type="search" placeholder="Fortbildung suchen…">
         <select id="trainingEmployeeFilter" class="training-manager-filter"><option value="">Alle Mitarbeiter</option></select>
+        <select id="trainingTypeFilter"><option value="">Alle Fortbildungen</option></select>
+        <select id="trainingCategoryFilter"><option value="">Alle Arten</option></select>
         <select id="trainingStatusFilter">
           <option value="">Alle Status</option>
           <option value="planned">Geplant</option>
@@ -193,6 +199,7 @@
           <option value="due">Bald fällig</option>
           <option value="overdue">Überfällig</option>
         </select>
+        <button id="trainingClearFiltersBtn" type="button" class="btn ghost">Filter löschen</button>
         <div id="trainingOwnScope" class="training-own-scope hidden">Nur meine Fortbildungen</div>
       </section>
 
@@ -216,6 +223,36 @@
         <div id="trainingYearCalendar" class="training-year-calendar"></div>
       </section>
 
+      <section id="trainingMultiYearView" class="training-view hidden">
+        <div class="glass training-multiyear-shell">
+          <div class="training-multiyear-head">
+            <div><span class="eyebrow">LANGFRISTPLANUNG</span><h2>Mehrjährige Gesamtübersicht</h2><p>Jahre auf der X-Achse, Mitarbeiter auf der Y-Achse. Wiederholungen und mehrjährige Weiterbildungen werden automatisch mitgeführt.</p></div>
+            <div class="training-multiyear-controls">
+              <label>Von<input id="trainingMultiYearFrom" type="number" min="2020" max="2100"></label>
+              <label>Bis<input id="trainingMultiYearTo" type="number" min="2020" max="2100"></label>
+              <button id="trainingMultiYearFitBtn" type="button" class="btn ghost">Auf Seite einpassen</button>
+            </div>
+          </div>
+          <div class="training-multiyear-legend"><span>↻ Intervall / Wiederholung</span><span>↔ mehrjährige Weiterbildung</span><span>● tatsächlicher Eintrag</span><span>◇ Vorschau</span></div>
+          <div id="trainingMultiYearGrid" class="training-multiyear-grid"></div>
+        </div>
+      </section>
+
+      <section id="trainingTeamStatusView" class="training-view hidden">
+        <div class="glass training-teamstatus-shell">
+          <div class="training-teamstatus-head">
+            <div><span class="eyebrow">TEAMABDECKUNG</span><h2>Fortbildungsstatus im Team</h2><p>Eine Fortbildung auswählen und sofort sehen, wer absolviert hat, geplant ist oder noch fehlt.</p></div>
+            <div class="training-teamstatus-controls">
+              <select id="trainingTeamStatusType"></select>
+              <select id="trainingTeamStatusYear"></select>
+              <select id="trainingTeamStatusSort"><option value="name">Name A → Z</option><option value="status">Status</option></select>
+            </div>
+          </div>
+          <div id="trainingTeamStatusMetrics" class="training-teamstatus-metrics"></div>
+          <div id="trainingTeamStatusBoard" class="training-teamstatus-board"></div>
+        </div>
+      </section>
+
       <section id="trainingEmployeesView" class="training-view hidden">
         <div id="trainingEmployeeCards" class="training-employee-cards"></div>
       </section>
@@ -236,6 +273,8 @@
     </section>
   </main>
 
+
+  <div id="trainingContextMenu" class="training-context-menu hidden" role="menu" aria-label="Fortbildungs-Schnellaktionen"></div>
 
   <dialog id="trainingDialog" class="dialog glass-solid">
     <form id="trainingForm">
@@ -699,6 +738,6 @@
 
   <div id="cellContextMenu" class="cell-context-menu hidden" role="menu" aria-label="Schnellaktionen"></div>
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20261001-21"></script>
+  <script src="app.js?v=20261001-22"></script>
 </body>
 </html>
