@@ -2543,7 +2543,13 @@ function renderProjectCalendar(){
 function renderProjectTeam(){
   const box=document.getElementById('projectsTeamGrid');if(!box)return;
   const employees=[...state.employees].sort((a,b)=>a.order-b.order);
-  box.innerHTML=employees.map(e=>{const tasks=projectTasks.filter(t=>t.assignee_employee_id===e.id&&t.status!=='done'),projects=projectProjects.filter(p=>p.lead_employee_id===e.id&&p.status!=='done');const initials=e.name.split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase();return '<article class="project-team-card"><header><div class="project-team-avatar">'+escapeHtml(initials)+'</div><div><h3>'+escapeHtml(e.name)+'</h3><small>'+projects.length+' Projekte · '+tasks.length+' offene Aufgaben</small></div></header><div class="project-team-list">'+projects.map(p=>'<button type="button" data-project-id="'+p.id+'"><span>▣ '+escapeHtml(p.name)+'</span><b>'+escapeHtml(projectStatusLabel(p.status))+'</b></button>').join('')+tasks.slice(0,6).map(t=>'<button type="button" data-project-task-id="'+t.id+'"><span>✓ '+escapeHtml(t.title)+'</span><b>'+escapeHtml(projectTaskStatusLabel(t.status))+'</b></button>').join('')+'</div></article>'}).join('');
+  box.innerHTML=employees.map(e=>{
+    const tasks=projectTasks.filter(t=>t.assignee_employee_id===e.id&&t.status!=='done');
+    const memberProjectIds=new Set(projectMembers.filter(m=>m.employee_id===e.id).map(m=>m.project_id));
+    const projects=projectProjects.filter(p=>(p.lead_employee_id===e.id||memberProjectIds.has(p.id))&&p.status!=='done');
+    const initials=e.name.split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase();
+    return '<article class="project-team-card"><header><div class="project-team-avatar">'+escapeHtml(initials)+'</div><div><h3>'+escapeHtml(e.name)+'</h3><small>'+projects.length+' Projekte · '+tasks.length+' offene Aufgaben</small></div></header><div class="project-team-list">'+projects.map(p=>'<button type="button" data-project-id="'+p.id+'"><span>▣ '+escapeHtml(p.name)+'</span><b>'+(p.lead_employee_id===e.id?'Leitung':'Team')+'</b></button>').join('')+tasks.slice(0,6).map(t=>'<button type="button" data-project-task-id="'+t.id+'"><span>✓ '+escapeHtml(t.title)+'</span><b>'+escapeHtml(projectTaskStatusLabel(t.status))+'</b></button>').join('')+'</div></article>';
+  }).join('');
 }
 function renderProjectNotes(){
   const box=document.getElementById('projectsNotesBoard');if(!box)return;
@@ -2632,6 +2638,23 @@ async function addProjectTaskComment(){
   if(supabaseClient&&authUser){row.author_user_id=authUser.id;const {error}=await supabaseClient.from('teamplan_task_comments').insert(row);if(error){alert(error.message);return}await logProjectActivity('task',taskId,'Kommentar hinzugefügt',body.slice(0,120));await loadProjectData()}
   else{projectComments.push({id:uid(),...row});await logProjectActivity('task',taskId,'Kommentar hinzugefügt',body.slice(0,120));saveProjectLocal()}
   input.value='';renderProjectTaskCollaboration(projectTasks.find(t=>t.id===taskId));
+}
+function recurrenceShiftDate(value,recurrence){
+  if(!value)return null;
+  const d=new Date(value+'T12:00:00');
+  if(recurrence==='weekly')d.setDate(d.getDate()+7);
+  if(recurrence==='monthly')d.setMonth(d.getMonth()+1);
+  if(recurrence==='quarterly')d.setMonth(d.getMonth()+3);
+  if(recurrence==='halfyear')d.setMonth(d.getMonth()+6);
+  if(recurrence==='yearly')d.setFullYear(d.getFullYear()+1);
+  return dateKey(d);
+}
+function localNextRecurringTask(task){
+  if(!task||task.status!=='done'||!task.due_date||!task.recurrence||task.recurrence==='none')return;
+  if(projectTasks.some(x=>x.recurrence_parent_id===task.id))return;
+  const next={...task,id:uid(),status:'open',completed_at:null,created_at:new Date().toISOString(),updated_at:new Date().toISOString(),recurrence_parent_id:task.id,start_date:recurrenceShiftDate(task.start_date,task.recurrence),due_date:recurrenceShiftDate(task.due_date,task.recurrence),checklist:(Array.isArray(task.checklist)?task.checklist:[]).map(x=>({...x,done:false}))};
+  projectTasks.push(next);
+  projectActivity.unshift({id:uid(),team_id:'local',entity_type:'task',entity_id:next.id,action:'Wiederholungsaufgabe erstellt',details:next.title,actor_name:'TeamPlan',created_at:new Date().toISOString()});
 }
 function openProject(id=null){
   const p=id?projectProjects.find(x=>x.id===id):null;
@@ -2730,6 +2753,7 @@ async function saveProjectTaskFromForm(){
   }else{
     if(id){const i=projectTasks.findIndex(x=>x.id===id);if(i>=0)projectTasks[i]={...projectTasks[i],...row}}
     else{savedId=uid();projectTasks.push({id:savedId,...row,created_at:new Date().toISOString()})}
+    const savedTask=projectTasks.find(x=>x.id===savedId);localNextRecurringTask(savedTask);
     await logProjectActivity('task',savedId,id?'Aufgabe aktualisiert':'Aufgabe angelegt',row.title);saveProjectLocal();renderProjectModule();
   }
   document.getElementById('projectTaskDialog').close();showToast(id?'Aufgabe aktualisiert':'Aufgabe angelegt');
@@ -2778,7 +2802,7 @@ async function updateProjectTaskByDrop(id,patch){
   if(patch.status==='done')patch.completed_at=new Date().toISOString();
   if(patch.status&&patch.status!=='done')patch.completed_at=null;
   if(supabaseClient&&authUser){const {error}=await supabaseClient.from('teamplan_tasks').update({...patch,updated_at:new Date().toISOString()}).eq('id',id);if(error){alert(error.message);return}await logProjectActivity('task',id,'Aufgabe verschoben',patch.status?projectTaskStatusLabel(patch.status):('Termin '+projectDateLabel(patch.due_date)));await loadProjectData()}
-  else{Object.assign(t,patch);await logProjectActivity('task',id,'Aufgabe verschoben',patch.status?projectTaskStatusLabel(patch.status):('Termin '+projectDateLabel(patch.due_date)));saveProjectLocal();renderProjectModule()}
+  else{Object.assign(t,patch);localNextRecurringTask(t);await logProjectActivity('task',id,'Aufgabe verschoben',patch.status?projectTaskStatusLabel(patch.status):('Termin '+projectDateLabel(patch.due_date)));saveProjectLocal();renderProjectModule()}
 }
 async function reorderProjectTask(dragId,targetId,status){
   if(!dragId||dragId===targetId)return;
