@@ -1446,7 +1446,7 @@ function trainingStatusLabel(t){
   const due=trainingDueState(t);
   if(due==='overdue')return 'Überfällig';
   if(due==='due')return 'Bald fällig';
-  return t.status==='completed'?'Abgeschlossen':t.status==='cancelled'?'Abgesagt':'Geplant';
+  return t.status==='completed'?'Absolviert':t.status==='cancelled'?'Abgesagt':'Geplant';
 }
 function trainingVisibleEmployees(){
   if(sessionRole==='employee')return state.employees.filter(e=>e.id===sessionEmployeeId);
@@ -1627,7 +1627,7 @@ function trainingStatusDropzonesHtml(){
   if(!trainingCanManage())return '';
   return '<span>Hierher ziehen:</span>'+
     '<div class="training-status-dropzone planned" data-training-drop-status="planned">Geplant</div>'+
-    '<div class="training-status-dropzone completed" data-training-drop-status="completed">Abgeschlossen</div>'+
+    '<div class="training-status-dropzone completed" data-training-drop-status="completed">Absolviert</div>'+
     '<div class="training-status-dropzone cancelled" data-training-drop-status="cancelled">Abgesagt</div>';
 }
 function renderTrainingDropzones(){
@@ -1639,7 +1639,7 @@ async function updateTrainingStatusByDrop(id,status){
   if(!trainingCanManage()||!id||!['planned','completed','cancelled'].includes(status))return;
   const {error}=await supabaseClient.from('teamplan_trainings').update({status,updated_at:new Date().toISOString()}).eq('id',id);
   if(error){alert(error.message);return}
-  await loadTrainingData();showToast(status==='completed'?'Als abgeschlossen markiert':status==='cancelled'?'Als abgesagt markiert':'Auf geplant gesetzt');
+  await loadTrainingData();showToast(status==='completed'?'Als absolviert markiert':status==='cancelled'?'Als abgesagt markiert':'Auf geplant gesetzt');
 }
 function bindTrainingDragDrop(){
   if(!trainingCanManage())return;
@@ -1672,7 +1672,7 @@ function renderTrainingMetrics(items){
   const budget=employees.reduce((s,e)=>s+trainingBudgetFor(e.id),0);
   box.innerHTML=
     '<article><span>Geplant</span><strong>'+active+'</strong><small>'+trainingYear+'</small></article>'+
-    '<article><span>Abgeschlossen</span><strong>'+completed+'</strong><small>'+trainingYear+'</small></article>'+
+    '<article><span>Absolviert</span><strong>'+completed+'</strong><small>'+trainingYear+'</small></article>'+
     '<article class="'+(overdue?'metric-alert':'')+'"><span>Fälligkeiten</span><strong>'+due+' / '+overdue+'</strong><small>bald / überfällig</small></article>'+
     '<article><span>Kosten</span><strong>'+escapeHtml(euro(cost))+'</strong><small>'+(budget?escapeHtml(euro(budget))+' Budget':'kein Budget hinterlegt')+'</small></article>';
 }
