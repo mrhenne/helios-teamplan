@@ -53,8 +53,8 @@ test('Kopfzeile bleibt vollständig innerhalb ihrer Felder', async ({ page }) =>
   await expect(page.locator('#authUserPill')).toBeHidden();
   await expect(page.locator('#onlinePill')).toBeHidden();
 
-  await assertNoOverflow(page.locator('.top-status-item .sync-pill:visible'));
-  await assertNoOverflow(page.locator('.top-action-section .top-tool:visible, .global-theme-control:visible'));
+  await assertNoOverflow(page.locator('.topbar-session .sync-pill:visible, .topbar-session .topbar-user:visible, .topbar-session .topbar-online:visible'));
+  await assertNoOverflow(page.locator('.topbar-actions .top-tool:visible'));
 
   await expect(page.locator('#roleSelect')).toBeVisible();
   const roleGeometry = await page.locator('#roleSelect').evaluate(node => {
@@ -392,7 +392,7 @@ test('Desktop Kopfzeile ist eine kompakte Reihe', async ({ page }) => {
 
   const geometry=await page.locator('.topbar').evaluate(node=>{
     const bar=node.getBoundingClientRect();
-    const visible=[...node.querySelectorAll('.brand,.top-status-item,.top-action-section')]
+    const visible=[...node.querySelectorAll('.topbar-brand,.topbar-session,.topbar-actions')]
       .filter(el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return s.display!=='none'&&r.width>0&&r.height>0})
       .map(el=>{const r=el.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right}});
     return {height:bar.height,top:bar.top,bottom:bar.bottom,visible};
@@ -473,4 +473,41 @@ test('Wiederkehrende Aufgaben erzeugen lokal den nächsten Termin', async ({ pag
   const matches=page.locator('#projectsKanban .project-task-card', {hasText:'QA Monatsaufgabe'});
   await expect(matches).toHaveCount(2);
   await expect(page.locator('#projectsKanban .kanban-column[data-task-drop-status="open"]')).toContainText('QA Monatsaufgabe');
+});
+
+
+test('Projektteam und Aufgaben sind direkt miteinander verknüpft', async ({ page }) => {
+  await bootLocal(page);
+  await page.locator('#moduleProjectsBtn').click();
+
+  await page.locator('#addEmployeeBtn').click();
+  await page.locator('#employeeName').fill('Projekt Person A');
+  await page.locator('#employeeForm button[type="submit"]').click();
+  await page.locator('#addEmployeeBtn').click();
+  await page.locator('#employeeName').fill('Projekt Person B');
+  await page.locator('#employeeForm button[type="submit"]').click();
+
+  await page.locator('#addProjectBtn').click();
+  await page.locator('#projectName').fill('QA Projektteam');
+  await page.locator('#projectMemberSearch').fill('Projekt Person A');
+  await page.locator('#projectMembersList input[type="checkbox"]').check();
+  await page.locator('#projectForm button[type="submit"]').click();
+
+  const projectCard=page.locator('.project-card',{hasText:'QA Projektteam'}).first();
+  await projectCard.click();
+  await expect(page.locator('#projectTasksBox')).toBeVisible();
+  await page.locator('#projectAddTaskBtn').click();
+
+  await page.locator('#projectTaskTitle').fill('Aufgabe für Person B');
+  await page.locator('#projectTaskAssignee').selectOption({label:'Projekt Person B'});
+  await page.locator('#projectTaskForm button[type="submit"]').click();
+
+  await projectCard.click();
+  await expect(page.locator('#projectDialogTasks')).toContainText('Aufgabe für Person B');
+  await expect(page.locator('#projectDialogTasks')).toContainText('Projekt Person B');
+
+  await page.locator('#projectDialog .close-dialog').first().click();
+  await projectCard.click();
+  await page.locator('#projectMemberSearch').fill('Projekt Person B');
+  await expect(page.locator('#projectMembersList input[type="checkbox"]')).toBeChecked();
 });
