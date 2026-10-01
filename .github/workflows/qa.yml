@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: "teamplan-qa"
+  cancel-in-progress: true
+
 jobs:
   browser-qa:
     runs-on: ubuntu-latest
