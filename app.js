@@ -1768,7 +1768,7 @@ function renderTrainingMultiYear(){
         (trainingCanManage()?'<button type="button" class="training-my-add" data-training-add-employee="'+e.id+'" data-training-add-year="'+y+'">+ Fortbildung</button>':'')+
         rows.map(t=>{
           const recurrence=trainingRecurrenceLabel(t),multi=t.date_precision!=='year'&&t.start_date&&t.end_date&&t.start_date.slice(0,4)!==t.end_date.slice(0,4);
-          return '<button type="button" class="training-my-item '+t.status+(t._virtual?' virtual':'')+'" data-training-id="'+(t._sourceId||t.id)+'" data-training-virtual="'+(t._virtual?'1':'0')+'"><b>'+(t._virtual?'◇ ':'● ')+escapeHtml(t.title)+'</b><small>'+escapeHtml(t._virtual?'voraussichtlich':trainingStatusLabel(t))+(recurrence?' · '+escapeHtml(recurrence):'')+(multi?' · ↔ mehrjährig':'')+'</small></button>';
+          return '<button type="button" class="training-my-item '+t.status+(t._virtual?' virtual':'')+'" data-training-id="'+(t._sourceId||t.id)+'" data-training-virtual="'+(t._virtual?'1':'0')+'" data-training-employee="'+e.id+'" data-training-type="'+(t.type_id||'')+'" data-training-year="'+y+'"><b>'+(t._virtual?'◇ ':'● ')+escapeHtml(t.title)+'</b><small>'+escapeHtml(t._virtual?'voraussichtlich':trainingStatusLabel(t))+(recurrence?' · '+escapeHtml(recurrence):'')+(multi?' · ↔ mehrjährig':'')+'</small></button>';
         }).join('')+
       '</div>';
     });
@@ -1798,7 +1798,7 @@ function renderTrainingTeamStatus(){
   metrics.innerHTML='<article><span>Teamabdeckung</span><strong>'+coverage+' %</strong></article><article><span>Absolviert</span><strong>'+completed.length+'</strong></article><article><span>In Planung</span><strong>'+planned.length+'</strong></article><article><span>Noch offen</span><strong>'+open.length+'</strong></article>';
   const col=(title,arr,state)=>'<section class="training-teamstatus-column '+state+'"><header><strong>'+title+'</strong><b>'+arr.length+'</b></header><div>'+ (arr.length?arr.map(r=>{
     const t=r.item;
-    return '<article class="training-teamstatus-person" data-training-employee="'+r.employee.id+'" data-training-type="'+type.id+'" data-training-year="'+trainingTeamStatusYear+'" '+(t?'data-training-id="'+(t._sourceId||t.id)+'"':'')+'><div><strong>'+escapeHtml(r.employee.name)+'</strong><span>'+escapeHtml(r.employee.role||'Mitarbeiter')+' · '+(t?escapeHtml(t._virtual?'Wiederholung vorgemerkt':formatTrainingDateRange(t)):'noch kein Eintrag')+'</span></div><button type="button" class="training-person-action" title="Schnellaktionen">⋯</button></article>';
+    return '<article class="training-teamstatus-person" data-training-employee="'+r.employee.id+'" data-training-type="'+type.id+'" data-training-year="'+trainingTeamStatusYear+'" '+(t&&!t._virtual?'data-training-id="'+t.id+'"':'')+'><div><strong>'+escapeHtml(r.employee.name)+'</strong><span>'+escapeHtml(r.employee.role||'Mitarbeiter')+' · '+(t?escapeHtml(t._virtual?'Wiederholung vorgemerkt':formatTrainingDateRange(t)):'noch kein Eintrag')+'</span></div><button type="button" class="training-person-action" title="Schnellaktionen">⋯</button></article>';
   }).join(''):'<div class="empty-state">'+(state==='completed'?'Noch niemand absolviert.':state==='planned'?'Niemand in Planung.':'Alle berücksichtigt.')+'</div>')+'</div></section>';
   board.innerHTML=col('Absolviert',completed,'completed')+col('In Planung',planned,'planned')+col('Noch ohne Eintrag',open,'open');
 }
@@ -1889,8 +1889,10 @@ function showTrainingContextMenu(x,y,{trainingId='',employeeId='',typeId='',year
 function bindTrainingContextMenus(){
   if(!trainingCanManage())return;
   document.querySelectorAll('[data-training-id]').forEach(el=>el.addEventListener('contextmenu',e=>{
+    if(el.classList.contains('training-teamstatus-person'))return;
     e.preventDefault();e.stopPropagation();
-    showTrainingContextMenu(e.clientX,e.clientY,{trainingId:el.dataset.trainingId,employeeId:el.dataset.trainingEmployee||''});
+    const virtual=el.dataset.trainingVirtual==='1';
+    showTrainingContextMenu(e.clientX,e.clientY,{trainingId:virtual?'':el.dataset.trainingId,employeeId:el.dataset.trainingEmployee||'',typeId:el.dataset.trainingType||'',year:Number(el.dataset.trainingYear||trainingYear)});
   }));
   document.querySelectorAll('.training-teamstatus-person').forEach(el=>el.addEventListener('contextmenu',e=>{
     e.preventDefault();e.stopPropagation();
