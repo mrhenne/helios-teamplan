@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-18" />
+  <link rel="stylesheet" href="styles.css?v=20261001-19" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -167,6 +167,13 @@
           <button id="trainingOverviewBtn" class="segment active" type="button">Übersicht</button>
           <button id="trainingCalendarBtn" class="segment" type="button">Kalender</button>
           <button id="trainingEmployeesBtn" class="segment" type="button">Mitarbeiter</button>
+          <button id="trainingClassicBtn" class="segment" type="button">Klassisch</button>
+        </div>
+        <div class="training-zoom-control">
+          <button id="trainingZoomOutBtn" type="button" aria-label="Fortbildungsansicht verkleinern">−</button>
+          <input id="trainingZoomRange" type="range" min="70" max="130" step="5" value="100" aria-label="Zoom Fortbildungsplanung">
+          <button id="trainingZoomInBtn" type="button" aria-label="Fortbildungsansicht vergrößern">+</button>
+          <strong id="trainingZoomLabel">100%</strong>
         </div>
         <div class="controls-spacer"></div>
         <button id="trainingFocusBtn" class="btn ghost" type="button">◫ Fokusmodus</button>
@@ -211,6 +218,15 @@
         <div id="trainingEmployeeCards" class="training-employee-cards"></div>
       </section>
 
+      <section id="trainingClassicView" class="training-view hidden">
+        <div class="glass training-classic-wrap">
+          <table class="training-classic-table">
+            <thead><tr><th>Mitarbeiter</th><th>Fortbildung</th><th>Termin</th><th>Wiederholung</th><th>Status</th><th>Stunden</th><th>Kosten</th><th>Fälligkeit</th></tr></thead>
+            <tbody id="trainingClassicBody"></tbody>
+          </table>
+        </div>
+      </section>
+
       <section class="hint glass training-hint">
         <strong>Fortbildungen:</strong> Pflichttermine, wiederkehrende Intervalle, mehrjährige Weiterbildungen, Stunden, Kosten und Jahresbudgets werden getrennt von der Urlaubsplanung verwaltet.
       </section>
@@ -232,6 +248,8 @@
         <label id="trainingYearOnlyField" class="hidden">Jahr<input id="trainingOnlyYear" type="number" min="2020" max="2100" step="1"></label>
         <label id="trainingStartField">Beginn<input id="trainingStart" type="date"></label>
         <label id="trainingEndField">Ende<input id="trainingEnd" type="date"></label>
+        <label class="training-recurring-toggle"><span><input id="trainingRecurring" type="checkbox"> Wiederkehrend</span></label>
+        <label id="trainingRecurrenceField" class="hidden">Wiederholung alle<input id="trainingRecurrenceMonths" type="number" min="1" max="240" step="1" placeholder="z. B. 24"><small>Monate</small></label>
         <label>Stunden<input id="trainingHours" type="number" min="0" step="0.25" value="0"></label>
         <label>Kosten €<input id="trainingCost" type="number" min="0" step="0.01" value="0"></label>
         <label>Anbieter<input id="trainingProvider" maxlength="120"></label>
@@ -678,6 +696,6 @@
 
   <div id="cellContextMenu" class="cell-context-menu hidden" role="menu" aria-label="Schnellaktionen"></div>
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20261001-18"></script>
+  <script src="app.js?v=20261001-19"></script>
 </body>
 </html>
