@@ -6946,3 +6946,106 @@ body.dark-mode .projects-heading::before{
   background:linear-gradient(180deg,#ffc36f,#d8891c);
   box-shadow:0 0 0 3px rgba(216,137,28,.12);
 }
+
+
+/* === 2026-10-01 Compact vacation labels + unified icon language === */
+
+/* Urlaubsplanung: linke Namen und Tabellenköpfe ruhiger/kleiner */
+.plan-table .employee-name{
+  font-size:9px!important;
+  line-height:1.08!important;
+  font-weight:700!important;
+}
+.plan-table th.employee-col{
+  font-size:6.4px!important;
+  line-height:1.05!important;
+  letter-spacing:.025em!important;
+  color:var(--muted)!important;
+  font-weight:800!important;
+}
+.plan-table .month-band-label{
+  font-size:6px!important;
+  line-height:1!important;
+  letter-spacing:.05em!important;
+  text-transform:uppercase!important;
+  color:var(--muted)!important;
+  font-weight:800!important;
+  opacity:.78!important;
+}
+
+/* Globaler Icon-Stil – angelehnt an die Modul-Icons */
+.top-tool .ui-icon,
+.btn .ui-icon,
+.segment .ui-icon,
+.icon-btn .ui-icon{
+  width:17px!important;
+  height:17px!important;
+  min-width:17px!important;
+  min-height:17px!important;
+  padding:3px!important;
+  box-sizing:border-box!important;
+  border-radius:999px!important;
+  background:#eef4f2!important;
+  color:#4a665f!important;
+  flex:0 0 17px!important;
+  stroke-width:1.8!important;
+  transition:background .15s ease,color .15s ease,transform .15s ease!important;
+}
+.top-tool:hover .ui-icon,
+.btn:hover .ui-icon,
+.segment:hover .ui-icon,
+.icon-btn:hover .ui-icon{
+  background:#e1ebe7!important;
+  color:#31594f!important;
+  transform:translateY(-.5px);
+}
+.segment.active .ui-icon{
+  background:#dff0ea!important;
+  color:#1d6e5c!important;
+}
+body.vacation-module-active .segment.active .ui-icon{
+  background:#dff0ea!important;
+  color:#176e58!important;
+}
+body.training-module-active .segment.active .ui-icon{
+  background:#e7ecfb!important;
+  color:#536fb6!important;
+}
+body.projects-module-active .segment.active .ui-icon,
+body.projects-module-active .projects-toolbar .btn .ui-icon,
+body.projects-module-active .projects-toolbar .segment .ui-icon{
+  background:#f7d7a4!important;
+  color:var(--project-accent-dark)!important;
+}
+
+/* Topbar-Icons etwas hochwertiger und gleichmäßiger */
+.topbar-actions .top-tool{
+  gap:6px!important;
+}
+.topbar-actions .top-tool .ui-icon{
+  width:18px!important;
+  height:18px!important;
+  min-width:18px!important;
+  min-height:18px!important;
+}
+.topbar-actions .primary-tool .ui-icon{
+  background:#dff0ea!important;
+  color:#176e58!important;
+}
+.global-employee-btn .ui-icon{
+  background:#e6f2ee!important;
+  color:#176e58!important;
+}
+
+/* Modul-Tabs behalten ihren stärkeren eigenen Icon-Look */
+.module-tab .module-tab-icon{
+  border-radius:10px!important;
+}
+.module-tab .module-tab-icon .ui-icon{
+  width:15px!important;
+  height:15px!important;
+  padding:0!important;
+  background:transparent!important;
+  color:currentColor!important;
+  border-radius:0!important;
+}
