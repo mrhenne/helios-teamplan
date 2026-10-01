@@ -3862,3 +3862,13 @@ body.dark-mode .top-action-section{
     text-overflow:clip!important;
   }
 }
+
+
+/* === 2026-10-01 HIDDEN STATE GUARANTEE === */
+/* Muss als letzte Regel stehen: unsichtbare Header-Controls dürfen von
+   komponentenspezifischen display-Regeln niemals wieder eingeblendet werden. */
+.topbar .hidden,
+.top-global .hidden,
+.role-stack #roleEmployeeSelect.hidden{
+  display:none!important;
+}
