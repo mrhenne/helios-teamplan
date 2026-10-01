@@ -6149,3 +6149,220 @@ body.dark-mode .project-dialog-summary article.metric-alert{
   }
   .project-card-teamrow small{text-align:left}
 }
+
+
+/* === 2026-10-01 PROJECT CALENDAR + WORKFLOW SMOOTHING === */
+/* Jahreskalender: luftiger, ruhiger, kleinere Typografie */
+.projects-calendar-year{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:10px!important;
+  align-items:start!important;
+}
+.project-year-month{
+  min-height:150px!important;
+  padding:10px!important;
+  border-radius:12px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:8px!important;
+  background:rgba(255,255,255,.50)!important;
+}
+.project-year-month>header{
+  display:flex!important;
+  align-items:baseline!important;
+  justify-content:space-between!important;
+  gap:8px!important;
+  padding-bottom:6px!important;
+  border-bottom:1px solid var(--line)!important;
+}
+.project-year-month h3{
+  margin:0!important;
+  font-size:9px!important;
+  line-height:1.1!important;
+}
+.project-year-month>header>span{
+  font-size:5.8px!important;
+  color:var(--muted)!important;
+  white-space:nowrap!important;
+}
+.project-year-list{
+  display:grid!important;
+  gap:4px!important;
+  align-content:start!important;
+}
+.project-year-list button{
+  width:100%!important;
+  min-width:0!important;
+  min-height:27px!important;
+  display:grid!important;
+  grid-template-columns:38px minmax(0,1fr)!important;
+  align-items:center!important;
+  gap:5px!important;
+  padding:4px 6px!important;
+  border:1px solid var(--line)!important;
+  border-radius:7px!important;
+  background:rgba(255,255,255,.62)!important;
+  color:inherit!important;
+  text-align:left!important;
+  cursor:pointer!important;
+}
+body.dark-mode .project-year-list button{
+  background:#172723!important;
+}
+.project-year-list time{
+  font-size:5.7px!important;
+  font-weight:900!important;
+  color:var(--project-accent-dark)!important;
+}
+.project-year-list button>span{
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  font-size:6.2px!important;
+  font-weight:800!important;
+}
+.project-year-list>small{
+  font-size:5.8px!important;
+  color:var(--muted)!important;
+  padding-left:2px!important;
+}
+.project-year-empty{
+  min-height:58px!important;
+  display:grid!important;
+  place-items:center!important;
+  color:var(--muted)!important;
+  font-size:6px!important;
+  border:1px dashed var(--line)!important;
+  border-radius:8px!important;
+}
+
+/* Projekt öffnen und darin arbeiten */
+.project-primary-workspace{
+  margin-top:10px!important;
+  border-color:rgba(216,137,28,.22)!important;
+  background:rgba(255,246,232,.64)!important;
+}
+body.dark-mode .project-primary-workspace{
+  background:#32291c!important;
+  border-color:rgba(255,209,142,.16)!important;
+}
+.project-primary-workspace .project-section-title strong{
+  font-size:9.5px!important;
+}
+.project-primary-workspace .project-dialog-task{
+  min-height:44px!important;
+}
+
+.project-team-collapsible{
+  padding:0!important;
+  overflow:hidden!important;
+}
+.project-collapse-toggle{
+  width:100%!important;
+  min-height:38px!important;
+  padding:7px 9px!important;
+  border:0!important;
+  background:transparent!important;
+  color:inherit!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:8px!important;
+  cursor:pointer!important;
+  text-align:left!important;
+}
+.project-collapse-toggle>span{
+  display:grid!important;
+  gap:2px!important;
+}
+.project-collapse-toggle strong{
+  font-size:8px!important;
+}
+.project-collapse-toggle small{
+  font-size:6px!important;
+  color:var(--muted)!important;
+}
+.project-collapse-toggle>b{
+  font-size:10px!important;
+  transition:transform .16s ease!important;
+}
+.project-collapse-toggle[aria-expanded="true"]>b{
+  transform:rotate(180deg)!important;
+}
+.project-team-body{
+  padding:0 9px 9px!important;
+  border-top:1px solid var(--line)!important;
+}
+.project-team-body .project-member-actions{
+  justify-content:flex-end!important;
+  padding-top:7px!important;
+  margin-bottom:5px!important;
+}
+
+/* Zurück Navigation */
+.project-dialog-head{
+  align-items:center!important;
+}
+.project-dialog-title-wrap{
+  display:flex!important;
+  align-items:center!important;
+  gap:9px!important;
+  min-width:0!important;
+}
+.project-back-btn{
+  height:28px!important;
+  min-height:28px!important;
+  padding:0 8px!important;
+  border:1px solid var(--line)!important;
+  border-radius:8px!important;
+  background:rgba(255,255,255,.55)!important;
+  color:var(--ink)!important;
+  font-size:7px!important;
+  font-weight:800!important;
+  cursor:pointer!important;
+  white-space:nowrap!important;
+}
+body.dark-mode .project-back-btn{
+  background:#172723!important;
+}
+.project-dialog-title-wrap h2{
+  margin-top:2px!important;
+}
+
+/* Erklärboxen in allen Modulen bewusst zurücknehmen */
+.hint{
+  margin-top:7px!important;
+  padding:6px 9px!important;
+  border-radius:10px!important;
+  font-size:6.5px!important;
+  line-height:1.35!important;
+  opacity:.82!important;
+}
+.hint strong{
+  font-size:6.5px!important;
+}
+.projects-hint,
+.training-hint{
+  margin-bottom:2px!important;
+}
+
+@media(max-width:1100px){
+  .projects-calendar-year{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
+@media(max-width:650px){
+  .projects-calendar-year{
+    grid-template-columns:1fr!important;
+  }
+  .project-year-month{
+    min-height:0!important;
+  }
+  .project-dialog-title-wrap{
+    align-items:flex-start!important;
+    flex-direction:column!important;
+    gap:5px!important;
+  }
+}
