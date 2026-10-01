@@ -622,3 +622,58 @@ test('Projektübersicht zeigt Aufmerksamkeit und Projektfortschritt', async ({ p
   await expect(page.locator('#projectSummaryOpen')).toHaveText('1');
   await expect(page.locator('#projectSummaryOverdue')).toHaveText('1');
 });
+
+
+test('Projekt Jahreskalender ist kompakt und Projektarbeit priorisiert Aufgaben', async ({ page }) => {
+  await bootLocal(page);
+  await page.locator('#moduleProjectsBtn').click();
+
+  await page.locator('#addProjectBtn').click();
+  await page.locator('#projectName').fill('QA Jahresprojekt');
+  await page.locator('#projectDue').fill('2026-11-20');
+  await page.locator('#projectForm button[type="submit"]').click();
+
+  await page.locator('#addTaskBtn').click();
+  await page.locator('#projectTaskTitle').fill('QA Jahrestermin');
+  await page.locator('#projectTaskProject').selectOption({label:'QA Jahresprojekt'});
+  await page.locator('#projectTaskDue').fill('2026-11-10');
+  await page.locator('#projectTaskForm button[type="submit"]').click();
+
+  await page.locator('#projectsCalendarBtn').click();
+  await page.locator('#projectsCalendarYearBtn').click();
+  await expect(page.locator('.projects-calendar-year')).toBeVisible();
+  await expect(page.locator('.project-year-month')).toHaveCount(12);
+  await expect(page.locator('.project-year-month').filter({hasText:'November'})).toContainText('QA Jahresprojekt');
+  await expect(page.locator('.project-year-month').filter({hasText:'November'})).toContainText('QA Jahrestermin');
+
+  await page.locator('#projectsOverviewBtn').click();
+  const projectCard=page.locator('.project-card',{hasText:'QA Jahresprojekt'}).first();
+  await projectCard.click();
+
+  const tasksBox=page.locator('#projectTasksBox');
+  const teamBox=page.locator('.project-team-collapsible');
+  await expect(tasksBox).toBeVisible();
+  await expect(page.locator('#projectTeamBody')).toBeHidden();
+
+  const order=await page.locator('#projectDialog form').evaluate(form=>{
+    const tasks=form.querySelector('#projectTasksBox');
+    const team=form.querySelector('.project-team-collapsible');
+    return !!tasks&&!!team&&tasks.compareDocumentPosition(team)&Node.DOCUMENT_POSITION_FOLLOWING;
+  });
+  expect(order).toBeTruthy();
+
+  await page.locator('#projectTeamToggle').click();
+  await expect(page.locator('#projectTeamBody')).toBeVisible();
+  await page.locator('#projectTeamToggle').click();
+  await expect(page.locator('#projectTeamBody')).toBeHidden();
+
+  await page.locator('#projectDialogTasks [data-project-task-id]').first().click();
+  await expect(page.locator('#projectTaskDialog')).toBeVisible();
+  await expect(page.locator('#projectTaskBackBtn')).toBeVisible();
+  await page.locator('#projectTaskBackBtn').click();
+  await expect(page.locator('#projectDialog')).toBeVisible();
+
+  await page.locator('#projectBackBtn').click();
+  await expect(page.locator('#projectDialog')).toBeHidden();
+  await expect(page.locator('#projectsOverviewView')).toBeVisible();
+});
