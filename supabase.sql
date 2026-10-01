@@ -745,3 +745,24 @@ alter table public.teamplan_trainings
 
 create index if not exists teamplan_trainings_team_recurring_idx
   on public.teamplan_trainings(team_id,recurring,recurrence_months);
+
+
+-- Status "In Durchführung" + frei wählbare Farbe je Fortbildungsart
+alter table public.teamplan_training_types
+  add column if not exists color text not null default '#5b8def';
+
+alter table public.teamplan_trainings
+  drop constraint if exists teamplan_trainings_status_check;
+
+alter table public.teamplan_trainings
+  add constraint teamplan_trainings_status_check
+  check (status in ('planned','in_progress','completed','cancelled'));
+
+update public.teamplan_training_types
+set color = case
+  when lower(category) like '%weiterbildung%' then '#8b5cf6'
+  when lower(category) like '%pflicht%' then '#e59f23'
+  when lower(category) like '%training%' then '#0f8b78'
+  else '#5b8def'
+end
+where color is null or color = '#5b8def';
