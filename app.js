@@ -763,14 +763,32 @@ function showCellContextMenu(event,empId,key){
     const active=(entry.codes||[]).includes(c.key),style=c.color?' style="--code-color:'+escapeHtml(c.color)+'"':'';
     return '<button type="button" class="context-code '+codeClassName(c.key)+(active?' active':'')+'" data-context-code="'+escapeHtml(c.key)+'"'+style+'><b>'+escapeHtml(c.key)+'</b><span>'+escapeHtml(c.label)+'</span>'+(active?'<i>✓</i>':'')+'</button>';
   }).join('');
+  const markerButtons=canManage()?'<div class="context-section planner-context-section"><small>Planer-Hinweis</small>'+
+    ['V?','T?','K!'].map(m=>'<button type="button" class="context-code planner-context-marker '+((entry.plannerMarkers||[]).includes(m)?'active':'')+'" data-context-marker="'+m+'"><b>'+m+'</b><span>'+(m==='V?'?'Verschiebung':m==='T?'?'Tausch':'Klärung')+'</span>'+((entry.plannerMarkers||[]).includes(m)?'<i>✓</i>':'')+'</button>').join('')+'</div>':'';
   menu.innerHTML='<div class="context-head"><strong>'+escapeHtml(emp?.name||'')+'</strong><span>'+DOW[d.getDay()]+' · '+d.getDate()+'. '+MONTHS[d.getMonth()]+'</span></div>'+
     '<div class="context-section"><small>Schnell eintragen</small>'+codeButtons+'</div>'+
     (canApprove()?'<button type="button" class="context-action approve-context" data-context-approved="1"><b>U✓</b><span>Urlaub genehmigt</span></button>':'')+
+    markerButtons+
     '<div class="context-separator"></div>'+
+    (canDiscuss()?'<button type="button" class="context-action discussion-context" data-context-discussion="1"><b>◌</b><span>Abstimmung starten…</span></button>':'')+
     '<button type="button" class="context-action" data-context-edit="1"><b>✎</b><span>Vollständig bearbeiten…</span></button>'+
     '<button type="button" class="context-action danger-context" data-context-delete="1"><b>⌫</b><span>Eintrag löschen</span></button>';
   menu.querySelectorAll('[data-context-code]').forEach(b=>b.addEventListener('click',()=>quickCellCode(empId,key,b.dataset.contextCode)));
   menu.querySelector('[data-context-approved]')?.addEventListener('click',()=>quickCellCode(empId,key,'U','approved'));
+  menu.querySelectorAll('[data-context-marker]').forEach(b=>b.addEventListener('click',()=>{
+    if(!canManage())return;
+    const marker=b.dataset.contextMarker,old=entryFor(empId,key),set=new Set(old.plannerMarkers||[]);
+    set.has(marker)?set.delete(marker):set.add(marker);
+    if(!state.entries[empId])state.entries[empId]={};
+    const next={...old,plannerMarkers:[...set]};
+    if((next.codes||[]).length||next.priority||next.note||next.plannerMarkers.length)state.entries[empId][key]=next;else delete state.entries[empId][key];
+    trackAction('Planer-Hinweis geändert',(emp?.name||'')+' · '+key+' · '+marker);
+    persist();hideCellContextMenu();render();showToast(marker+' aktualisiert');
+  }));
+  menu.querySelector('[data-context-discussion]')?.addEventListener('click',()=>{
+    hideCellContextMenu();
+    openNewDiscussion({date:key,employeeId:empId,title:'Abstimmung '+(emp?.name||'')+' · '+key});
+  });
   menu.querySelector('[data-context-edit]').addEventListener('click',()=>{hideCellContextMenu();openCell(empId,key)});
   menu.querySelector('[data-context-delete]').addEventListener('click',()=>quickDeleteCell(empId,key));
   menu.classList.remove('hidden');
@@ -1074,6 +1092,8 @@ function renderRoleControls(){
   document.querySelectorAll('.manager-only').forEach(el=>el.classList.toggle('hidden',!canManage()));
   document.getElementById('settingsBtn').disabled=false;
   document.getElementById('usersBtn').classList.toggle('hidden',sessionRole!=='admin'||!authUser);
+  const discussionsBtn=document.getElementById('discussionsBtn');if(discussionsBtn)discussionsBtn.classList.toggle('hidden',!authUser);
+  updateDiscussionBadge();
 }
 
 async function invokeUserAdmin(body){
@@ -1152,8 +1172,9 @@ function renderConflicts(){
   const items=conflictItems(),summary=document.getElementById('conflictsSummary'),list=document.getElementById('conflictsList');
   const counts=items.reduce((a,x)=>(a[x.type]=(a[x.type]||0)+1,a),{});
   summary.innerHTML=`<div><strong>${items.length}</strong><span>gesamt</span></div><div><strong>${counts['Besetzung']||0}</strong><span>Besetzung</span></div><div><strong>${counts['Sperrzeit']||0}</strong><span>Sperrzeiten</span></div><div><strong>${counts['Offener Wunsch']||0}</strong><span>offene Wünsche</span></div>`;
-  list.innerHTML=items.length?items.slice(0,500).map(x=>`<button type="button" class="management-item conflict-item" data-date="${x.key}"><div><strong>${x.key} · ${escapeHtml(x.type)}</strong><span>${escapeHtml(x.text)}</span></div></button>`).join(''):'<div class="empty-state success-state">Keine Konflikte gefunden.</div>';
-  list.querySelectorAll('.conflict-item').forEach(btn=>btn.addEventListener('click',()=>{const d=new Date(btn.dataset.date+'T12:00:00');viewDate=new Date(d.getFullYear(),d.getMonth(),1);currentView='month';document.getElementById('conflictsDialog').close();render()}));
+  list.innerHTML=items.length?items.slice(0,500).map(x=>`<div class="management-item conflict-item" data-date="${x.key}" data-type="${escapeHtml(x.type)}"><button type="button" class="conflict-jump"><div><strong>${x.key} · ${escapeHtml(x.type)}</strong><span>${escapeHtml(x.text)}</span></div></button>${canDiscuss()?'<button type="button" class="btn ghost conflict-discuss">◌ Abstimmen</button>':''}</div>`).join(''):'<div class="empty-state success-state">Keine Konflikte gefunden.</div>';
+  list.querySelectorAll('.conflict-jump').forEach(btn=>btn.addEventListener('click',()=>{const item=btn.closest('.conflict-item'),d=new Date(item.dataset.date+'T12:00:00');viewDate=new Date(d.getFullYear(),d.getMonth(),1);currentView='month';document.getElementById('conflictsDialog').close();render()}));
+  list.querySelectorAll('.conflict-discuss').forEach(btn=>btn.addEventListener('click',()=>{const item=btn.closest('.conflict-item');document.getElementById('conflictsDialog').close();openNewDiscussion({date:item.dataset.date,title:item.dataset.type+' · '+item.dataset.date,message:'Bitte hierzu abstimmen.'})}));
 }
 async function exportExcel(){
   if(!window.XLSX){alert('Excel-Export ist nicht verfügbar.');return}
@@ -1278,13 +1299,13 @@ async function initRemote(){
     if(!session){setSync('local','● Login erforderlich');showLogin()}
     else{
       const {data:{user},error:userError}=await supabaseClient.auth.getUser();if(userError)throw userError;
-      authUser=user;await loadAuthMembership();await loadRemotePlan();await startPresence();hideLogin();setSync('live','● Live synchron');
+      authUser=user;await loadAuthMembership();await loadRemotePlan();await startPresence();await startDiscussionRealtime();hideLogin();setSync('live','● Live synchron');
     }
     supabaseClient.auth.onAuthStateChange(async(event,session)=>{
-      if(event==='SIGNED_OUT'||!session){await stopPresence();authUser=null;authMembership=null;renderRoleControls();setSync('local','● Abgemeldet');showLogin();return}
+      if(event==='SIGNED_OUT'||!session){await stopDiscussionRealtime();await stopPresence();authUser=null;authMembership=null;renderRoleControls();setSync('local','● Abgemeldet');showLogin();return}
       if(event==='SIGNED_IN'||event==='TOKEN_REFRESHED'){
         const {data:{user}}=await supabaseClient.auth.getUser();authUser=user;
-        try{await loadAuthMembership();await loadRemotePlan();await startPresence();hideLogin();setSync('live','● Live synchron')}catch(err){console.error(err);document.getElementById('loginError').textContent=err.message;document.getElementById('loginError').classList.remove('hidden');showLogin()}
+        try{await loadAuthMembership();await loadRemotePlan();await startPresence();await startDiscussionRealtime();hideLogin();setSync('live','● Live synchron')}catch(err){console.error(err);document.getElementById('loginError').textContent=err.message;document.getElementById('loginError').classList.remove('hidden');showLogin()}
       }
     });
     supabaseClient.channel('teamplan-live').on('postgres_changes',{event:'*',schema:'public',table:'team_plans',filter:`team_id=eq.${cfg.teamId}`},payload=>{const remote=payload.new?.data;if(remote&&remote.updatedAt!==state.updatedAt){isApplyingRemote=true;state=normalizeState(remote);localStorage.setItem('helios-teamplan-v1',JSON.stringify(state));isApplyingRemote=false;render();showToast('Plan wurde aktualisiert')}}).subscribe();
@@ -1320,6 +1341,13 @@ document.getElementById('searchInput').addEventListener('input',render);
 document.getElementById('addEmployeeBtn').addEventListener('click',()=>openEmployee());
 document.getElementById('importNamesBtn').addEventListener('click',()=>{if(!canManage())return;document.getElementById('namesPasteInput').value='';document.getElementById('namesFileInput').value='';updateNamesImportPreview([]);document.getElementById('namesImportDialog').showModal()});
 document.getElementById('settingsBtn').addEventListener('click',openSettings);
+document.getElementById('discussionsBtn').addEventListener('click',openDiscussionsDialog);
+document.getElementById('newDiscussionBtn').addEventListener('click',()=>openNewDiscussion());
+document.getElementById('discussionOpenFilter').addEventListener('click',()=>{discussionFilter='open';renderDiscussionList()});
+document.getElementById('discussionAllFilter').addEventListener('click',()=>{discussionFilter='all';renderDiscussionList()});
+document.getElementById('discussionResolveBtn').addEventListener('click',toggleDiscussionResolved);
+document.getElementById('newDiscussionForm').addEventListener('submit',e=>{e.preventDefault();createDiscussionFromForm()});
+document.getElementById('discussionMessageForm').addEventListener('submit',e=>{e.preventDefault();sendDiscussionMessage()});
 document.getElementById('usersBtn').addEventListener('click',openUsersDialog);
 document.getElementById('accountSaveBtn').addEventListener('click',saveMyAccount);
 document.getElementById('undoBtn').addEventListener('click',undoLastAction);
@@ -1482,7 +1510,7 @@ document.getElementById('loginForm').addEventListener('submit',async e=>{
     if(error){errEl.textContent=error.message;errEl.classList.remove('hidden');return}
     if(data?.session){
       authUser=data.user;
-      try{await loadAuthMembership();await loadRemotePlan();hideLogin();setSync('live','● Live synchron')}catch(err){errEl.textContent=err.message;errEl.classList.remove('hidden')}
+      try{await loadAuthMembership();await loadRemotePlan();await startPresence();await startDiscussionRealtime();hideLogin();setSync('live','● Live synchron')}catch(err){errEl.textContent=err.message;errEl.classList.remove('hidden')}
     }else{
       errEl.textContent='Konto angelegt. Bitte bestätige gegebenenfalls die E-Mail und melde dich danach an. Der Setup-Code bleibt lokal gespeichert.';errEl.classList.remove('hidden');
     }
