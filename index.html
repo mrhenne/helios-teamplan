@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-16" />
+  <link rel="stylesheet" href="styles.css?v=20261001-17" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -169,6 +169,8 @@
           <button id="trainingEmployeesBtn" class="segment" type="button">Mitarbeiter</button>
         </div>
         <div class="controls-spacer"></div>
+        <button id="trainingFocusBtn" class="btn ghost" type="button">◫ Fokusmodus</button>
+        <button id="trainingExitFocusBtn" class="btn ghost hidden" type="button">✕ Fokus beenden</button>
         <button id="trainingExportBtn" class="btn ghost training-manager-action" type="button">▦ Excel</button>
         <button id="trainingTypesBtn" class="btn ghost training-manager-action" type="button">Katalog</button>
         <button id="addTrainingBtn" class="btn primary training-manager-action" type="button">+ Fortbildung</button>
@@ -226,8 +228,10 @@
         <label class="span-two">Titel<input id="trainingTitle" required maxlength="160" placeholder="z. B. Notfalltraining"></label>
         <label>Kategorie<input id="trainingCategory" maxlength="80" placeholder="z. B. Pflichtfortbildung"></label>
         <label>Status<select id="trainingStatus"><option value="planned">Geplant</option><option value="completed">Abgeschlossen</option><option value="cancelled">Abgesagt</option></select></label>
-        <label>Beginn<input id="trainingStart" type="date" required></label>
-        <label>Ende<input id="trainingEnd" type="date" required></label>
+        <label class="span-two training-year-only-toggle"><span><input id="trainingYearOnly" type="checkbox"> Termin noch unbekannt – nur Jahr planen</span></label>
+        <label id="trainingYearOnlyField" class="hidden">Jahr<input id="trainingOnlyYear" type="number" min="2020" max="2100" step="1"></label>
+        <label id="trainingStartField">Beginn<input id="trainingStart" type="date"></label>
+        <label id="trainingEndField">Ende<input id="trainingEnd" type="date"></label>
         <label>Stunden<input id="trainingHours" type="number" min="0" step="0.25" value="0"></label>
         <label>Kosten €<input id="trainingCost" type="number" min="0" step="0.01" value="0"></label>
         <label>Anbieter<input id="trainingProvider" maxlength="120"></label>
@@ -674,6 +678,6 @@
 
   <div id="cellContextMenu" class="cell-context-menu hidden" role="menu" aria-label="Schnellaktionen"></div>
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20261001-16"></script>
+  <script src="app.js?v=20261001-17"></script>
 </body>
 </html>
