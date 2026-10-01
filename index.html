@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-3" />
+  <link rel="stylesheet" href="styles.css?v=20261001-4" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -48,6 +48,7 @@
             <span class="action-group-label">Planung</span>
             <button id="conflictsBtn" class="top-tool" data-tool-action="conflicts" title="Konflikte prüfen"><span class="tool-icon">!</span><span>Konflikte</span></button>
             <button id="historyBtn" class="top-tool" data-tool-action="history" title="Änderungsverlauf"><span class="tool-icon">↶</span><span>Verlauf</span></button>
+            <button id="discussionsBtn" class="top-tool" title="Planungs-Abstimmungen"><span class="tool-icon">◌</span><span>Abstimmung</span><b id="discussionBadge" class="tool-badge hidden">0</b></button>
             <button id="blackoutsBtn" class="top-tool" data-tool-action="blackouts" title="Sperrzeiten verwalten"><span class="tool-icon">⊘</span><span>Sperrzeiten</span></button>
           </div>
           <div class="action-group" aria-label="Daten">
@@ -225,6 +226,14 @@
         <label>Priorität<select id="cellPriority"><option value="0">Normal</option><option value="1">Wichtig</option><option value="2">Hohe Priorität</option></select></label>
       </div>
       <label id="cellDirectApproveLine" class="toggle-line approve-inline"><input id="cellDirectApprove" type="checkbox"> Urlaub direkt genehmigen</label>
+      <div id="plannerMarkerBlock" class="planner-marker-block hidden">
+        <span class="bulk-code-label">Planer-Hinweis</span>
+        <div class="planner-marker-selector">
+          <button type="button" data-planner-marker="V?" class="planner-marker-btn marker-v">V? <small>Verschiebung</small></button>
+          <button type="button" data-planner-marker="T?" class="planner-marker-btn marker-t">T? <small>Tausch</small></button>
+          <button type="button" data-planner-marker="K!" class="planner-marker-btn marker-k">K! <small>Klärung</small></button>
+        </div>
+      </div>
       <label>Notiz<textarea id="cellNote" rows="3" placeholder="Optional, z. B. bereits gebuchte Reise"></textarea></label>
       <div id="cellWarning" class="inline-warning hidden"></div>
       <div class="dialog-actions"><button type="button" id="clearCellBtn" class="btn danger">Eintrag löschen</button><div class="spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">Übernehmen</button></div>
@@ -308,6 +317,55 @@
         <button type="button" class="btn ghost close-dialog">Abbrechen</button>
         <button type="submit" class="btn danger">Ausgewählte Daten löschen</button>
       </div>
+    </form>
+  </dialog>
+
+  <dialog id="discussionsDialog" class="dialog glass-solid wide-dialog">
+    <div class="dialog-panel discussion-dialog-panel">
+      <div class="dialog-head">
+        <div><span class="eyebrow">PLANUNGS-ABSTIMMUNG</span><h2>Absprachen & Verschiebungen</h2></div>
+        <button type="button" class="icon-btn close-dialog">×</button>
+      </div>
+      <div class="discussion-layout">
+        <aside class="discussion-sidebar">
+          <div class="discussion-sidebar-head">
+            <button id="newDiscussionBtn" type="button" class="btn primary">+ Neue Abstimmung</button>
+            <div class="segmented discussion-filter">
+              <button id="discussionOpenFilter" type="button" class="segment active">Offen</button>
+              <button id="discussionAllFilter" type="button" class="segment">Alle</button>
+            </div>
+          </div>
+          <div id="discussionList" class="discussion-list"><div class="empty-state">Noch keine Abstimmungen.</div></div>
+        </aside>
+        <section class="discussion-main">
+          <div id="discussionEmpty" class="discussion-empty">Wähle links eine Abstimmung aus oder starte eine neue.</div>
+          <div id="discussionDetail" class="hidden">
+            <div class="discussion-detail-head">
+              <div><strong id="discussionTitle"></strong><span id="discussionMeta"></span></div>
+              <button id="discussionResolveBtn" type="button" class="btn ghost hidden">Als erledigt markieren</button>
+            </div>
+            <div id="discussionMessages" class="discussion-messages"></div>
+            <form id="discussionMessageForm" class="discussion-message-form">
+              <textarea id="discussionMessageInput" rows="2" maxlength="2000" placeholder="Nachricht zur Planung schreiben…" required></textarea>
+              <button type="submit" class="btn primary">Senden</button>
+            </form>
+          </div>
+        </section>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="newDiscussionDialog" class="dialog glass-solid">
+    <form id="newDiscussionForm">
+      <div class="dialog-head"><div><span class="eyebrow">NEUE ABSTIMMUNG</span><h2>Planungsfrage starten</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <label>Titel<input id="discussionNewTitle" maxlength="120" required placeholder="z. B. Urlaubslimit im Juli"></label>
+      <div class="form-grid two">
+        <label>Von<input id="discussionNewStart" type="date" required></label>
+        <label>Bis<input id="discussionNewEnd" type="date" required></label>
+        <label>Mitarbeiter-Bezug<select id="discussionNewEmployee"><option value="">Gesamtes Team / kein einzelner Mitarbeiter</option></select></label>
+      </div>
+      <label>Erste Nachricht<textarea id="discussionNewMessage" rows="4" maxlength="2000" required placeholder="Worum geht es? Welche Alternative wäre möglich?"></textarea></label>
+      <div class="dialog-actions"><div class="spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">Abstimmung starten</button></div>
     </form>
   </dialog>
 
@@ -483,6 +541,6 @@
 
   <div id="cellContextMenu" class="cell-context-menu hidden" role="menu" aria-label="Schnellaktionen"></div>
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20261001-3"></script>
+  <script src="app.js?v=20261001-4"></script>
 </body>
 </html>
