@@ -323,6 +323,7 @@ function applyAppearance(){
   document.documentElement.style.setProperty('--mini-font',Math.max(3,Math.round(7*z))+'px');
   document.documentElement.style.setProperty('--code-font',Math.max(4,Math.round(9*z))+'px');
   const label=document.getElementById('zoomLabel');if(label)label.textContent=Math.round(z*100)+'%';
+  const focusLabel=document.getElementById('focusZoomLabel');if(focusLabel)focusLabel.textContent=Math.round(z*100)+'%';
   const range=document.getElementById('zoomRange');if(range)range.value=String(Math.round(z*100));
   const themeLabel=document.getElementById('themeLabel');if(themeLabel)themeLabel.textContent=theme==='dark'?'Dunkel':'Hell';
 }
@@ -371,7 +372,7 @@ function toggleFocusSearch(force){
 function setFocusPanMode(enabled){
   focusPanMode=!!enabled;focusPanning=false;
   const btn=document.getElementById('focusPanBtn'),planner=document.getElementById('planner');
-  if(btn){btn.classList.toggle('active',focusPanMode);btn.setAttribute('aria-pressed',String(focusPanMode));btn.title=focusPanMode?'Handmodus aktiv · klicken zum Entsperren':'Handmodus: Kalender mit gedrückter Maus verschieben'}
+  if(btn){btn.classList.toggle('active',focusPanMode);btn.setAttribute('aria-pressed',String(focusPanMode));btn.title=focusPanMode?'Navigationsmodus aktiv · klicken zum Entsperren':'Navigationsmodus: Kalender frei horizontal und vertikal verschieben'}
   if(planner)planner.classList.toggle('pan-mode',focusPanMode);
 }
 function enterPlannerFocus(){
@@ -627,7 +628,7 @@ function bindPlannerEvents(){
     el.addEventListener('click',e=>{if(suppressNextCellClick){e.preventDefault();suppressNextCellClick=false}});
   });
   document.querySelectorAll('.employee-edit').forEach(el=>el.addEventListener('click',()=>openEmployee(el.dataset.id)));
-  let dragged=null; document.querySelectorAll('.employee-row').forEach(row=>{row.addEventListener('dragstart',()=>{dragged=row.dataset.id;row.style.opacity=.45});row.addEventListener('dragend',()=>{row.style.opacity='';document.querySelectorAll('.drop-target').forEach(x=>x.classList.remove('drop-target'))});row.addEventListener('dragover',e=>{e.preventDefault();row.classList.add('drop-target')});row.addEventListener('dragleave',()=>row.classList.remove('drop-target'));row.addEventListener('drop',e=>{e.preventDefault();const target=row.dataset.id;if(dragged&&dragged!==target){reorder(dragged,target)}})});
+  let dragged=null; document.querySelectorAll('.employee-row').forEach(row=>{row.addEventListener('dragstart',e=>{if(focusPanMode&&document.body.classList.contains('planner-focus')){e.preventDefault();return}dragged=row.dataset.id;row.style.opacity=.45});row.addEventListener('dragend',()=>{row.style.opacity='';document.querySelectorAll('.drop-target').forEach(x=>x.classList.remove('drop-target'))});row.addEventListener('dragover',e=>{e.preventDefault();row.classList.add('drop-target')});row.addEventListener('dragleave',()=>row.classList.remove('drop-target'));row.addEventListener('drop',e=>{e.preventDefault();const target=row.dataset.id;if(dragged&&dragged!==target){reorder(dragged,target)}})});
 }
 function reorder(sourceId,targetId){if(!canEditEmployees()){showToast('Keine Rechte für Stammdaten');return}trackAction('Reihenfolge geändert');const arr=[...state.employees].sort((a,b)=>a.order-b.order);const from=arr.findIndex(e=>e.id===sourceId),to=arr.findIndex(e=>e.id===targetId);const [x]=arr.splice(from,1);arr.splice(to,0,x);arr.forEach((e,i)=>e.order=i);state.employees=arr;persist();render();showToast('Reihenfolge gespeichert')}
 
@@ -1186,6 +1187,8 @@ document.getElementById('focusModeBtn').addEventListener('click',enterPlannerFoc
 document.getElementById('exitFocusBtn').addEventListener('click',exitPlannerFocus);
 document.getElementById('focusSearchBtn').addEventListener('click',()=>toggleFocusSearch());
 document.getElementById('focusPanBtn').addEventListener('click',()=>setFocusPanMode(!focusPanMode));
+document.getElementById('focusZoomOutBtn').addEventListener('click',()=>changeZoom(-.05));
+document.getElementById('focusZoomInBtn').addEventListener('click',()=>changeZoom(.05));
 document.getElementById('focusMonthSelect').addEventListener('change',e=>scrollFocusToMonth(Number(e.target.value)));
 document.getElementById('focusPrevMonthBtn').addEventListener('click',()=>stepFocusMonth(-1));
 document.getElementById('focusNextMonthBtn').addEventListener('click',()=>stepFocusMonth(1));
@@ -1199,17 +1202,20 @@ focusPlanner.addEventListener('pointerdown',e=>{
   if(!focusPanMode||!document.body.classList.contains('planner-focus')||e.button!==0)return;
   e.preventDefault();hideCellContextMenu();clearDragSelection();focusPanning=true;
   focusPanStartX=e.clientX;focusPanStartY=e.clientY;focusPanScrollLeft=focusPlanner.scrollLeft;focusPanScrollTop=focusPlanner.scrollTop;
-  focusPlanner.classList.add('panning');
+  focusPlanner.classList.add('panning');focusPlanner.style.scrollBehavior='auto';
   try{focusPlanner.setPointerCapture(e.pointerId)}catch{}
 });
 focusPlanner.addEventListener('pointermove',e=>{
   if(!focusPanning)return;
   e.preventDefault();
-  focusPlanner.scrollLeft=focusPanScrollLeft-(e.clientX-focusPanStartX);
-  focusPlanner.scrollTop=focusPanScrollTop-(e.clientY-focusPanStartY);
+  const dx=e.clientX-focusPanStartX,dy=e.clientY-focusPanStartY;
+  focusPlanner.scrollLeft=focusPanScrollLeft-dx;
+  focusPlanner.scrollTop=focusPanScrollTop-dy;
+  plannerScrollLeft=focusPlanner.scrollLeft;
 });
 const stopFocusPan=e=>{
-  if(!focusPanning)return;focusPanning=false;focusPlanner.classList.remove('panning');
+  if(!focusPanning)return;focusPanning=false;focusPlanner.classList.remove('panning');focusPlanner.style.scrollBehavior='';
+  plannerScrollLeft=focusPlanner.scrollLeft;
   try{focusPlanner.releasePointerCapture(e.pointerId)}catch{}
 };
 focusPlanner.addEventListener('pointerup',stopFocusPan);
