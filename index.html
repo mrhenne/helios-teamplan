@@ -1048,13 +1048,16 @@
       if (!form || !button || !window.supabase || !window.TEAMPLAN_CONFIG) return;
 
       const cfg = window.TEAMPLAN_CONFIG;
-      const client = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+      const client = window.TEAMPLAN_LOGIN_CLIENT || window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
       window.TEAMPLAN_LOGIN_CLIENT = client;
+      window.TEAMPLAN_LOGIN_FALLBACK_ACTIVE = true;
+      let loginPending = false;
 
       form.addEventListener('submit', async (event) => {
-        if (window.loginMode === 'bootstrap') return;
+        if (document.getElementById('bootstrapFields') && !document.getElementById('bootstrapFields').classList.contains('hidden')) return;
         event.preventDefault();
         event.stopImmediatePropagation();
+        if (loginPending) return;
 
         const email = document.getElementById('loginEmail')?.value.trim();
         const password = document.getElementById('loginPassword')?.value || '';
@@ -1065,6 +1068,7 @@
         }
 
         const oldText = button.textContent;
+        loginPending = true;
         button.disabled = true;
         button.textContent = 'Anmeldung läuft…';
         errorBox.classList.add('hidden');
@@ -1080,10 +1084,11 @@
           errorBox.classList.remove('hidden');
           button.disabled = false;
           button.textContent = oldText;
+          loginPending = false;
         }
       }, true);
     })();
   </script>
-  <script src="app.js?v=20261001-26"></script>
+  <script src="app.js?v=20261001-27"></script>
 </body>
 </html>
