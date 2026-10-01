@@ -30,9 +30,6 @@ jobs:
       - name: Install QA dependencies
         run: npm install
 
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
-
       - name: Run TeamPlan browser QA
         run: npm run test:qa
 
