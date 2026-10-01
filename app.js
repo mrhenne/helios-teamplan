@@ -291,8 +291,8 @@ async function startDiscussionRealtime(){
   if(discussionChannel){try{await supabaseClient.removeChannel(discussionChannel)}catch{}}
   const cfg=window.TEAMPLAN_CONFIG||{};
   discussionChannel=supabaseClient.channel('teamplan-discussions-live-'+cfg.teamId)
-    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_discussions',filter:'team_id=eq.'+cfg.teamId},async()=>{await loadDiscussions();if(activeDiscussionId)await selectDiscussion(activeDiscussionId)})
-    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_messages',filter:'team_id=eq.'+cfg.teamId},async payload=>{
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_discussions'},async()=>{await loadDiscussions();if(activeDiscussionId)await selectDiscussion(activeDiscussionId)})
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_messages'},async payload=>{
       if(activeDiscussionId&&payload.new?.discussion_id===activeDiscussionId&&document.getElementById('discussionsDialog')?.open){
         await loadDiscussionMessages(activeDiscussionId);await markDiscussionRead(activeDiscussionId);
       }else await loadUnreadDiscussionState();
@@ -1690,9 +1690,9 @@ async function startTrainingRealtime(){
   if(trainingChannel){try{await supabaseClient.removeChannel(trainingChannel)}catch{}}
   const cfg=window.TEAMPLAN_CONFIG||{};
   trainingChannel=supabaseClient.channel('teamplan-training-live-'+cfg.teamId)
-    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_trainings',filter:'team_id=eq.'+cfg.teamId},loadTrainingData)
-    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_training_types',filter:'team_id=eq.'+cfg.teamId},loadTrainingData)
-    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_training_budgets',filter:'team_id=eq.'+cfg.teamId},loadTrainingData)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_trainings'},loadTrainingData)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_training_types'},loadTrainingData)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_training_budgets'},loadTrainingData)
     .subscribe();
 }
 async function stopTrainingRealtime(){
@@ -2470,13 +2470,13 @@ async function startProjectRealtime(){
   if(projectChannel){try{await supabaseClient.removeChannel(projectChannel)}catch{}}
   const cfg=window.TEAMPLAN_CONFIG||{};
   projectChannel=supabaseClient.channel('teamplan-projects-live-'+cfg.teamId)
-    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_projects',filter:'team_id=eq.'+cfg.teamId},loadProjectData)
-    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_project_members',filter:'team_id=eq.'+cfg.teamId},loadProjectData)
-    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_tasks',filter:'team_id=eq.'+cfg.teamId},loadProjectData)
-    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_task_templates',filter:'team_id=eq.'+cfg.teamId},loadProjectData)
-    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_notes',filter:'team_id=eq.'+cfg.teamId},loadProjectData)
-    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_task_comments',filter:'team_id=eq.'+cfg.teamId},loadProjectData)
-    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_project_activity',filter:'team_id=eq.'+cfg.teamId},loadProjectData)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_projects'},loadProjectData)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_project_members'},loadProjectData)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_tasks'},loadProjectData)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_task_templates'},loadProjectData)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_notes'},loadProjectData)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_task_comments'},loadProjectData)
+    .on('postgres_changes',{event:'*',schema:'public',table:'teamplan_project_activity'},loadProjectData)
     .subscribe();
 }
 async function stopProjectRealtime(){
@@ -3159,18 +3159,31 @@ function initProjectModuleUI(){
 }
 
 
+async function retrySyncCall(fn,label,attempts=3){
+  let lastError=null;
+  for(let attempt=1;attempt<=attempts;attempt++){
+    try{return await fn()}
+    catch(err){
+      lastError=err;
+      console.warn(label+' Versuch '+attempt+' fehlgeschlagen',err);
+      if(attempt<attempts)await new Promise(resolve=>setTimeout(resolve,350*attempt));
+    }
+  }
+  throw lastError;
+}
+
 async function completeSignedIn(user){
   if(!user)throw new Error('Anmeldung erfolgreich, aber kein Benutzerkonto wurde zurückgegeben.');
   authUser=user;
 
   // Only authentication-critical data may block the login screen.
-  await loadAuthMembership();
+  await retrySyncCall(()=>loadAuthMembership(),'Team-Zuordnung');
   hideLogin();
   setSync('live','● Angemeldet');
 
   // Core vacation plan remains part of the initial app load.
   try{
-    await loadRemotePlan();
+    await retrySyncCall(()=>loadRemotePlan(),'Urlaubsplan');
   }catch(err){
     console.error('Urlaubsplan konnte nicht geladen werden',err);
     showToast('Angemeldet · Urlaubsplan derzeit nicht synchron');
@@ -3186,10 +3199,10 @@ async function completeSignedIn(user){
   };
 
   await Promise.allSettled([
-    safeModuleLoad('Fortbildungen',loadTrainingData),
-    safeModuleLoad('Projekte',loadProjectData),
+    safeModuleLoad('Fortbildungen',()=>retrySyncCall(()=>loadTrainingData(),'Fortbildungen',2)),
+    safeModuleLoad('Projekte',()=>retrySyncCall(()=>loadProjectData(),'Projekte',2)),
     safeModuleLoad('Online-Status',startPresence),
-    safeModuleLoad('Team-Chat',startDiscussionRealtime)
+    safeModuleLoad('Team-Chat',()=>retrySyncCall(()=>startDiscussionRealtime(),'Team-Chat',2))
   ]);
 
   // Realtime subscriptions are non-critical and are started independently.
@@ -3243,21 +3256,32 @@ async function initRemote(){
         }
       },0);
     });
-    supabaseClient.channel('teamplan-live').on('postgres_changes',{event:'*',schema:'public',table:'team_plans',filter:`team_id=eq.${cfg.teamId}`},payload=>{const remote=payload.new?.data;if(remote&&remote.updatedAt!==state.updatedAt){isApplyingRemote=true;state=normalizeState(remote);localStorage.setItem('helios-teamplan-v1',JSON.stringify(state));isApplyingRemote=false;render();showToast('Plan wurde aktualisiert')}}).subscribe();
+    supabaseClient.channel('teamplan-live').on('postgres_changes',{event:'*',schema:'public',table:'team_plans'},payload=>{const remote=payload.new?.data;if(remote&&remote.updatedAt!==state.updatedAt){isApplyingRemote=true;state=normalizeState(remote);localStorage.setItem('helios-teamplan-v1',JSON.stringify(state));isApplyingRemote=false;render();showToast('Plan wurde aktualisiert')}}).subscribe();
   }catch(err){
     console.error(err);
-    setSync('error','● Login/Sync-Fehler');
     try{
       const {data:{session}}=supabaseClient?await supabaseClient.auth.getSession():{data:{session:null}};
-      if(!session)showLogin();
-      else{
+      if(!session){
+        setSync('error','● Login-Fehler');
+        showLogin();
+      }else{
         authUser=session.user||authUser;
         hideLogin();
-        const errEl=document.getElementById('loginError');
-        if(errEl){errEl.textContent='Angemeldet, aber Teile der Daten konnten nicht geladen werden.';errEl.classList.add('hidden')}
-        showToast('Angemeldet · Datenfehler wird separat behandelt');
+        setSync('live','● Angemeldet · Sync wird wiederholt');
+        window.setTimeout(async()=>{
+          try{
+            await retrySyncCall(()=>loadRemotePlan(),'Urlaubsplan Wiederholung',2);
+            setSync('live','● Live synchron');
+          }catch(syncErr){
+            console.error('Sync Wiederholung fehlgeschlagen',syncErr);
+            setSync('error','● Sync gestört');
+          }
+        },1000);
       }
-    }catch{showLogin()}
+    }catch{
+      setSync('error','● Login-Fehler');
+      showLogin();
+    }
   }
 }
 async function pushRemote(){
