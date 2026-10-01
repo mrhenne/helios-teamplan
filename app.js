@@ -2552,7 +2552,11 @@ function renderProjectNotes(){
 function renderProjectModule(){
   if(!document.getElementById('projectsModule'))return;
   populateProjectControls();
-  document.querySelectorAll('.project-manager-action').forEach(el=>el.classList.toggle('hidden',!projectCanManage()));
+  const canCreateTask=projectCanManage()||projectProjects.some(p=>projectIsLead(p.id));
+  document.getElementById('addProjectBtn')?.classList.toggle('hidden',!projectCanManage());
+  document.getElementById('projectsTemplatesBtn')?.classList.toggle('hidden',!projectCanManage());
+  document.getElementById('addTaskBtn')?.classList.toggle('hidden',!canCreateTask);
+  document.getElementById('projectsTemplateSelect')?.classList.toggle('hidden',!canCreateTask);
   const views=['overview','my','roadmap','board','calendar','team','notes'];
   views.forEach(v=>{
     document.getElementById('projects'+v[0].toUpperCase()+v.slice(1)+'View')?.classList.toggle('hidden',projectView!==v);
@@ -2763,46 +2767,109 @@ async function deleteProjectNote(){
   document.getElementById('projectNoteDialog').close();showToast('Notiz gelöscht');
 }
 async function updateProjectStatusByDrop(id,status){
-  if(!projectCanManage())return;
-  if(supabaseClient&&authUser){const {error}=await supabaseClient.from('teamplan_projects').update({status,updated_at:new Date().toISOString()}).eq('id',id);if(error){alert(error.message);return}await loadProjectData()}
-  else{const p=projectProjects.find(x=>x.id===id);if(p)p.status=status;saveProjectLocal();renderProjectModule()}
+  if(!projectCanManageProject(id))return;
+  if(supabaseClient&&authUser){const {error}=await supabaseClient.from('teamplan_projects').update({status,updated_at:new Date().toISOString()}).eq('id',id);if(error){alert(error.message);return}await logProjectActivity('project',id,'Status geändert',projectStatusLabel(status));await loadProjectData()}
+  else{const p=projectProjects.find(x=>x.id===id);if(p)p.status=status;await logProjectActivity('project',id,'Status geändert',projectStatusLabel(status));saveProjectLocal();renderProjectModule()}
 }
 async function updateProjectTaskByDrop(id,patch){
-  const t=projectTasks.find(x=>x.id===id);if(!t)return;
-  if(!projectCanManage()&&!(sessionRole==='employee'&&t.assignee_employee_id===sessionEmployeeId))return;
-  if(sessionRole==='employee')patch={status:patch.status||t.status};
-  if(supabaseClient&&authUser){const {error}=await supabaseClient.from('teamplan_tasks').update({...patch,updated_at:new Date().toISOString()}).eq('id',id);if(error){alert(error.message);return}await loadProjectData()}
-  else{Object.assign(t,patch);saveProjectLocal();renderProjectModule()}
+  const t=projectTasks.find(x=>x.id===id);if(!t||!projectCanManageTask(t))return;
+  const full=projectCanManageProject(t.project_id);
+  if(!full)patch={status:patch.status||t.status};
+  if(patch.status==='done')patch.completed_at=new Date().toISOString();
+  if(patch.status&&patch.status!=='done')patch.completed_at=null;
+  if(supabaseClient&&authUser){const {error}=await supabaseClient.from('teamplan_tasks').update({...patch,updated_at:new Date().toISOString()}).eq('id',id);if(error){alert(error.message);return}await logProjectActivity('task',id,'Aufgabe verschoben',patch.status?projectTaskStatusLabel(patch.status):('Termin '+projectDateLabel(patch.due_date)));await loadProjectData()}
+  else{Object.assign(t,patch);await logProjectActivity('task',id,'Aufgabe verschoben',patch.status?projectTaskStatusLabel(patch.status):('Termin '+projectDateLabel(patch.due_date)));saveProjectLocal();renderProjectModule()}
+}
+async function reorderProjectTask(dragId,targetId,status){
+  if(!dragId||dragId===targetId)return;
+  const drag=projectTasks.find(t=>t.id===dragId),target=projectTasks.find(t=>t.id===targetId);if(!drag||!target||!projectCanManageTask(drag))return;
+  const others=projectTasks.filter(t=>t.id!==dragId&&t.status===status).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+  const targetIndex=Math.max(0,others.findIndex(t=>t.id===targetId));drag.status=status;
+  others.splice(targetIndex,0,drag);
+  others.forEach((t,i)=>t.sort_order=(i+1)*10);
+  if(supabaseClient&&authUser){
+    const results=await Promise.all(others.map(t=>supabaseClient.from('teamplan_tasks').update({status:t.status,sort_order:t.sort_order,updated_at:new Date().toISOString()}).eq('id',t.id)));
+    const bad=results.find(r=>r.error);if(bad){alert(bad.error.message);return}await loadProjectData();
+  }else{saveProjectLocal();renderProjectModule()}
+}
+function resetProjectTemplateForm(){
+  document.getElementById('projectTemplateId').value='';
+  document.getElementById('projectTemplateName').value='';
+  document.getElementById('projectTemplateDescription').value='';
+  document.getElementById('projectTemplatePriority').value='medium';
+  document.getElementById('projectTemplateRecurrence').value='none';
+  document.getElementById('projectTemplateSort').value='100';
+  document.getElementById('deleteProjectTemplateBtn').classList.add('hidden');
+}
+function renderProjectTemplatesList(){
+  const list=document.getElementById('projectTemplatesList');if(!list)return;
+  const rows=[...projectTemplates].sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+  list.innerHTML=rows.length?rows.map(t=>'<button type="button" class="management-row project-template-row" data-project-template-id="'+t.id+'"><span><strong>'+escapeHtml(t.name)+'</strong><small>'+escapeHtml(projectPriorityLabel(t.default_priority))+' · '+escapeHtml(t.recurrence||'none')+'</small></span><span>Bearbeiten</span></button>').join(''):'<div class="empty-state">Noch keine Vorlagen.</div>';
+  list.querySelectorAll('[data-project-template-id]').forEach(btn=>btn.addEventListener('click',()=>editProjectTemplate(btn.dataset.projectTemplateId)));
+}
+function editProjectTemplate(id){
+  const t=projectTemplates.find(x=>x.id===id);if(!t)return;
+  document.getElementById('projectTemplateId').value=t.id;
+  document.getElementById('projectTemplateName').value=t.name||'';
+  document.getElementById('projectTemplateDescription').value=t.description||'';
+  document.getElementById('projectTemplatePriority').value=t.default_priority||'medium';
+  document.getElementById('projectTemplateRecurrence').value=t.recurrence||'none';
+  document.getElementById('projectTemplateSort').value=String(t.sort_order||100);
+  document.getElementById('deleteProjectTemplateBtn').classList.remove('hidden');
+}
+function openProjectTemplates(){
+  if(!projectCanManage())return;renderProjectTemplatesList();resetProjectTemplateForm();safeShowDialog('projectTemplatesDialog');
+}
+async function saveProjectTemplate(){
+  if(!projectCanManage())return;
+  const id=document.getElementById('projectTemplateId').value||null,row={name:document.getElementById('projectTemplateName').value.trim(),description:document.getElementById('projectTemplateDescription').value.trim(),default_priority:document.getElementById('projectTemplatePriority').value,recurrence:document.getElementById('projectTemplateRecurrence').value,sort_order:Number(document.getElementById('projectTemplateSort').value||100),active:true};
+  if(!row.name)return;
+  if(supabaseClient&&authUser){row.team_id=(window.TEAMPLAN_CONFIG||{}).teamId;const res=id?await supabaseClient.from('teamplan_task_templates').update(row).eq('id',id):await supabaseClient.from('teamplan_task_templates').insert(row);if(res.error){alert(res.error.message);return}await loadProjectData()}
+  else{if(id){const i=projectTemplates.findIndex(x=>x.id===id);if(i>=0)projectTemplates[i]={...projectTemplates[i],...row}}else projectTemplates.push({id:uid(),...row});saveProjectLocal()}
+  renderProjectTemplatesList();resetProjectTemplateForm();populateProjectControls();showToast(id?'Vorlage aktualisiert':'Vorlage angelegt');
+}
+async function deleteProjectTemplate(){
+  const id=document.getElementById('projectTemplateId').value;if(!id||!projectCanManage()||!confirm('Vorlage wirklich löschen?'))return;
+  if(supabaseClient&&authUser){const {error}=await supabaseClient.from('teamplan_task_templates').delete().eq('id',id);if(error){alert(error.message);return}await loadProjectData()}
+  else{projectTemplates=projectTemplates.filter(x=>x.id!==id);saveProjectLocal()}
+  renderProjectTemplatesList();resetProjectTemplateForm();populateProjectControls();showToast('Vorlage gelöscht');
 }
 function bindProjectRenderedEvents(){
-  document.querySelectorAll('[data-project-id]').forEach(el=>el.addEventListener('click',e=>{if(e.target.closest('[data-project-task-id]'))return;const id=el.dataset.projectId;if(projectCanManage())openProject(id)}));
+  document.querySelectorAll('[data-project-id]').forEach(el=>el.addEventListener('click',e=>{if(e.target.closest('[data-project-task-id]'))return;const id=el.dataset.projectId;if(projectCanManageProject(id))openProject(id)}));
   document.querySelectorAll('[data-project-task-id]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();openProjectTask(el.dataset.projectTaskId)}));
   document.querySelectorAll('[data-project-note-id]').forEach(el=>el.addEventListener('click',()=>openProjectNote(el.dataset.projectNoteId)));
-  if(projectCanManage()){
-    document.querySelectorAll('.project-card[draggable="true"]').forEach(el=>{el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/project-id',el.dataset.projectId);el.classList.add('dragging')});el.addEventListener('dragend',()=>el.classList.remove('dragging'))});
-    document.querySelectorAll('[data-project-drop-status]').forEach(z=>{z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('drag-over')});z.addEventListener('dragleave',()=>z.classList.remove('drag-over'));z.addEventListener('drop',e=>{e.preventDefault();z.classList.remove('drag-over');const id=e.dataTransfer.getData('text/project-id');if(id)updateProjectStatusByDrop(id,z.dataset.projectDropStatus)})});
-  }
+  document.querySelectorAll('.project-card[draggable="true"]').forEach(el=>{el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/project-id',el.dataset.projectId);el.classList.add('dragging')});el.addEventListener('dragend',()=>el.classList.remove('dragging'))});
+  document.querySelectorAll('[data-project-drop-status]').forEach(z=>{z.addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('text/project-id')){e.preventDefault();z.classList.add('drag-over')}});z.addEventListener('dragleave',()=>z.classList.remove('drag-over'));z.addEventListener('drop',e=>{e.preventDefault();z.classList.remove('drag-over');const id=e.dataTransfer.getData('text/project-id');if(id)updateProjectStatusByDrop(id,z.dataset.projectDropStatus)})});
   document.querySelectorAll('.project-task-card[draggable="true"],.project-calendar-item[draggable="true"]').forEach(el=>{el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/project-task-id',el.dataset.projectTaskId);el.classList.add('dragging')});el.addEventListener('dragend',()=>el.classList.remove('dragging'))});
-  document.querySelectorAll('[data-task-drop-status]').forEach(z=>{z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('drag-over')});z.addEventListener('dragleave',()=>z.classList.remove('drag-over'));z.addEventListener('drop',e=>{e.preventDefault();z.classList.remove('drag-over');const id=e.dataTransfer.getData('text/project-task-id');if(id)updateProjectTaskByDrop(id,{status:z.dataset.taskDropStatus})})});
+  document.querySelectorAll('.kanban-list .project-task-card').forEach(card=>{card.addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('text/project-task-id'))e.preventDefault()});card.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();const id=e.dataTransfer.getData('text/project-task-id');const col=card.closest('[data-task-drop-status]');if(id&&col)reorderProjectTask(id,card.dataset.projectTaskId,col.dataset.taskDropStatus)})});
+  document.querySelectorAll('[data-task-drop-status]').forEach(z=>{z.addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('text/project-task-id')){e.preventDefault();z.classList.add('drag-over')}});z.addEventListener('dragleave',()=>z.classList.remove('drag-over'));z.addEventListener('drop',e=>{e.preventDefault();z.classList.remove('drag-over');const id=e.dataTransfer.getData('text/project-task-id');if(id)updateProjectTaskByDrop(id,{status:z.dataset.taskDropStatus})})});
   document.querySelectorAll('[data-project-date]').forEach(day=>{day.addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('text/project-task-id')){e.preventDefault();day.classList.add('drag-over')}});day.addEventListener('dragleave',()=>day.classList.remove('drag-over'));day.addEventListener('drop',e=>{e.preventDefault();day.classList.remove('drag-over');const id=e.dataTransfer.getData('text/project-task-id');if(id)updateProjectTaskByDrop(id,{due_date:day.dataset.projectDate})})});
 }
 function createTaskFromTemplate(id){
-  const t=projectTemplates.find(x=>x.id===id);if(!t||!projectCanManage())return;
+  const t=projectTemplates.find(x=>x.id===id);if(!t)return;
   document.getElementById('projectsTemplateSelect').value='';
   openProjectTask(null,{title:t.name,description:t.description,priority:t.default_priority||'medium',recurrence:t.recurrence||'none'});
 }
 function initProjectModuleUI(){
   document.getElementById('moduleProjectsBtn')?.addEventListener('click',()=>switchModule('projects'));
-  const map={projectsOverviewBtn:'overview',projectsRoadmapBtn:'roadmap',projectsBoardBtn:'board',projectsCalendarBtn:'calendar',projectsTeamBtn:'team',projectsNotesBtn:'notes'};
+  const map={projectsOverviewBtn:'overview',projectsMyBtn:'my',projectsRoadmapBtn:'roadmap',projectsBoardBtn:'board',projectsCalendarBtn:'calendar',projectsTeamBtn:'team',projectsNotesBtn:'notes'};
   Object.entries(map).forEach(([id,v])=>document.getElementById(id)?.addEventListener('click',()=>setProjectView(v)));
   ['projectsSearchInput','projectsProjectFilter','projectsAssigneeFilter','projectsStatusFilter'].forEach(id=>document.getElementById(id)?.addEventListener(id==='projectsSearchInput'?'input':'change',renderProjectModule));
   document.getElementById('projectsTemplateSelect')?.addEventListener('change',e=>{if(e.target.value)createTaskFromTemplate(e.target.value)});
+  document.getElementById('projectsTemplatesBtn')?.addEventListener('click',openProjectTemplates);
   document.getElementById('addProjectBtn')?.addEventListener('click',()=>openProject());
   document.getElementById('addTaskBtn')?.addEventListener('click',()=>openProjectTask());
   document.getElementById('addNoteBtn')?.addEventListener('click',()=>openProjectNote());
   document.getElementById('projectForm')?.addEventListener('submit',e=>{e.preventDefault();saveProjectFromForm()});
   document.getElementById('projectTaskForm')?.addEventListener('submit',e=>{e.preventDefault();saveProjectTaskFromForm()});
   document.getElementById('projectNoteForm')?.addEventListener('submit',e=>{e.preventDefault();saveProjectNoteFromForm()});
+  document.getElementById('projectTemplateForm')?.addEventListener('submit',e=>{e.preventDefault();saveProjectTemplate()});
+  document.getElementById('resetProjectTemplateBtn')?.addEventListener('click',resetProjectTemplateForm);
+  document.getElementById('deleteProjectTemplateBtn')?.addEventListener('click',deleteProjectTemplate);
+  document.getElementById('projectTaskAddChecklist')?.addEventListener('click',addProjectChecklistRow);
+  document.getElementById('projectTaskCommentAdd')?.addEventListener('click',addProjectTaskComment);
+  document.getElementById('projectTaskCommentInput')?.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();addProjectTaskComment()}});
+  ['projectTaskAssignee','projectTaskDue'].forEach(id=>document.getElementById(id)?.addEventListener('change',updateProjectTaskConflictWarning));
   document.getElementById('deleteProjectBtn')?.addEventListener('click',deleteProject);
   document.getElementById('deleteProjectTaskBtn')?.addEventListener('click',deleteProjectTask);
   document.getElementById('deleteProjectNoteBtn')?.addEventListener('click',deleteProjectNote);
