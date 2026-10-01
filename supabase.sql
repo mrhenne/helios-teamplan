@@ -1195,3 +1195,11 @@ drop trigger if exists trg_teamplan_protect_employee_task_update on public.teamp
 create trigger trg_teamplan_protect_employee_task_update
 before update on public.teamplan_tasks
 for each row execute function public.teamplan_protect_employee_task_update();
+
+
+-- Projektmanagement Performance-Indizes
+create index if not exists teamplan_notes_project_id_idx
+  on public.teamplan_notes(project_id);
+
+create index if not exists teamplan_tasks_template_id_idx
+  on public.teamplan_tasks(template_id);
