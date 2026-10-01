@@ -711,3 +711,43 @@ body.planner-focus #planner.pan-mode .day-cell{touch-action:none}
   .focus-actions{gap:2px}
   .focus-nav{gap:2px}
 }
+
+/* Fokus-Zoom & Navigationsmodus */
+.focus-zoom{
+  display:flex;align-items:center;height:30px;border:1px solid rgba(255,255,255,.18);
+  border-radius:8px;background:rgba(255,255,255,.07);overflow:hidden
+}
+.focus-zoom button{
+  width:28px!important;height:28px!important;border:0!important;border-radius:0!important;
+  background:transparent!important;font-size:12px!important
+}
+.focus-zoom button:hover{background:rgba(255,255,255,.08)!important}
+.focus-zoom span{
+  min-width:42px;text-align:center;font-size:8px;font-weight:800;color:rgba(255,255,255,.86);
+  border-left:1px solid rgba(255,255,255,.12);border-right:1px solid rgba(255,255,255,.12)
+}
+#focusPanBtn{font-size:15px!important;font-weight:500!important;line-height:1}
+#focusPanBtn.active{
+  background:rgba(83,202,167,.24)!important;
+  border-color:rgba(118,226,196,.58)!important;
+  color:#bff4e4!important
+}
+body.planner-focus #planner.pan-mode{
+  cursor:grab!important;user-select:none!important;-webkit-user-select:none!important;
+  overscroll-behavior:contain;touch-action:none
+}
+body.planner-focus #planner.pan-mode *{
+  cursor:grab!important;user-select:none!important;-webkit-user-select:none!important
+}
+body.planner-focus #planner.pan-mode.panning,
+body.planner-focus #planner.pan-mode.panning *{cursor:grabbing!important}
+
+@media(max-width:700px){
+  .focus-zoom span{min-width:34px;font-size:7px}
+  .focus-zoom button{width:25px!important}
+}
+@media(max-width:520px){
+  .focus-zoom{height:27px}
+  .focus-zoom span{min-width:30px}
+  .focus-zoom button{width:23px!important;height:25px!important}
+}
