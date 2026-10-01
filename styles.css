@@ -6575,3 +6575,209 @@ body.dark-mode .project-export-options>label{background:#172723}
   .project-member-row{grid-template-columns:1fr}
   .project-member-responsible-label{justify-content:flex-start}
 }
+
+
+/* === 2026-10-01 PROJECT RESPONSIBLES + EXPORT + PROGRESS === */
+/* Fortschritt wird aus Aufgaben und Checklisten berechnet und wandert farblich Richtung Grün */
+.project-progress>i{
+  background:var(--progress-color,var(--project-color,#d8891c))!important;
+  transition:width .24s ease,background .24s ease!important;
+}
+.project-detail-progress{
+  margin:7px 0 2px!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  gap:5px 8px!important;
+  align-items:center!important;
+}
+.project-detail-progress::before{
+  content:"";
+  grid-column:1/-1;
+  grid-row:1;
+  width:100%;
+  height:7px;
+  border-radius:999px;
+  background:rgba(0,0,0,.07);
+}
+.project-detail-progress>i{
+  grid-column:1/-1;
+  grid-row:1;
+  z-index:1;
+  display:block;
+  width:var(--progress,0%);
+  max-width:100%;
+  height:7px;
+  border-radius:999px;
+  background:var(--progress-color,#d8891c);
+  transition:width .24s ease,background .24s ease;
+}
+.project-detail-progress>span{
+  grid-column:1/-1;
+  font-size:5.8px;
+  color:var(--muted);
+}
+
+/* Direktes Erledigen innerhalb eines geöffneten Projekts */
+.project-dialog-task{
+  display:grid!important;
+  grid-template-columns:27px minmax(0,1fr) auto!important;
+  align-items:center!important;
+  gap:6px!important;
+  padding:6px 7px!important;
+}
+.project-dialog-task-main{
+  min-width:0!important;
+  width:100%!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+  color:inherit!important;
+  text-align:left!important;
+  cursor:pointer!important;
+}
+.project-dialog-task-main>span{
+  min-width:0!important;
+  display:grid!important;
+  gap:2px!important;
+}
+.project-task-quickcheck{
+  width:25px!important;
+  min-width:25px!important;
+  height:25px!important;
+  min-height:25px!important;
+  padding:0!important;
+  display:grid!important;
+  place-items:center!important;
+  border:1px solid var(--line)!important;
+  border-radius:7px!important;
+  background:rgba(255,255,255,.72)!important;
+  color:#17745f!important;
+  font-size:12px!important;
+  font-weight:900!important;
+  cursor:pointer!important;
+}
+body.dark-mode .project-task-quickcheck{background:#172723!important}
+.project-dialog-task.done{
+  opacity:.72;
+}
+.project-dialog-task.done .project-task-quickcheck{
+  background:#e1f2eb!important;
+  border-color:#acd8c9!important;
+}
+.project-dialog-task.done .project-dialog-task-main strong{
+  text-decoration:line-through;
+}
+
+/* Projektteam: Beteiligung und Projektverantwortung klar trennen */
+.project-members-list{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:5px!important;
+}
+.project-member-row{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  gap:6px!important;
+  align-items:center!important;
+  min-height:34px!important;
+  padding:4px 6px!important;
+  border:1px solid var(--line)!important;
+  border-radius:8px!important;
+  background:rgba(255,255,255,.52)!important;
+}
+body.dark-mode .project-member-row{background:#172723!important}
+.project-member-main,
+.project-member-responsible-label{
+  min-height:25px!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:6px!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+  font-size:7px!important;
+  cursor:pointer!important;
+}
+.project-member-main input,
+.project-member-responsible-label input{
+  width:14px!important;
+  height:14px!important;
+  margin:0!important;
+}
+.project-member-main span{
+  font-size:7.5px!important;
+  font-weight:800!important;
+  color:var(--ink)!important;
+}
+.project-member-responsible-label{
+  padding:3px 6px!important;
+  border-radius:7px!important;
+  background:#fff2d9!important;
+}
+.project-member-responsible-label span{
+  font-size:6px!important;
+  font-weight:900!important;
+  color:#8a5b17!important;
+}
+body.dark-mode .project-member-responsible-label{
+  background:#49361e!important;
+}
+body.dark-mode .project-member-responsible-label span{
+  color:#ffd18e!important;
+}
+
+/* PDF-Auswahl */
+.dialog-subtext{
+  margin:3px 0 0!important;
+  font-size:7px!important;
+  color:var(--muted)!important;
+}
+.project-export-options{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:6px!important;
+}
+.project-export-options>label{
+  min-height:54px!important;
+  display:grid!important;
+  grid-template-columns:18px minmax(0,1fr)!important;
+  align-items:start!important;
+  gap:7px!important;
+  padding:8px!important;
+  border:1px solid var(--line)!important;
+  border-radius:10px!important;
+  background:rgba(245,249,247,.72)!important;
+  cursor:pointer!important;
+}
+body.dark-mode .project-export-options>label{
+  background:#14241f!important;
+}
+.project-export-options input{
+  width:15px!important;
+  height:15px!important;
+  margin:2px 0 0!important;
+}
+.project-export-options label>span{
+  display:grid!important;
+  gap:2px!important;
+}
+.project-export-options strong{
+  font-size:8px!important;
+}
+.project-export-options small{
+  font-size:6.2px!important;
+  line-height:1.35!important;
+  color:var(--muted)!important;
+}
+
+@media(max-width:650px){
+  .project-member-row{
+    grid-template-columns:1fr!important;
+  }
+  .project-member-responsible-label{
+    justify-self:start!important;
+  }
+  .project-export-options{
+    grid-template-columns:1fr!important;
+  }
+}
