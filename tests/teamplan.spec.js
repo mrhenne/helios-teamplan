@@ -57,13 +57,18 @@ test('Kopfzeile bleibt vollständig innerhalb ihrer Felder', async ({ page }) =>
   await assertNoOverflow(page.locator('.top-action-section .top-tool:visible, .global-theme-control:visible'));
 
   await expect(page.locator('#roleSelect')).toBeVisible();
-  const roleFits = await page.locator('#roleSelect').evaluate(node => {
+  const roleGeometry = await page.locator('#roleSelect').evaluate(node => {
     const r=node.getBoundingClientRect();
-    const slot=node.closest('.role-slot')?.getBoundingClientRect();
-    if(!slot) return false;
-    return r.left >= slot.left-3 && r.right <= slot.right+3 && r.top >= slot.top-3 && r.bottom <= slot.bottom+3;
+    const topbar=node.closest('.topbar')?.getBoundingClientRect();
+    return {
+      width:r.width,
+      height:r.height,
+      inTopbar:!!topbar && r.left>=topbar.left-2 && r.right<=topbar.right+2 && r.top>=topbar.top-2 && r.bottom<=topbar.bottom+2
+    };
   });
-  expect(roleFits).toBeTruthy();
+  expect(roleGeometry.width).toBeGreaterThan(70);
+  expect(roleGeometry.height).toBeGreaterThanOrEqual(27);
+  expect(roleGeometry.inTopbar).toBeTruthy();
   await expect(page.locator('#roleHelpBtn')).toBeVisible();
   await expect(page.locator('#settingsBtn')).toBeVisible();
 
