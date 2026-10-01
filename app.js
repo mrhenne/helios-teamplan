@@ -2205,11 +2205,12 @@ function applyTrainingTypeDefaults(){
 function resetTrainingTypeForm(){
   ['trainingTypeId','trainingTypeName','trainingTypeInterval','trainingTypeDescription'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('trainingTypeCategory').value='Pflichtfortbildung';
+  document.getElementById('trainingTypeColor').value='#e59f23';
   document.getElementById('trainingTypeHours').value=0;document.getElementById('trainingTypeCost').value=0;document.getElementById('trainingTypeMandatory').checked=false;
 }
 function renderTrainingTypes(){
   const list=document.getElementById('trainingTypesList');if(!list)return;
-  list.innerHTML=trainingTypes.length?trainingTypes.map(t=>'<div class="management-item training-type-row" data-type-id="'+t.id+'"><div><strong>'+escapeHtml(t.name)+'</strong><span>'+escapeHtml(t.category||'')+(t.interval_months?' · alle '+t.interval_months+' Monate':'')+(t.mandatory?' · Pflicht':'')+'</span></div><div class="training-type-actions"><button type="button" class="btn ghost training-type-edit">Bearbeiten</button><button type="button" class="btn danger training-type-delete">Löschen</button></div></div>').join(''):'<div class="empty-state">Noch keine Fortbildungsarten angelegt.</div>';
+  list.innerHTML=trainingTypes.length?trainingTypes.map(t=>'<div class="management-item training-type-row" data-type-id="'+t.id+'"><div class="training-type-main"><i class="training-type-color" style="--training-color:'+escapeHtml(t.color||trainingCategoryFallbackColor(t.category))+'"></i><div><strong>'+escapeHtml(t.name)+'</strong><span>'+escapeHtml(t.category||'')+(t.interval_months?' · alle '+t.interval_months+' Monate':'')+(t.mandatory?' · Pflicht':'')+'</span></div></div><div class="training-type-actions"><button type="button" class="btn ghost training-type-edit">Bearbeiten</button><button type="button" class="btn danger training-type-delete">Löschen</button></div></div>').join(''):'<div class="empty-state">Noch keine Fortbildungsarten angelegt.</div>';
   list.querySelectorAll('.training-type-row').forEach(row=>{
     row.querySelector('.training-type-edit').addEventListener('click',()=>editTrainingType(row.dataset.typeId));
     row.querySelector('.training-type-delete').addEventListener('click',()=>deleteTrainingType(row.dataset.typeId));
@@ -2217,11 +2218,11 @@ function renderTrainingTypes(){
 }
 function editTrainingType(id){
   const t=trainingTypeById(id);if(!t)return;
-  document.getElementById('trainingTypeId').value=t.id;document.getElementById('trainingTypeName').value=t.name;document.getElementById('trainingTypeCategory').value=t.category||'';document.getElementById('trainingTypeInterval').value=t.interval_months||'';document.getElementById('trainingTypeHours').value=Number(t.default_hours||0);document.getElementById('trainingTypeCost').value=Number(t.default_cost||0);document.getElementById('trainingTypeMandatory').checked=!!t.mandatory;document.getElementById('trainingTypeDescription').value=t.description||'';
+  document.getElementById('trainingTypeId').value=t.id;document.getElementById('trainingTypeName').value=t.name;document.getElementById('trainingTypeCategory').value=t.category||'';document.getElementById('trainingTypeInterval').value=t.interval_months||'';document.getElementById('trainingTypeHours').value=Number(t.default_hours||0);document.getElementById('trainingTypeCost').value=Number(t.default_cost||0);document.getElementById('trainingTypeColor').value=t.color||trainingCategoryFallbackColor(t.category);document.getElementById('trainingTypeMandatory').checked=!!t.mandatory;document.getElementById('trainingTypeDescription').value=t.description||'';
 }
 async function saveTrainingType(){
   if(!trainingCanManage())return;
-  const cfg=window.TEAMPLAN_CONFIG||{},id=document.getElementById('trainingTypeId').value||null,row={team_id:cfg.teamId,name:document.getElementById('trainingTypeName').value.trim(),category:document.getElementById('trainingTypeCategory').value.trim()||'Fortbildung',interval_months:Number(document.getElementById('trainingTypeInterval').value)||null,default_hours:Number(document.getElementById('trainingTypeHours').value||0),default_cost:Number(document.getElementById('trainingTypeCost').value||0),mandatory:document.getElementById('trainingTypeMandatory').checked,description:document.getElementById('trainingTypeDescription').value.trim(),active:true,updated_at:new Date().toISOString()};
+  const cfg=window.TEAMPLAN_CONFIG||{},id=document.getElementById('trainingTypeId').value||null,row={team_id:cfg.teamId,name:document.getElementById('trainingTypeName').value.trim(),category:document.getElementById('trainingTypeCategory').value.trim()||'Fortbildung',interval_months:Number(document.getElementById('trainingTypeInterval').value)||null,default_hours:Number(document.getElementById('trainingTypeHours').value||0),default_cost:Number(document.getElementById('trainingTypeCost').value||0),color:document.getElementById('trainingTypeColor').value||trainingCategoryFallbackColor(document.getElementById('trainingTypeCategory').value),mandatory:document.getElementById('trainingTypeMandatory').checked,description:document.getElementById('trainingTypeDescription').value.trim(),active:true,updated_at:new Date().toISOString()};
   if(!row.name)return;
   const res=id?await supabaseClient.from('teamplan_training_types').update(row).eq('id',id):await supabaseClient.from('teamplan_training_types').insert(row);
   if(res.error){alert(res.error.message);return}
