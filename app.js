@@ -1806,6 +1806,8 @@ function teamStatusItemFor(empId,typeId,year){
   const real=candidates.filter(t=>!t._virtual);
   const completed=real.find(t=>t.status==='completed');
   if(completed)return {state:'completed',item:completed};
+  const inProgress=real.find(t=>t.status==='in_progress');
+  if(inProgress)return {state:'in_progress',item:inProgress};
   const planned=real.find(t=>t.status==='planned');
   if(planned)return {state:'planned',item:planned};
   const virtual=candidates.find(t=>t._virtual);
@@ -1880,13 +1882,13 @@ async function setTeamStatusEmployee(empId,typeId,year,status){
 function renderTrainingTeamStatusAll(types,employees){
   const metrics=document.getElementById('trainingTeamStatusMetrics'),board=document.getElementById('trainingTeamStatusBoard');
   const matrix=types.flatMap(type=>employees.map(employee=>({type,employee,...teamStatusItemFor(employee.id,type.id,trainingTeamStatusYear)})));
-  const completed=matrix.filter(x=>x.state==='completed').length,planned=matrix.filter(x=>x.state==='planned').length,open=matrix.filter(x=>x.state==='open').length,total=matrix.length;
-  metrics.innerHTML='<article><span>Fortbildungen</span><strong>'+types.length+'</strong></article><article><span>Absolviert</span><strong>'+completed+'</strong></article><article><span>In Planung</span><strong>'+planned+'</strong></article><article><span>Noch offen</span><strong>'+open+'</strong></article>';
+  const completed=matrix.filter(x=>x.state==='completed').length,running=matrix.filter(x=>x.state==='in_progress').length,planned=matrix.filter(x=>x.state==='planned').length,open=matrix.filter(x=>x.state==='open').length,total=matrix.length;
+  metrics.innerHTML='<article><span>Fortbildungen</span><strong>'+types.length+'</strong></article><article><span>In Durchführung</span><strong>'+running+'</strong></article><article><span>Absolviert</span><strong>'+completed+'</strong></article><article><span>Noch offen</span><strong>'+open+'</strong></article>';
   const pool='<section class="training-teamstatus-pool"><header><div><strong>Mitarbeiter</strong><span>Auf eine Fortbildung ziehen → sofort vormerken</span></div></header><div>'+
     employees.map(e=>'<div class="training-employee-chip" draggable="'+(trainingCanManage()?'true':'false')+'" data-teamstatus-employee-drag="'+e.id+'"><span>'+uiIcon('users')+'</span><b>'+escapeHtml(e.name)+'</b>'+(trainingCanManage()?'<button type="button" class="training-employee-edit-inline" data-employee-edit="'+e.id+'" title="Mitarbeiter bearbeiten">'+uiIcon('edit')+'</button>':'')+'</div>').join('')+'</div></section>';
   const cards='<div class="training-teamstatus-all-grid">'+types.map(type=>{
-    const rows=matrix.filter(x=>x.type.id===type.id),c=rows.filter(x=>x.state==='completed').length,p=rows.filter(x=>x.state==='planned').length,o=rows.filter(x=>x.state==='open').length,coverage=rows.length?Math.round(c/rows.length*100):0;
-    return '<article class="training-teamstatus-type-card" data-teamstatus-type-drop="'+type.id+'" data-teamstatus-year="'+trainingTeamStatusYear+'"><header><div><strong>'+escapeHtml(type.name)+'</strong><span>'+escapeHtml(type.category||'Fortbildung')+(type.interval_months?' · ↻ '+type.interval_months+' Monate':'')+'</span></div><b>'+coverage+' %</b></header><div class="training-type-card-stats"><span><b>'+c+'</b> absolviert</span><span><b>'+p+'</b> geplant</span><span><b>'+o+'</b> offen</span></div><div class="training-type-drop-hint">'+uiIcon('plus')+' Mitarbeiter hierher ziehen</div><button type="button" class="training-type-open-btn" data-teamstatus-open-type="'+type.id+'">Details öffnen</button></article>';
+    const rows=matrix.filter(x=>x.type.id===type.id),c=rows.filter(x=>x.state==='completed').length,r=rows.filter(x=>x.state==='in_progress').length,p=rows.filter(x=>x.state==='planned').length,o=rows.filter(x=>x.state==='open').length,coverage=rows.length?Math.round(c/rows.length*100):0;
+    return '<article class="training-teamstatus-type-card" style="--training-color:'+escapeHtml(type.color||trainingCategoryFallbackColor(type.category))+'" data-teamstatus-type-drop="'+type.id+'" data-teamstatus-year="'+trainingTeamStatusYear+'"><header><div><strong>'+escapeHtml(type.name)+'</strong><span>'+escapeHtml(type.category||'Fortbildung')+(type.interval_months?' · ↻ '+type.interval_months+' Monate':'')+'</span></div><b>'+coverage+' %</b></header><div class="training-type-card-stats"><span><b>'+c+'</b> absolviert</span><span><b>'+r+'</b> läuft</span><span><b>'+p+'</b> geplant</span><span><b>'+o+'</b> offen</span></div><div class="training-type-drop-hint">'+uiIcon('plus')+' Mitarbeiter hierher ziehen</div><button type="button" class="training-type-open-btn" data-teamstatus-open-type="'+type.id+'">Details öffnen</button></article>';
   }).join('')+'</div>';
   board.className='training-teamstatus-board all-mode';
   board.innerHTML=pool+cards;
@@ -1901,15 +1903,15 @@ function renderTrainingTeamStatus(){
   if(!type){trainingTeamStatusTypeId='__all__';renderTrainingTeamStatusAll(types,employees);return}
   let rows=employees.map(e=>({employee:e,...teamStatusItemFor(e.id,type.id,trainingTeamStatusYear)}));
   if(trainingTeamStatusSort==='name')rows.sort((a,b)=>a.employee.name.localeCompare(b.employee.name,'de'));
-  else rows.sort((a,b)=>({completed:0,planned:1,open:2}[a.state]-({completed:0,planned:1,open:2}[b.state])||a.employee.name.localeCompare(b.employee.name,'de')));
-  const completed=rows.filter(r=>r.state==='completed'),planned=rows.filter(r=>r.state==='planned'),open=rows.filter(r=>r.state==='open'),coverage=rows.length?Math.round(completed.length/rows.length*100):0;
-  metrics.innerHTML='<article><span>Teamabdeckung</span><strong>'+coverage+' %</strong></article><article><span>Absolviert</span><strong>'+completed.length+'</strong></article><article><span>In Planung</span><strong>'+planned.length+'</strong></article><article><span>Noch offen</span><strong>'+open.length+'</strong></article>';
+  else rows.sort((a,b)=>({completed:0,in_progress:1,planned:2,open:3}[a.state]-({completed:0,in_progress:1,planned:2,open:3}[b.state])||a.employee.name.localeCompare(b.employee.name,'de')));
+  const completed=rows.filter(r=>r.state==='completed'),running=rows.filter(r=>r.state==='in_progress'),planned=rows.filter(r=>r.state==='planned'),open=rows.filter(r=>r.state==='open'),coverage=rows.length?Math.round(completed.length/rows.length*100):0;
+  metrics.innerHTML='<article><span>Teamabdeckung</span><strong>'+coverage+' %</strong></article><article><span>In Durchführung</span><strong>'+running.length+'</strong></article><article><span>Absolviert</span><strong>'+completed.length+'</strong></article><article><span>Noch offen</span><strong>'+open.length+'</strong></article>';
   const col=(title,arr,state)=>'<section class="training-teamstatus-column '+state+'" data-teamstatus-drop-state="'+state+'" data-training-type="'+type.id+'" data-training-year="'+trainingTeamStatusYear+'"><header><strong>'+title+'</strong><b>'+arr.length+'</b></header><div>'+ (arr.length?arr.map(r=>{
     const t=r.item;
     return '<article class="training-teamstatus-person" draggable="'+(trainingCanManage()?'true':'false')+'" data-teamstatus-employee-drag="'+r.employee.id+'" data-training-employee="'+r.employee.id+'" data-training-type="'+type.id+'" data-training-year="'+trainingTeamStatusYear+'" '+(t&&!t._virtual?'data-training-id="'+t.id+'"':'')+'><div><strong>'+escapeHtml(r.employee.name)+'</strong><span>'+escapeHtml(r.employee.role||'Mitarbeiter')+' · '+(t?escapeHtml(t._virtual?'Wiederholung vorgemerkt':formatTrainingDateRange(t)):'noch kein Eintrag')+'</span></div><div class="training-person-buttons">'+(trainingCanManage()?'<button type="button" class="training-employee-edit-inline" data-employee-edit="'+r.employee.id+'" title="Mitarbeiter bearbeiten">'+uiIcon('edit')+'</button>':'')+'<button type="button" class="training-person-action" title="Schnellaktionen">•••</button></div></article>';
-  }).join(''):'<div class="empty-state">'+(state==='completed'?'Noch niemand absolviert.':state==='planned'?'Niemand in Planung.':'Alle berücksichtigt.')+'</div>')+'</div></section>';
+  }).join(''):'<div class="empty-state">'+(state==='completed'?'Noch niemand absolviert.':state==='in_progress'?'Niemand in Durchführung.':state==='planned'?'Niemand in Planung.':'Alle berücksichtigt.')+'</div>')+'</div></section>';
   board.className='training-teamstatus-board';
-  board.innerHTML=col('Absolviert',completed,'completed')+col('In Planung',planned,'planned')+col('Noch ohne Eintrag',open,'open');
+  board.innerHTML=col('Absolviert',completed,'completed')+col('In Durchführung',running,'in_progress')+col('In Planung',planned,'planned')+col('Noch ohne Eintrag',open,'open');
 }
 function renderTrainingClassic(items){
   const body=document.getElementById('trainingClassicBody');if(!body)return;
