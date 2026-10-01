@@ -6797,3 +6797,11 @@ body.dark-mode .project-export-options>label{
 .vacation-heading>div>span{font-size:7px;color:var(--muted)}
 .plan-table .employee-name{font-size:10.5px!important;line-height:1.15}
 .global-employee-btn{font-weight:800}
+
+
+/* === ZNA Core brand === */
+.zna-core-brand{min-width:240px;display:flex;align-items:center}
+.zna-core-logo{display:block;width:250px;max-width:28vw;height:auto;object-fit:contain}
+.visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+@media(max-width:1100px){.zna-core-logo{width:210px}.zna-core-brand{min-width:205px}}
+@media(max-width:760px){.zna-core-logo{width:175px;max-width:52vw}.zna-core-brand{min-width:0}}
