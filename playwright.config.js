@@ -9,6 +9,7 @@ module.exports = defineConfig({
   reporter: [['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }]],
   use: {
     browserName: 'chromium',
+    channel: 'chrome',
     baseURL: 'http://127.0.0.1:4173',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure'
