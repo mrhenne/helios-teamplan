@@ -1450,10 +1450,11 @@ function trainingDueState(t){
   return 'valid';
 }
 function trainingStatusLabel(t){
+  if(t.status==='in_progress')return 'In Durchführung';
   const due=trainingDueState(t);
   if(due==='overdue')return 'Überfällig';
   if(due==='due')return 'Bald fällig';
-  return t.status==='completed'?'Absolviert':t.status==='in_progress'?'In Durchführung':t.status==='cancelled'?'Abgesagt':'Geplant';
+  return t.status==='completed'?'Absolviert':t.status==='cancelled'?'Abgesagt':'Geplant';
 }
 function trainingVisibleEmployees(){
   if(sessionRole==='employee')return state.employees.filter(e=>e.id===sessionEmployeeId);
@@ -1769,7 +1770,7 @@ function renderTrainingCalendar(items){
       const key=trainingYear+'-'+String(m+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
       const matches=monthItems.filter(t=>t.start_date<=key&&t.end_date>=key),realMatches=matches.filter(t=>!t._virtual);
       const uniqueReal=[...new Map(realMatches.map(t=>[t.id,t])).values()];
-      const statusClass=matches.some(t=>t.status==='completed')?'completed':matches.some(t=>t.status==='planned')?'planned':matches.length?'cancelled':'';
+      const statusClass=matches.some(t=>t.status==='in_progress')?'in-progress':matches.some(t=>t.status==='completed')?'completed':matches.some(t=>t.status==='planned')?'planned':matches.length?'cancelled':'';
       const titles=matches.map(t=>trainingEmployeeName(t.employee_id)+': '+t.title).join(' · ');
       const dragAttrs=trainingCanManage()&&uniqueReal.length===1?' draggable="true" data-training-id="'+uniqueReal[0].id+'"':'';
       const colorStyle=matches.length===1?' style="--training-color:'+escapeHtml(trainingColor(matches[0]))+'"':'';
@@ -1876,7 +1877,7 @@ async function setTeamStatusEmployee(empId,typeId,year,status){
   if(real){
     const {error}=await supabaseClient.from('teamplan_trainings').update({status,updated_at:new Date().toISOString()}).eq('id',real.id);
     if(error){alert(error.message);return}
-    await loadTrainingData();showToast(status==='completed'?'Als absolviert markiert':'Fortbildung eingeplant');return;
+    await loadTrainingData();showToast(status==='completed'?'Als absolviert markiert':status==='in_progress'?'Als in Durchführung markiert':'Fortbildung eingeplant');return;
   }
   await quickCreateTrainingStatus(empId,typeId,year,status);
 }
@@ -1967,7 +1968,7 @@ async function quickCreateTrainingStatus(empId,typeId,year,status){
   const row={team_id:cfg.teamId,employee_id:empId,type_id:type.id,title:type.name,category:type.category||'Fortbildung',date_precision:'year',training_year:Number(year),start_date:null,end_date:null,recurring,recurrence_months:recurring?Number(type.interval_months):null,status,hours:Number(type.default_hours||0),cost:Number(type.default_cost||0),provider:'',valid_until:null,note:'',updated_at:new Date().toISOString()};
   const {error}=await supabaseClient.from('teamplan_trainings').insert(row);
   if(error){alert(error.message);return}
-  await loadTrainingData();showToast(status==='completed'?'Als absolviert erfasst':'Fortbildung vorgemerkt');
+  await loadTrainingData();showToast(status==='completed'?'Als absolviert erfasst':status==='in_progress'?'Als in Durchführung erfasst':'Fortbildung vorgemerkt');
 }
 function hideTrainingContextMenu(){
   document.getElementById('trainingContextMenu')?.classList.add('hidden');
