@@ -2405,7 +2405,8 @@ function projectIsLead(projectId){
   if(sessionRole!=='employee')return false;
   const p=projectProjects.find(x=>x.id===projectId);
   const employeeId=authMembership?.employee_id||sessionEmployeeId;
-  return !!(p&&employeeId&&p.lead_employee_id===employeeId);
+  if(!p||!employeeId)return false;
+  return p.lead_employee_id===employeeId||projectMembers.some(m=>m.project_id===projectId&&m.employee_id===employeeId&&m.is_responsible===true);
 }
 function projectCanManageProject(projectId){return projectCanManage()||projectIsLead(projectId)}
 function projectCanManageTask(task){
@@ -2507,9 +2508,9 @@ function filteredProjects(){
   return projectProjects.filter(p=>(!projectId||p.id===projectId)&&(!q||[p.name,p.description,projectEmployeeName(p.lead_employee_id)].join(' ').toLowerCase().includes(q)));
 }
 function projectCardHtml(p){
-  const tasks=projectTasks.filter(t=>t.project_id===p.id),done=tasks.filter(t=>t.status==='done').length,open=tasks.filter(t=>t.status!=='done').length,progress=tasks.length?Math.round(done/tasks.length*100):Number(p.progress||0);
-  const memberCount=new Set(projectMembers.filter(m=>m.project_id===p.id).map(m=>m.employee_id)).size;
-  return '<article class="project-card" data-project-id="'+p.id+'" draggable="'+(projectCanManageProject(p.id)?'true':'false')+'" style="--project-color:'+escapeHtml(p.color||'#d8891c')+';--progress:'+progress+'%"><div class="project-card-head"><div><strong>'+escapeHtml(p.name)+'</strong><span>'+escapeHtml(projectStatusLabel(p.status))+' '+projectRecencyBadge(p)+'</span></div><span class="project-progress-number">'+progress+' %</span></div><div class="project-progress"><i></i></div><div class="project-card-teamrow"><span>'+projectTeamAvatarHtml(p.id)+'</span><small>'+memberCount+' im Team · '+open+' offen · '+done+' erledigt</small></div><div class="project-meta"><span class="project-chip">'+escapeHtml(projectPriorityLabel(p.priority))+'</span><span class="project-chip">Leitung: '+escapeHtml(projectEmployeeName(p.lead_employee_id))+'</span>'+(p.due_date?'<span class="project-chip">'+escapeHtml(projectDateLabel(p.due_date))+'</span>':'')+'</div></article>';
+  const tasks=projectTasks.filter(t=>t.project_id===p.id),done=tasks.filter(t=>t.status==='done').length,open=tasks.filter(t=>t.status!=='done').length,progressInfo=projectProgressInfo(p.id,p.progress),progress=progressInfo.percent;
+  const memberCount=new Set(projectMembers.filter(m=>m.project_id===p.id).map(m=>m.employee_id)).size,responsibleCount=new Set(projectMembers.filter(m=>m.project_id===p.id&&m.is_responsible).map(m=>m.employee_id)).size;
+  return '<article class="project-card" data-project-id="'+p.id+'" draggable="'+(projectCanManageProject(p.id)?'true':'false')+'" style="--project-color:'+escapeHtml(p.color||'#d8891c')+';--progress:'+progress+'%;--progress-color:'+projectProgressColor(progress)+'"><div class="project-card-head"><div><strong>'+escapeHtml(p.name)+'</strong><span>'+escapeHtml(projectStatusLabel(p.status))+' '+projectRecencyBadge(p)+'</span></div><span class="project-progress-number">'+progress+' %</span></div><div class="project-progress"><i></i></div><div class="project-card-teamrow"><span>'+projectTeamAvatarHtml(p.id)+'</span><small>'+memberCount+' im Team · '+open+' offen · '+done+' erledigt</small></div><div class="project-meta"><span class="project-chip">'+escapeHtml(projectPriorityLabel(p.priority))+'</span><span class="project-chip">Leitung: '+escapeHtml(projectEmployeeName(p.lead_employee_id))+'</span>'+(responsibleCount?'<span class="project-chip">'+responsibleCount+' weitere verantwortlich</span>':'')+(p.due_date?'<span class="project-chip">'+escapeHtml(projectDateLabel(p.due_date))+'</span>':'')+'</div></article>';
 }
 function projectTaskConflictInfo(task){
   if(!task?.assignee_employee_id||!task?.due_date)return null;
@@ -2525,6 +2526,25 @@ function projectTaskConflictInfo(task){
 function projectChecklistProgress(task){
   const list=Array.isArray(task?.checklist)?task.checklist:[];
   return {total:list.length,done:list.filter(x=>x.done).length};
+}
+function projectProgressInfo(projectId,fallback=0){
+  const tasks=projectTasks.filter(t=>t.project_id===projectId);
+  if(!tasks.length)return {percent:Number(fallback||0),doneUnits:0,totalUnits:0};
+  let totalUnits=0,doneUnits=0;
+  tasks.forEach(task=>{
+    const list=Array.isArray(task.checklist)?task.checklist:[];
+    const units=Math.max(1,list.length);
+    totalUnits+=units;
+    if(task.status==='done')doneUnits+=units;
+    else if(list.length)doneUnits+=list.filter(x=>x.done).length;
+  });
+  const percent=totalUnits?Math.round(doneUnits/totalUnits*100):0;
+  return {percent,doneUnits,totalUnits};
+}
+function projectProgressColor(percent){
+  const p=Math.max(0,Math.min(100,Number(percent)||0));
+  const hue=Math.round(18+(122-18)*(p/100));
+  return 'hsl('+hue+' 62% 43%)';
 }
 function projectIsOverdue(task){
   return !!(task?.status!=='done'&&task?.due_date&&task.due_date<dateKey(new Date()));
@@ -2571,7 +2591,7 @@ function renderProjectDialogSummary(projectId){
   const wrap=document.getElementById('projectDialogSummary');if(!wrap)return;
   wrap.classList.toggle('hidden',!projectId);
   if(!projectId)return;
-  const rows=projectTasks.filter(t=>t.project_id===projectId),done=rows.filter(t=>t.status==='done').length,open=rows.filter(t=>t.status!=='done').length,waiting=rows.filter(t=>t.status==='waiting').length,overdue=rows.filter(projectIsOverdue).length,progress=rows.length?Math.round(done/rows.length*100):0;
+  const rows=projectTasks.filter(t=>t.project_id===projectId),open=rows.filter(t=>t.status!=='done').length,waiting=rows.filter(t=>t.status==='waiting').length,overdue=rows.filter(projectIsOverdue).length,progress=projectProgressInfo(projectId).percent;
   document.getElementById('projectSummaryProgress').textContent=progress+' %';
   document.getElementById('projectSummaryOpen').textContent=String(open);
   document.getElementById('projectSummaryWaiting').textContent=String(waiting);
