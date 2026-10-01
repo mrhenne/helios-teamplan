@@ -1655,10 +1655,10 @@ function trainingEntryHtml(t){
   const dateMain=yearOnly?'?':new Date(t.start_date+'T12:00:00').toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});
   const dateSub=yearOnly?String(t.training_year):String(new Date(t.start_date+'T12:00:00').getFullYear());
   const sourceId=t._sourceId||t.id;
-  return '<article class="training-entry '+(trainingCanManage()&&!t._virtual?'editable':'')+(yearOnly?' year-only':'')+(t._virtual?' virtual':'')+'" data-training-id="'+sourceId+'" data-training-virtual="'+(t._virtual?'1':'0')+'" '+(trainingCanManage()&&!t._virtual?'draggable="true"':'')+'>'+
+  return '<article class="training-entry '+(trainingCanManage()&&!t._virtual?'editable':'')+(yearOnly?' year-only':'')+(t._virtual?' virtual':'')+'" style="--training-color:'+escapeHtml(trainingColor(t))+'" data-training-id="'+sourceId+'" data-training-virtual="'+(t._virtual?'1':'0')+'" '+(trainingCanManage()&&!t._virtual?'draggable="true"':'')+'>'+
     '<div class="training-entry-date"><strong>'+escapeHtml(dateMain)+'</strong><span>'+escapeHtml(dateSub)+'</span></div>'+
     '<div class="training-entry-main"><div class="training-entry-title"><strong>'+escapeHtml(t.title)+'</strong><span class="training-status '+(dueState||t.status)+'">'+escapeHtml(t._virtual?'Vorschau':trainingStatusLabel(t))+'</span></div>'+
-    '<span>'+escapeHtml(emp)+' · '+escapeHtml(t.category||'Fortbildung')+' · '+escapeHtml(formatTrainingDateRange(t))+'</span>'+
+    '<span><i class="training-kind-dot"></i>'+escapeHtml(emp)+' · '+escapeHtml(t.category||'Fortbildung')+' · '+escapeHtml(formatTrainingDateRange(t))+'</span>'+
     '<small>'+[recurrence,Number(t.hours)?formatVacationNumber(t.hours)+' h':'',Number(t.cost)?euro(t.cost):'',t.provider, due?'gültig bis '+new Date(due+'T12:00:00').toLocaleDateString('de-DE'):'' ].filter(Boolean).map(escapeHtml).join(' · ')+'</small>'+
     (conf.length?'<em class="training-conflict">! '+conf.length+' Überschneidung'+(conf.length===1?'':'en')+' mit Abwesenheit</em>':'')+
     '</div></article>';
@@ -1724,31 +1724,31 @@ function bindTrainingDragDrop(){
 }
 function renderTrainingMetrics(items){
   const box=document.getElementById('trainingMetrics');if(!box)return;
-  const active=items.filter(t=>t.status==='planned').length;
-  const completed=items.filter(t=>t.status==='completed').length;
+  const planned=items.filter(t=>t.status==='planned').length;
+  const running=items.filter(t=>t.status==='in_progress').length;
   const due=items.filter(t=>trainingDueState(t)==='due').length;
   const overdue=items.filter(t=>trainingDueState(t)==='overdue').length;
-  const cost=items.filter(t=>t.status!=='cancelled').reduce((s,t)=>s+Number(t.cost||0),0);
-  const employees=trainingVisibleEmployees();
-  const budget=employees.reduce((s,e)=>s+trainingBudgetFor(e.id),0);
+  const undated=items.filter(t=>t.status!=='cancelled'&&t.date_precision==='year').length;
   box.innerHTML=
-    '<article><span>Geplant</span><strong>'+active+'</strong><small>'+trainingYear+'</small></article>'+
-    '<article><span>Absolviert</span><strong>'+completed+'</strong><small>'+trainingYear+'</small></article>'+
-    '<article class="'+(overdue?'metric-alert':'')+'"><span>Fälligkeiten</span><strong>'+due+' / '+overdue+'</strong><small>bald / überfällig</small></article>'+
-    '<article><span>Kosten</span><strong>'+escapeHtml(euro(cost))+'</strong><small>'+(budget?escapeHtml(euro(budget))+' Budget':'kein Budget hinterlegt')+'</small></article>';
+    '<article><span>In Durchführung</span><strong>'+running+'</strong><small>läuft aktuell</small></article>'+
+    '<article><span>Geplant</span><strong>'+planned+'</strong><small>'+trainingYear+'</small></article>'+
+    '<article class="'+(overdue?'metric-alert':'')+'"><span>Handlungsbedarf</span><strong>'+due+' / '+overdue+'</strong><small>bald / überfällig</small></article>'+
+    '<article><span>Termin offen</span><strong>'+undated+'</strong><small>nur Jahr bekannt</small></article>';
 }
 function renderTrainingOverview(items){
   renderTrainingMetrics(items);
   const today=dateKey(new Date());
+  const running=items.filter(t=>t.status==='in_progress').sort((a,b)=>(a.start_date||String(a.training_year)+'-01-01').localeCompare(b.start_date||String(b.training_year)+'-01-01')).slice(0,30);
   const upcoming=items.filter(t=>t.status==='planned'&&(t.date_precision==='year'?Number(t.training_year)>=new Date().getFullYear():(t.end_date&&t.end_date>=today))).sort((a,b)=>{
     const ad=a.date_precision==='year'?String(a.training_year)+'-99-99':(a.start_date||'9999-99-99');
     const bd=b.date_precision==='year'?String(b.training_year)+'-99-99':(b.start_date||'9999-99-99');
     return ad.localeCompare(bd);
   }).slice(0,30);
   const due=items.filter(t=>['due','overdue'].includes(trainingDueState(t))).sort((a,b)=>(trainingDueDate(a)||'9999').localeCompare(trainingDueDate(b)||'9999')).slice(0,30);
-  const up=document.getElementById('trainingUpcomingList'),dl=document.getElementById('trainingDueList');
+  const run=document.getElementById('trainingRunningList'),up=document.getElementById('trainingUpcomingList'),dl=document.getElementById('trainingDueList');
+  if(run)run.innerHTML=running.length?running.map(trainingEntryHtml).join(''):'<div class="empty-state success-state">Aktuell läuft keine Fortbildung.</div>';
   if(up)up.innerHTML=upcoming.length?upcoming.map(trainingEntryHtml).join(''):'<div class="empty-state">Keine geplanten Fortbildungen.</div>';
-  if(dl)dl.innerHTML=due.length?due.map(trainingEntryHtml).join(''):'<div class="empty-state success-state">Keine fälligen Fortbildungen.</div>';
+  if(dl)dl.innerHTML=due.length?due.map(trainingEntryHtml).join(''):'<div class="empty-state success-state">Kein akuter Handlungsbedarf.</div>';
 }
 function trainingItemsForMonth(items,year,month){
   const first=year+'-'+String(month+1).padStart(2,'0')+'-01';
