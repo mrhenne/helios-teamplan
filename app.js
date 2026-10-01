@@ -1243,7 +1243,7 @@ function renderRoleControls(){
   emp.classList.toggle('hidden',authMode||sessionRole!=='employee');
   const pill=document.getElementById('authUserPill'),logout=document.getElementById('logoutBtn'),onlinePill=document.getElementById('onlinePill');
   pill.classList.toggle('hidden',!authMode);logout.classList.toggle('hidden',!authMode);if(onlinePill)onlinePill.classList.toggle('hidden',!authMode);
-  if(authMode)pill.textContent=(authUser.email||'Angemeldet')+' · '+sessionRole;
+  if(authMode)pill.textContent='Angemeldet: '+(authUser.email||'Benutzer')+' · '+sessionRole;
   ['blackoutsBtn','addEmployeeBtn','importNamesBtn','planImportBtn'].forEach(id=>{const el=document.getElementById(id);if(el){el.disabled=!canManage();el.classList.toggle('hidden',!canManage())}});
   document.querySelectorAll('.manager-only').forEach(el=>el.classList.toggle('hidden',!canManage()));
   document.getElementById('settingsBtn').disabled=false;
@@ -1559,7 +1559,16 @@ function filteredTrainings(){
   });
 }
 function trainingForEmployeeDate(empId,key){
-  return trainings.filter(t=>t.employee_id===empId&&t.status!=='cancelled'&&t.date_precision!=='year'&&t.start_date&&t.end_date&&t.start_date<=key&&t.end_date>=key);
+  return trainings.filter(t=>{
+    if(t.employee_id!==empId||t.status==='cancelled'||t.date_precision==='year'||!t.start_date||!t.end_date)return false;
+    const start=trainingDate(t.start_date),end=trainingDate(t.end_date);
+    if(!start||!end)return false;
+    const spanDays=Math.round((end-start)/86400000)+1;
+    // Lange Fort- und Weiterbildungsprogramme beschreiben einen Gesamtzeitraum,
+    // nicht eine tägliche Abwesenheit. Nur konkrete Terminblöcke werden gewarnt.
+    if(spanDays>31)return false;
+    return t.start_date<=key&&t.end_date>=key;
+  });
 }
 function trainingHasVacationConflict(empId,start,end){
   if(!empId||!start||!end)return [];
