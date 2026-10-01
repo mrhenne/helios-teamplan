@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-6" />
+  <link rel="stylesheet" href="styles.css?v=20261001-7" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -48,7 +48,7 @@
             <span class="action-group-label">Planung</span>
             <button id="conflictsBtn" class="top-tool" data-tool-action="conflicts" title="Konflikte prüfen"><span class="tool-icon">!</span><span>Konflikte</span></button>
             <button id="historyBtn" class="top-tool" data-tool-action="history" title="Änderungsverlauf"><span class="tool-icon">↶</span><span>Verlauf</span></button>
-            <button id="discussionsBtn" class="top-tool" title="Team-Chat zur Urlaubsplanung"><span class="tool-icon">✉</span><span>Team-Chat</span><b id="discussionBadge" class="tool-badge hidden">0</b></button>
+            <button id="discussionsBtn" class="top-tool" title="Team-Chat zur Urlaubsplanung"><span class="tool-icon chat-tool-icon" aria-hidden="true"></span><span>Team-Chat</span><b id="discussionBadge" class="tool-badge hidden">0</b></button>
             <button id="blackoutsBtn" class="top-tool" data-tool-action="blackouts" title="Sperrzeiten verwalten"><span class="tool-icon">⊘</span><span>Sperrzeiten</span></button>
           </div>
           <div class="action-group" aria-label="Daten">
@@ -547,6 +547,6 @@
 
   <div id="cellContextMenu" class="cell-context-menu hidden" role="menu" aria-label="Schnellaktionen"></div>
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=20261001-6"></script>
+  <script src="app.js?v=20261001-7"></script>
 </body>
 </html>
