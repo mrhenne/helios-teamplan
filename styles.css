@@ -650,3 +650,64 @@ body.dark-mode .employee-row.employee-own-row .day-cell{background-image:linear-
   .metric-main small{font-size:6.5px!important}
   .planner-controls{padding:8px!important}
 }
+
+/* Fokusmodus Werkzeuge: Suche, Monatsnavigation, Handmodus */
+.planner-focus-controls{gap:10px}
+.focus-period{flex:0 0 auto;min-width:118px}
+.focus-nav{display:flex;align-items:center;gap:4px;margin-left:auto}
+.focus-nav button,.focus-actions button{
+  width:30px!important;height:30px!important;border-radius:8px!important;
+  font-size:13px!important
+}
+.focus-nav select{
+  height:30px;width:104px;padding:0 24px 0 9px;border:1px solid rgba(255,255,255,.18);
+  border-radius:8px;background:rgba(255,255,255,.08);color:#fff;
+  font:700 9px Inter,sans-serif;outline:none;cursor:pointer
+}
+.focus-nav select option{color:#182923;background:#fff}
+.focus-search-wrap{
+  width:0;opacity:0;overflow:hidden;pointer-events:none;
+  transition:width .18s ease,opacity .14s ease
+}
+.focus-search-wrap.open{width:170px;opacity:1;pointer-events:auto}
+.focus-search-wrap input{
+  width:100%;height:30px;padding:0 9px;border:1px solid rgba(255,255,255,.2);
+  border-radius:8px;background:rgba(255,255,255,.1);color:#fff;
+  font:600 9px Inter,sans-serif;outline:none
+}
+.focus-search-wrap input::placeholder{color:rgba(255,255,255,.58)}
+.focus-search-wrap input:focus{border-color:rgba(126,222,193,.65);background:rgba(255,255,255,.14)}
+.focus-actions{display:flex;gap:4px;flex:0 0 auto}
+#focusPanBtn.active{
+  background:rgba(83,202,167,.24)!important;
+  border-color:rgba(118,226,196,.58)!important;
+  color:#bff4e4!important;
+  box-shadow:inset 0 0 0 1px rgba(118,226,196,.12)
+}
+body.planner-focus #planner.pan-mode{cursor:grab!important;user-select:none}
+body.planner-focus #planner.pan-mode *{cursor:grab!important}
+body.planner-focus #planner.pan-mode.panning,
+body.planner-focus #planner.pan-mode.panning *{cursor:grabbing!important}
+body.planner-focus #planner.pan-mode .day-cell{touch-action:none}
+
+@media(max-width:800px){
+  .planner-focus-controls{gap:5px;padding-left:8px}
+  .focus-period{min-width:78px}
+  .focus-period strong{font-size:12px}
+  .focus-period span{font-size:8px}
+  .focus-nav select{width:82px;font-size:8px}
+  .focus-search-wrap.open{
+    position:absolute;left:8px;right:8px;top:48px;width:auto;
+    padding:5px;background:rgba(16,39,34,.96);border-radius:9px
+  }
+  .focus-search-wrap input{height:32px}
+}
+@media(max-width:520px){
+  .focus-period{min-width:0}
+  .focus-period strong{font-size:10px}
+  .focus-period span{font-size:7px}
+  .focus-nav select{width:70px;padding-left:6px;padding-right:18px}
+  .focus-nav button,.focus-actions button{width:27px!important;height:27px!important;font-size:11px!important}
+  .focus-actions{gap:2px}
+  .focus-nav{gap:2px}
+}
