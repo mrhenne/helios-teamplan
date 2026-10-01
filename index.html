@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-33" />
+  <link rel="stylesheet" href="styles.css?v=20261001-34" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -149,14 +149,27 @@
   <div class="controls-row controls-secondary">
     <div class="control-block zoom-block"><span class="control-caption">Zoom</span><button id="zoomOutBtn" class="zoom-btn" type="button">−</button><input id="zoomRange" type="range" min="10" max="140" step="5" value="100"><button id="zoomInBtn" class="zoom-btn" type="button">+</button><strong id="zoomLabel">100%</strong></div>
     <button id="fitEmployeesBtn" class="btn ghost view-tool-btn" type="button" title="Alle Mitarbeiter in die Höhe einpassen">↕ Alle einpassen</button>
-    <button id="focusModeBtn" class="btn ghost view-tool-btn icon-label-btn" type="button" title="Nur Zeitraum und Planung anzeigen"><svg class="ui-icon"><use href="#i-focus"></use></svg><span>Fokusmodus</span></button>
-    <div class="control-block"><span class="control-caption">Urlaub</span><div class="segmented vacation-mode" title="Gesamt: jedes gesetzte U zählt 1,0. Anteilig: jedes U wird mit dem Stellenanteil gewichtet, z. B. 80 % = 0,8 je U. Der Jahresanspruch bleibt unverändert."><button id="vacationFullBtn" class="segment" type="button">Gesamt</button><button id="vacationActualBtn" class="segment active" type="button">Anteilig</button></div></div>
+    <button id="focusModeBtn" class="btn ghost view-tool-btn icon-label-btn" type="button" title="Nur Zeitraum und Planung anzeigen"><svg class="ui-icon"><use href="#i-focus"></use></svg><span>Fokus</span></button>
+    <div class="employee-info-control">
+      <button id="employeeInfoToggle" class="btn ghost view-tool-btn icon-label-btn" type="button" aria-expanded="false" title="Sichtbare Mitarbeiterinformationen wählen"><svg class="ui-icon"><use href="#i-users"></use></svg><span>Infos</span></button>
+      <div id="employeeInfoMenu" class="employee-info-menu hidden">
+        <strong>Mitarbeiterinfos</strong>
+        <label><input id="employeeInfoWork" type="checkbox"> Arbeitszeit & Stellenanteil</label>
+        <label><input id="employeeInfoVacation" type="checkbox"> Urlaubsstand</label>
+        <label><input id="employeeInfoXU" type="checkbox"> XU / Wunschfrei</label>
+      </div>
+    </div>
+    <div class="control-block vacation-mode-block"><span class="control-caption">Urlaub</span><div class="segmented vacation-mode" title="Gesamt: jedes gesetzte U zählt 1,0. Anteilig: jedes U wird mit dem Stellenanteil gewichtet, z. B. 80 % = 0,8 je U. Der Jahresanspruch bleibt unverändert."><button id="vacationFullBtn" class="segment" type="button">Gesamt</button><button id="vacationActualBtn" class="segment active" type="button">Anteilig</button></div></div>
     <div class="controls-spacer"></div>
     <input id="searchInput" class="search control-search compact-employee-search" placeholder="Mitarbeiter suchen…" />
     <button id="addEmployeeBtn" class="btn primary icon-label-btn"><svg class="ui-icon"><use href="#i-plus"></use></svg><span>Mitarbeiter</span></button>
   </div>
-    <div class="controls-row vacation-module-actions">
-      <span class="module-tools-label"><svg class="ui-icon"><use href="#i-calendar"></use></svg> Urlaubsplanung</span>
+    <div class="vacation-tools-head">
+      <button id="vacationToolsToggle" class="btn ghost icon-label-btn" type="button" aria-expanded="false"><svg class="ui-icon"><use href="#i-grid"></use></svg><span>Werkzeuge</span><b class="vacation-tools-chevron">⌄</b></button>
+      <span class="vacation-tools-hint">Konflikte, Verlauf, Chat, Sperrzeiten und Export</span>
+    </div>
+    <div id="vacationToolsRow" class="controls-row vacation-module-actions vacation-tools-collapsed">
+      <span class="module-tools-label"><svg class="ui-icon"><use href="#i-calendar"></use></svg> Werkzeuge</span>
       <button id="conflictsBtn" class="btn ghost module-tool-btn" data-tool-action="conflicts" title="Konflikte prüfen"><svg class="ui-icon"><use href="#i-alert"></use></svg><span>Konflikte</span></button>
       <button id="historyBtn" class="btn ghost module-tool-btn" data-tool-action="history" title="Änderungsverlauf"><svg class="ui-icon"><use href="#i-history"></use></svg><span>Verlauf</span></button>
       <button id="discussionsBtn" class="btn ghost module-tool-btn" title="Team-Chat zur Urlaubsplanung"><svg class="ui-icon"><use href="#i-chat"></use></svg><span>Team-Chat</span><b id="discussionBadge" class="tool-badge hidden">0</b></button>
