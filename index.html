@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261001-43" />
+  <link rel="stylesheet" href="styles.css?v=20261001-44" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -333,7 +333,7 @@
       </section>
 
       <section class="hint glass training-hint">
-        <strong>Fortbildungen:</strong> Pflichttermine, wiederkehrende Intervalle, mehrjährige Weiterbildungen, Stunden, Kosten und Jahresbudgets werden getrennt von der Urlaubsplanung verwaltet.
+        <strong>Fortbildungen:</strong> Termine, Weiterbildungen, Status und Budgets im Blick behalten.
       </section>
     </section>
 
@@ -428,7 +428,7 @@
       </section>
 
       <section class="hint glass projects-hint">
-        <strong>Projektmanagement:</strong> Projekte, Aufgaben, Verantwortlichkeiten, Notizen und Termine werden gemeinsam verwaltet. Aufgaben und Projekte können per Drag & Drop zwischen Status und Kalendertagen verschoben werden.
+        <strong>Projektmanagement:</strong> Projekte, Aufgaben, Teams und Termine zentral verwalten.
       </section>
     </section>
 
@@ -438,7 +438,7 @@
 
   <dialog id="projectDialog" class="dialog glass-solid">
     <form id="projectForm">
-      <div class="dialog-head"><div><span class="eyebrow">PROJEKT</span><h2 id="projectDialogTitle">Projekt anlegen</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <div class="dialog-head project-dialog-head"><div class="project-dialog-title-wrap"><button id="projectBackBtn" type="button" class="project-back-btn">‹ Projekte</button><div><span class="eyebrow">PROJEKT</span><h2 id="projectDialogTitle">Projekt anlegen</h2></div></div><button type="button" class="icon-btn close-dialog">×</button></div>
       <input id="projectId" type="hidden">
       <label>Name<input id="projectName" required maxlength="120"></label>
       <label>Beschreibung<textarea id="projectDescription" rows="3"></textarea></label>
@@ -456,23 +456,27 @@
         <article><span>Rückfragen</span><strong id="projectSummaryWaiting">0</strong></article>
         <article><span>Überfällig</span><strong id="projectSummaryOverdue">0</strong></article>
       </div>
-      <div class="project-members-box">
+      <div id="projectTasksBox" class="project-members-box project-primary-workspace hidden">
         <div class="project-section-title">
-          <div><strong>Projektteam</strong><span id="projectMemberCount">0 Mitarbeitende ausgewählt</span></div>
+          <div><strong>Aufgaben in diesem Projekt</strong><span>Hier findet die eigentliche Projektarbeit statt.</span></div>
+          <button id="projectAddTaskBtn" type="button" class="btn primary">+ Aufgabe</button>
+        </div>
+        <div id="projectDialogTasks" class="project-dialog-tasks"></div>
+      </div>
+
+      <div class="project-members-box project-team-collapsible">
+        <button id="projectTeamToggle" class="project-collapse-toggle" type="button" aria-expanded="false">
+          <span><strong>Projektteam</strong><small id="projectMemberCount">0 Mitarbeitende ausgewählt</small></span>
+          <b>⌄</b>
+        </button>
+        <div id="projectTeamBody" class="project-team-body" hidden>
           <div class="project-member-actions">
             <button id="projectMembersAllBtn" type="button" class="btn ghost">Alle</button>
             <button id="projectMembersNoneBtn" type="button" class="btn ghost">Keine</button>
           </div>
+          <input id="projectMemberSearch" class="project-member-search" type="search" placeholder="Mitarbeitende suchen…">
+          <div id="projectMembersList" class="project-members-list"></div>
         </div>
-        <input id="projectMemberSearch" class="project-member-search" type="search" placeholder="Mitarbeitende suchen…">
-        <div id="projectMembersList" class="project-members-list"></div>
-      </div>
-      <div id="projectTasksBox" class="project-members-box hidden">
-        <div class="project-section-title">
-          <div><strong>Aufgaben in diesem Projekt</strong><span>Jede Aufgabe kann eine andere verantwortliche Person haben.</span></div>
-          <button id="projectAddTaskBtn" type="button" class="btn primary">+ Aufgabe</button>
-        </div>
-        <div id="projectDialogTasks" class="project-dialog-tasks"></div>
       </div>
       <div class="dialog-actions"><button id="deleteProjectBtn" type="button" class="btn danger hidden">Löschen</button><div class="controls-spacer"></div><button type="button" class="btn ghost close-dialog">Abbrechen</button><button type="submit" class="btn primary">Speichern</button></div>
     </form>
@@ -480,7 +484,7 @@
 
   <dialog id="projectTaskDialog" class="dialog glass-solid">
     <form id="projectTaskForm">
-      <div class="dialog-head"><div><span class="eyebrow">AUFGABE</span><h2 id="projectTaskDialogTitle">Aufgabe anlegen</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <div class="dialog-head project-dialog-head"><div class="project-dialog-title-wrap"><button id="projectTaskBackBtn" type="button" class="project-back-btn hidden">‹ Projekt</button><div><span class="eyebrow">AUFGABE</span><h2 id="projectTaskDialogTitle">Aufgabe anlegen</h2></div></div><button type="button" class="icon-btn close-dialog">×</button></div>
       <input id="projectTaskId" type="hidden">
       <label>Titel<input id="projectTaskTitle" required maxlength="160"></label>
       <label>Beschreibung<textarea id="projectTaskDescription" rows="3"></textarea></label>
