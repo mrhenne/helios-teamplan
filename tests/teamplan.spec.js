@@ -511,3 +511,84 @@ test('Projektteam und Aufgaben sind direkt miteinander verknüpft', async ({ pag
   await page.locator('#projectMemberSearch').fill('Projekt Person B');
   await expect(page.locator('#projectMembersList input[type="checkbox"]')).toBeChecked();
 });
+
+
+test('Kopfzeile überlappt auch mit vollständig sichtbaren Kontodaten nicht', async ({ page }) => {
+  await bootLocal(page);
+
+  await page.evaluate(() => {
+    const user=document.getElementById('authUserPill');
+    const online=document.getElementById('onlinePill');
+    const users=document.getElementById('usersBtn');
+    const logout=document.getElementById('logoutBtn');
+    if(user){user.classList.remove('hidden');user.textContent='Angemeldet: thehenne@gmail.com · admin'}
+    if(online){online.classList.remove('hidden');online.textContent='● 1 online'}
+    if(users)users.classList.remove('hidden');
+    if(logout)logout.classList.remove('hidden');
+  });
+
+  const result=await page.locator('.topbar').evaluate(bar=>{
+    const barRect=bar.getBoundingClientRect();
+    const nodes=[...bar.querySelectorAll('.topbar-brand,.topbar-session,.topbar-actions,.topbar-actions .top-tool,.topbar-session .sync-pill,.topbar-session .topbar-user,.topbar-session .topbar-online,.topbar-session .role-select')]
+      .filter(el=>{
+        const r=el.getBoundingClientRect(),s=getComputedStyle(el);
+        return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0;
+      });
+    const boxes=nodes.map(el=>{
+      const r=el.getBoundingClientRect();
+      return {id:el.id||el.className,left:r.left,right:r.right,top:r.top,bottom:r.bottom};
+    });
+    const leaf=boxes.filter(b=>!String(b.id).includes('topbar-actions')&&!String(b.id).includes('topbar-session'));
+    const overlaps=[];
+    for(let i=0;i<leaf.length;i++){
+      for(let j=i+1;j<leaf.length;j++){
+        const a=leaf[i],b=leaf[j];
+        const x=Math.min(a.right,b.right)-Math.max(a.left,b.left);
+        const y=Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top);
+        if(x>1&&y>1)overlaps.push([a.id,b.id,x,y]);
+      }
+    }
+    return {
+      inside:boxes.every(b=>b.left>=barRect.left-1&&b.right<=barRect.right+1&&b.top>=barRect.top-1&&b.bottom<=barRect.bottom+1),
+      pageFits:document.documentElement.scrollWidth<=document.documentElement.clientWidth+1,
+      overlaps,
+      boxes
+    };
+  });
+  expect(result.inside, JSON.stringify(result.boxes)).toBeTruthy();
+  expect(result.pageFits, JSON.stringify(result.boxes)).toBeTruthy();
+  expect(result.overlaps, JSON.stringify(result.overlaps)).toEqual([]);
+});
+
+test('Lang laufende Weiterbildung erzeugt keinen falschen Aufgaben-Tageskonflikt', async ({ page }) => {
+  await bootLocal(page);
+
+  await page.locator('#addEmployeeBtn').click();
+  await page.locator('#employeeName').fill('QA Weiterbildung Person');
+  await page.locator('#employeeForm button[type="submit"]').click();
+
+  await page.locator('#moduleTrainingBtn').click();
+  await page.locator('#addTrainingBtn').click();
+  await page.locator('#trainingEmployee').selectOption({label:'QA Weiterbildung Person'});
+  await page.locator('#trainingTitle').fill('Notfallpflege QA');
+  await page.locator('#trainingCategory').fill('Weiterbildung');
+  await page.locator('#trainingStart').fill('2026-04-01');
+  await page.locator('#trainingEnd').fill('2028-10-01');
+  await page.locator('#trainingStatus').selectOption('in_progress');
+  await page.locator('#trainingForm button[type="submit"]').click();
+
+  await page.locator('#moduleProjectsBtn').click();
+  await page.locator('#addProjectBtn').click();
+  await page.locator('#projectName').fill('QA Konfliktprüfung');
+  await page.locator('#projectForm button[type="submit"]').click();
+
+  await page.locator('#addTaskBtn').click();
+  await page.locator('#projectTaskTitle').fill('QA Aufgabe ohne Falschwarnung');
+  await page.locator('#projectTaskProject').selectOption({label:'QA Konfliktprüfung'});
+  await page.locator('#projectTaskAssignee').selectOption({label:'QA Weiterbildung Person'});
+  await page.locator('#projectTaskDue').fill('2026-10-15');
+  await expect(page.locator('#projectTaskConflictWarning')).toBeHidden();
+
+  await page.locator('#projectTaskDue').fill('2026-10-16');
+  await expect(page.locator('#projectTaskConflictWarning')).toBeHidden();
+});
