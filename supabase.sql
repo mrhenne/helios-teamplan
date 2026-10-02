@@ -1422,3 +1422,256 @@ set series_enabled = true,
 where interval_months is not null
   and series_enabled = false
   and series_interval is null;
+
+
+-- === 2026-10-02 EXTERNAL PROJECT MEMBER ROLE ===
+alter table public.team_members
+  drop constraint if exists team_members_role_check;
+alter table public.team_members
+  add constraint team_members_role_check
+  check (role in ('admin','planner','employee','viewer','external'));
+
+create or replace function private.is_team_member(p_team_id text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.team_members tm
+    where tm.team_id = p_team_id
+      and tm.user_id = (select auth.uid())
+      and tm.active = true
+      and tm.role in ('admin','planner','employee','viewer')
+  );
+$$;
+
+create or replace function private.can_external_access_project(p_project_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, private
+as $$
+  select exists (
+    select 1
+    from public.teamplan_projects p
+    join public.team_members tm on tm.team_id = p.team_id
+    where p.id = p_project_id
+      and tm.user_id = (select auth.uid())
+      and tm.active = true
+      and tm.role = 'external'
+      and tm.employee_id is not null
+      and (
+        p.lead_employee_id = tm.employee_id
+        or exists (
+          select 1 from public.teamplan_project_members pm
+          where pm.project_id = p.id and pm.employee_id = tm.employee_id
+        )
+      )
+  );
+$$;
+
+create or replace function private.can_external_access_task(p_task_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, private
+as $$
+  select exists (
+    select 1
+    from public.teamplan_tasks t
+    join public.team_members tm on tm.team_id = t.team_id
+    where t.id = p_task_id
+      and tm.user_id = (select auth.uid())
+      and tm.active = true
+      and tm.role = 'external'
+      and tm.employee_id is not null
+      and (
+        t.assignee_employee_id = tm.employee_id
+        or (t.project_id is not null and (select private.can_external_access_project(t.project_id)))
+      )
+  );
+$$;
+
+revoke all on function private.can_external_access_project(uuid) from public, anon;
+revoke all on function private.can_external_access_task(uuid) from public, anon;
+grant execute on function private.can_external_access_project(uuid) to authenticated;
+grant execute on function private.can_external_access_task(uuid) to authenticated;
+
+drop policy if exists "projects external read" on public.teamplan_projects;
+create policy "projects external read" on public.teamplan_projects for select to authenticated
+using ((select private.can_external_access_project(id)));
+
+drop policy if exists "project members external read" on public.teamplan_project_members;
+create policy "project members external read" on public.teamplan_project_members for select to authenticated
+using ((select private.can_external_access_project(project_id)));
+
+drop policy if exists "tasks external read" on public.teamplan_tasks;
+create policy "tasks external read" on public.teamplan_tasks for select to authenticated
+using ((select private.can_external_access_task(id)));
+
+drop policy if exists "tasks employee update own" on public.teamplan_tasks;
+create policy "tasks employee update own" on public.teamplan_tasks for update to authenticated
+using (
+  exists (
+    select 1 from public.team_members tm
+    where tm.team_id=teamplan_tasks.team_id
+      and tm.user_id=(select auth.uid())
+      and tm.active=true
+      and tm.role in ('employee','external')
+      and tm.employee_id=teamplan_tasks.assignee_employee_id
+  )
+)
+with check (
+  exists (
+    select 1 from public.team_members tm
+    where tm.team_id=teamplan_tasks.team_id
+      and tm.user_id=(select auth.uid())
+      and tm.active=true
+      and tm.role in ('employee','external')
+      and tm.employee_id=teamplan_tasks.assignee_employee_id
+  )
+);
+
+drop policy if exists "notes external read" on public.teamplan_notes;
+create policy "notes external read" on public.teamplan_notes for select to authenticated
+using (project_id is not null and (select private.can_external_access_project(project_id)));
+
+drop policy if exists "task comments external read" on public.teamplan_task_comments;
+create policy "task comments external read" on public.teamplan_task_comments for select to authenticated
+using ((select private.can_external_access_task(task_id)));
+
+drop policy if exists "task comments external insert" on public.teamplan_task_comments;
+create policy "task comments external insert" on public.teamplan_task_comments for insert to authenticated
+with check (author_user_id=(select auth.uid()) and (select private.can_external_access_task(task_id)));
+
+drop policy if exists "project activity external read" on public.teamplan_project_activity;
+create policy "project activity external read" on public.teamplan_project_activity for select to authenticated
+using (
+  (entity_type='project' and entity_id is not null and (select private.can_external_access_project(entity_id)))
+  or
+  (entity_type='task' and entity_id is not null and (select private.can_external_access_task(entity_id)))
+);
+
+drop policy if exists "project activity external insert" on public.teamplan_project_activity;
+create policy "project activity external insert" on public.teamplan_project_activity for insert to authenticated
+with check (
+  actor_user_id=(select auth.uid())
+  and (
+    (entity_type='project' and entity_id is not null and (select private.can_external_access_project(entity_id)))
+    or
+    (entity_type='task' and entity_id is not null and (select private.can_external_access_task(entity_id)))
+  )
+);
+
+create or replace function public.teamplan_protect_employee_task_update()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+declare
+  v_role text;
+  v_employee_id text;
+begin
+  select tm.role,tm.employee_id into v_role,v_employee_id
+  from public.team_members tm
+  where tm.team_id=old.team_id
+    and tm.user_id=(select auth.uid())
+    and tm.active=true
+  limit 1;
+
+  if v_role in ('employee','external')
+     and v_employee_id=old.assignee_employee_id
+     and not coalesce((select private.is_project_lead(old.project_id)),false) then
+    new.team_id:=old.team_id;
+    new.project_id:=old.project_id;
+    new.title:=old.title;
+    new.description:=old.description;
+    new.priority:=old.priority;
+    new.start_date:=old.start_date;
+    new.due_date:=old.due_date;
+    new.assignee_employee_id:=old.assignee_employee_id;
+    new.template_id:=old.template_id;
+    new.recurrence:=old.recurrence;
+    new.sort_order:=old.sort_order;
+    new.created_by:=old.created_by;
+    new.recurrence_parent_id:=old.recurrence_parent_id;
+  end if;
+  return new;
+end;
+$$;
+
+create or replace function public.get_my_project_directory(p_team_id text)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public, private
+as $$
+declare
+  v_employee_id text;
+  v_role text;
+  v_result jsonb;
+begin
+  select tm.employee_id,tm.role into v_employee_id,v_role
+  from public.team_members tm
+  where tm.team_id=p_team_id
+    and tm.user_id=(select auth.uid())
+    and tm.active=true
+  limit 1;
+
+  if v_role <> 'external' or v_employee_id is null then
+    return '[]'::jsonb;
+  end if;
+
+  with accessible_projects as (
+    select p.id from public.teamplan_projects p
+    where p.team_id=p_team_id
+      and (
+        p.lead_employee_id=v_employee_id
+        or exists (
+          select 1 from public.teamplan_project_members pm
+          where pm.project_id=p.id and pm.employee_id=v_employee_id
+        )
+      )
+  ),
+  people as (
+    select v_employee_id as employee_id
+    union select pm.employee_id from public.teamplan_project_members pm join accessible_projects ap on ap.id=pm.project_id
+    union select p.lead_employee_id from public.teamplan_projects p join accessible_projects ap on ap.id=p.id where p.lead_employee_id is not null
+    union
+    select t.assignee_employee_id from public.teamplan_tasks t
+    where t.team_id=p_team_id and t.assignee_employee_id is not null
+      and (t.assignee_employee_id=v_employee_id or (t.project_id is not null and t.project_id in (select id from accessible_projects)))
+  ),
+  raw_employees as (
+    select e
+    from public.team_plans tp
+    cross join lateral jsonb_array_elements(coalesce(tp.data->'employees','[]'::jsonb)) e
+    where tp.team_id=p_team_id and e->>'id' in (select employee_id from people where employee_id is not null)
+  )
+  select coalesce(jsonb_agg(
+    jsonb_build_object(
+      'id',e->>'id','name',e->>'name',
+      'external',coalesce((e->>'external')::boolean,false),
+      'organization',coalesce(e->>'organization',''),
+      'role','viewer','hours',0,'percent',100,'workdays',5,
+      'workweek','[1,2,3,4,5]'::jsonb,'carry',0,'adjustment',0,
+      'order',coalesce((e->>'order')::integer,0)
+    )
+    order by coalesce((e->>'order')::integer,0),e->>'name'
+  ),'[]'::jsonb)
+  into v_result
+  from raw_employees;
+
+  return coalesce(v_result,'[]'::jsonb);
+end;
+$$;
+
+revoke all on function public.get_my_project_directory(text) from public, anon;
+grant execute on function public.get_my_project_directory(text) to authenticated;
