@@ -1557,14 +1557,32 @@ function addMonthsISO(date,months){
   const max=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(day,max));
   return dateKey(d);
 }
-function trainingRecurrenceMonths(t){
+function trainingRecurrenceUnit(t){
+  return t?.recurring?(t.recurrence_unit||'months'):'months';
+}
+function trainingRecurrenceInterval(t){
   if(!t?.recurring)return 0;
-  return Number(t.recurrence_months||trainingTypeById(t.type_id)?.interval_months||0);
+  if(trainingRecurrenceUnit(t)==='weeks')return Number(t.recurrence_interval||0);
+  return Number(t.recurrence_interval||t.recurrence_months||trainingTypeById(t.type_id)?.interval_months||0);
+}
+function trainingRecurrenceMonths(t){
+  return trainingRecurrenceUnit(t)==='months'?trainingRecurrenceInterval(t):0;
+}
+function trainingWeekdayLabel(n){
+  return ['','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'][Number(n)]||'';
+}
+function trainingTimeLabel(t){
+  const a=String(t?.start_time||'').slice(0,5),b=String(t?.end_time||'').slice(0,5);
+  return a&&b?a+'–'+b+(a||b?' Uhr':''):a?(a+' Uhr'):b?('bis '+b+' Uhr'):'';
 }
 function trainingRecurrenceLabel(t){
-  const months=trainingRecurrenceMonths(t);if(!months)return '';
-  if(months%12===0)return '↻ alle '+(months/12)+(months===12?' Jahr':' Jahre');
-  return '↻ alle '+months+' Monate';
+  const interval=trainingRecurrenceInterval(t);if(!interval)return '';
+  if(trainingRecurrenceUnit(t)==='weeks'){
+    const weekday=trainingWeekdayLabel(t.recurrence_weekday);
+    return '↻ alle '+interval+(interval===1?' Woche':' Wochen')+(weekday?' · '+weekday:'')+(t.recurrence_until?' · bis '+new Date(t.recurrence_until+'T12:00:00').toLocaleDateString('de-DE'):'');
+  }
+  if(interval%12===0)return '↻ alle '+(interval/12)+(interval===12?' Jahr':' Jahre');
+  return '↻ alle '+interval+' Monate';
 }
 function trainingDueDate(t){
   if(t.valid_until)return t.valid_until;
@@ -1590,11 +1608,32 @@ function trainingVisibleEmployees(){
   return [...state.employees].sort((a,b)=>a.order-b.order);
 }
 function trainingProjectionForYear(t,year){
-  const months=trainingRecurrenceMonths(t);
-  if(!months||!t.recurring)return [];
+  if(!t?.recurring)return [];
+  const unit=trainingRecurrenceUnit(t),interval=trainingRecurrenceInterval(t);
+  if(!interval)return [];
+  const out=[];
+  if(unit==='weeks'){
+    if(t.date_precision==='year'||!t.start_date)return out;
+    const weekday=Number(t.recurrence_weekday||0);
+    if(weekday<1||weekday>7)return out;
+    const base=trainingDate(t.start_date);if(!base)return out;
+    const targetJs=weekday===7?0:weekday;
+    const first=new Date(base);
+    first.setDate(first.getDate()+((targetJs-first.getDay()+7)%7));
+    const until=trainingDate(t.recurrence_until||String(year)+'-12-31');
+    const yearStart=new Date(year,0,1,12),yearEnd=new Date(year,11,31,12);
+    const durationDays=t.end_date&&t.start_date?Math.max(0,Math.round((trainingDate(t.end_date)-trainingDate(t.start_date))/86400000)):0;
+    for(let d=new Date(first),i=0;i<1200&&d<=until&&d<=yearEnd;i++,d=addDays(d,interval*7)){
+      if(d<yearStart)continue;
+      const start=dateKey(d),end=dateKey(addDays(d,durationDays));
+      if(start===t.start_date)continue;
+      out.push({...t,id:'virtual:'+t.id+':'+start,_virtual:true,_sourceId:t.id,start_date:start,end_date:end,training_year:Number(start.slice(0,4)),status:'planned'});
+    }
+    return out;
+  }
+  const months=interval;
   const baseYear=Number(t.training_year||(t.start_date||'').slice(0,4));
   if(!baseYear||year<=baseYear)return [];
-  const out=[];
   if(t.date_precision==='year'){
     let cursor=new Date(baseYear,0,1,12);
     for(let i=0;i<240;i++){
@@ -1694,7 +1733,9 @@ function formatTrainingDateRange(t){
   const a=trainingDate(t.start_date),b=trainingDate(t.end_date);
   if(!a||!b)return '';
   const fmt=d=>d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'});
-  return t.start_date===t.end_date?fmt(a):fmt(a)+' – '+fmt(b);
+  const dateText=t.start_date===t.end_date?fmt(a):fmt(a)+' – '+fmt(b);
+  const timeText=trainingTimeLabel(t);
+  return dateText+(timeText?' · '+timeText:'');
 }
 function euro(n){return Number(n||0).toLocaleString('de-DE',{style:'currency',currency:'EUR'})}
 
@@ -1921,7 +1962,8 @@ function renderTrainingCalendar(items){
     const programItems=monthItems.filter(trainingIsLongProgram);
     const dayItems=monthItems.filter(t=>!trainingIsLongProgram(t));
     const cost=monthItems.filter((t,i,a)=>a.findIndex(x=>(x._sourceId||x.id)===(t._sourceId||t.id))===i).reduce((s,t)=>s+Number(t.cost||0),0);
-    const programHtml=programItems.length?'<div class="training-month-programs">'+programItems.map(t=>'<button type="button" class="training-month-program '+t.status+'" style="--training-color:'+escapeHtml(trainingColor(t))+'" data-training-id="'+(t._sourceId||t.id)+'" data-training-virtual="'+(t._virtual?'1':'0')+'"><b>'+escapeHtml(trainingEmployeeName(t.employee_id))+'</b><span>'+escapeHtml(t.title)+'</span><small>'+escapeHtml(formatTrainingDateRange(t))+'</small></button>').join('')+'</div>':'';
+    const monthList=[...monthItems].sort((a,b)=>(a.start_date||'9999-99-99').localeCompare(b.start_date||'9999-99-99')||a.title.localeCompare(b.title));
+    const monthListHtml=monthList.length?'<div class="training-month-list">'+monthList.map(t=>'<button type="button" class="training-month-list-item '+t.status+(t._virtual?' virtual':'')+'" style="--training-color:'+escapeHtml(trainingColor(t))+'" data-training-id="'+(t._sourceId||t.id)+'" data-training-virtual="'+(t._virtual?'1':'0')+'"><i></i><span><b>'+escapeHtml(t.title)+'</b><small>'+escapeHtml(trainingEmployeeName(t.employee_id))+' · '+escapeHtml(formatTrainingDateRange(t))+(trainingRecurrenceLabel(t)?' · '+escapeHtml(trainingRecurrenceLabel(t)):'')+'</small></span></button>').join('')+'</div>':'';
     const firstDow=(new Date(trainingYear,m,1).getDay()+6)%7,days=new Date(trainingYear,m+1,0).getDate();
     let cells='';
     for(let i=0;i<firstDow;i++)cells+='<span class="training-day blank"></span>';
@@ -1981,8 +2023,12 @@ function trainingWriteRow(t){
   return {
     team_id:t.team_id,employee_id:t.employee_id,type_id:t.type_id||null,title:t.title,category:t.category||'Fortbildung',
     date_precision:t.date_precision||'exact',training_year:Number(t.training_year||((t.start_date||'').slice(0,4))||trainingYear),
-    start_date:t.start_date||null,end_date:t.end_date||null,recurring:!!t.recurring,
-    recurrence_months:t.recurring?Number(t.recurrence_months||0)||null:null,status:t.status||'planned',
+    start_date:t.start_date||null,end_date:t.end_date||null,start_time:t.start_time||null,end_time:t.end_time||null,recurring:!!t.recurring,
+    recurrence_unit:t.recurring?(t.recurrence_unit||'months'):'months',
+    recurrence_interval:t.recurring?Number(t.recurrence_interval||t.recurrence_months||0)||null:null,
+    recurrence_months:t.recurring&&trainingRecurrenceUnit(t)==='months'?Number(t.recurrence_interval||t.recurrence_months||0)||null:null,
+    recurrence_weekday:t.recurring&&trainingRecurrenceUnit(t)==='weeks'?Number(t.recurrence_weekday||0)||null:null,
+    recurrence_until:t.recurring&&trainingRecurrenceUnit(t)==='weeks'?(t.recurrence_until||null):null,status:t.status||'planned',
     hours:Number(t.hours||0),cost:Number(t.cost||0),provider:t.provider||'',valid_until:t.valid_until||null,
     note:t.note||'',updated_at:new Date().toISOString()
   };
@@ -2234,9 +2280,9 @@ function bindTrainingMultiYearEvents(){
 }
 async function exportTrainingCsv(){
   const rows=filteredTrainings().filter(t=>!t._virtual);
-  const cols=['Mitarbeiter','Titel','Kategorie','Von','Bis','Jahr','Wiederkehrend','Intervall Monate','Status','Stunden','Kosten','Anbieter'];
+  const cols=['Mitarbeiter','Titel','Kategorie','Von','Bis','Startzeit','Endzeit','Jahr','Wiederkehrend','Serienart','Intervall','Wochentag','Serie bis','Status','Stunden','Kosten','Anbieter'];
   const q=v=>'"'+String(v??'').replaceAll('"','""')+'"';
-  const csv=[cols.map(q).join(';')].concat(rows.map(t=>[trainingEmployeeName(t.employee_id),t.title,t.category,t.start_date||'',t.end_date||'',t.training_year||'',t.recurring?'Ja':'Nein',t.recurrence_months||'',trainingStatusLabel(t),t.hours||0,t.cost||0,t.provider||''].map(q).join(';'))).join('\n');
+  const csv=[cols.map(q).join(';')].concat(rows.map(t=>[trainingEmployeeName(t.employee_id),t.title,t.category,t.start_date||'',t.end_date||'',String(t.start_time||'').slice(0,5),String(t.end_time||'').slice(0,5),t.training_year||'',t.recurring?'Ja':'Nein',t.recurring?(t.recurrence_unit||'months'):'',t.recurring?(t.recurrence_interval||t.recurrence_months||''):'',t.recurrence_weekday?trainingWeekdayLabel(t.recurrence_weekday):'',t.recurrence_until||'',trainingStatusLabel(t),t.hours||0,t.cost||0,t.provider||''].map(q).join(';'))).join('\n');
   await saveExportFile('TeamPlan_Fortbildungen_'+trainingYear+'.csv','\ufeff'+csv,'text/csv;charset=utf-8','CSV-Datei',['.csv']);
 }
 async function exportTrainingJson(){
@@ -2296,6 +2342,8 @@ function syncTrainingDateMode(){
   document.getElementById('trainingYearOnlyField').classList.toggle('hidden',!yearOnly);
   document.getElementById('trainingStartField').classList.toggle('hidden',yearOnly);
   document.getElementById('trainingEndField').classList.toggle('hidden',yearOnly);
+  document.getElementById('trainingStartTimeField')?.classList.toggle('hidden',yearOnly);
+  document.getElementById('trainingEndTimeField')?.classList.toggle('hidden',yearOnly);
   document.getElementById('trainingStart').required=!yearOnly;
   document.getElementById('trainingEnd').required=!yearOnly;
   if(yearOnly){
@@ -2330,8 +2378,14 @@ function openTraining(id=null){
   document.getElementById('trainingOnlyYear').value=t?.training_year||trainingYear;
   document.getElementById('trainingStart').value=t?.start_date||today;
   document.getElementById('trainingEnd').value=t?.end_date||today;
+  document.getElementById('trainingStartTime').value=String(t?.start_time||'').slice(0,5);
+  document.getElementById('trainingEndTime').value=String(t?.end_time||'').slice(0,5);
   document.getElementById('trainingRecurring').checked=!!t?.recurring;
-  document.getElementById('trainingRecurrenceMonths').value=t?.recurrence_months||'';
+  document.getElementById('trainingRecurrenceUnit').value=t?.recurrence_unit||'months';
+  document.getElementById('trainingRecurrenceMonths').value=(t?.recurrence_unit||'months')==='months'?(t?.recurrence_interval||t?.recurrence_months||''):'';
+  document.getElementById('trainingRecurrenceWeeks').value=(t?.recurrence_unit==='weeks'?(t?.recurrence_interval||2):2);
+  document.getElementById('trainingRecurrenceWeekday').value=String(t?.recurrence_weekday||4);
+  document.getElementById('trainingRecurrenceUntil').value=t?.recurrence_until||'';
   document.getElementById('trainingHours').value=Number(t?.hours||0);
   document.getElementById('trainingCost').value=Number(t?.cost||0);
   document.getElementById('trainingProvider').value=t?.provider||'';
@@ -2361,9 +2415,22 @@ async function saveTrainingFromForm(){
   if(yearOnly){
     if(onlyYear<2020||onlyYear>2100){alert('Bitte ein gültiges Jahr angeben.');return}
   }else if(!start||!end||end<start){alert('Bitte einen gültigen Zeitraum angeben.');return}
-  const recurring=document.getElementById('trainingRecurring').checked,recurrenceMonths=Number(document.getElementById('trainingRecurrenceMonths').value||0);
-  if(recurring&&(recurrenceMonths<1||recurrenceMonths>240)){alert('Bitte ein gültiges Wiederholungsintervall zwischen 1 und 240 Monaten angeben.');return}
-  const row={team_id:cfg.teamId,employee_id:document.getElementById('trainingEmployee').value,type_id:document.getElementById('trainingType').value||null,title:document.getElementById('trainingTitle').value.trim(),category:document.getElementById('trainingCategory').value.trim()||'Fortbildung',date_precision:yearOnly?'year':'exact',training_year:yearOnly?onlyYear:Number(start.slice(0,4)),start_date:yearOnly?null:start,end_date:yearOnly?null:end,recurring,recurrence_months:recurring?recurrenceMonths:null,status:document.getElementById('trainingStatus').value,hours:Number(document.getElementById('trainingHours').value||0),cost:Number(document.getElementById('trainingCost').value||0),provider:document.getElementById('trainingProvider').value.trim(),valid_until:document.getElementById('trainingValidUntil').value||null,note:document.getElementById('trainingNote').value.trim(),updated_at:new Date().toISOString()};
+  const recurring=document.getElementById('trainingRecurring').checked;
+  const recurrenceUnit=document.getElementById('trainingRecurrenceUnit').value||'months';
+  const recurrenceMonths=Number(document.getElementById('trainingRecurrenceMonths').value||0);
+  const recurrenceWeeks=Number(document.getElementById('trainingRecurrenceWeeks').value||0);
+  const recurrenceWeekday=Number(document.getElementById('trainingRecurrenceWeekday').value||0);
+  const recurrenceUntil=document.getElementById('trainingRecurrenceUntil').value||null;
+  const startTime=document.getElementById('trainingStartTime').value||null,endTime=document.getElementById('trainingEndTime').value||null;
+  if(startTime&&endTime&&endTime<=startTime){alert('Die Endzeit muss nach der Startzeit liegen.');return}
+  if(recurring&&recurrenceUnit==='months'&&(recurrenceMonths<1||recurrenceMonths>240)){alert('Bitte ein gültiges Monatsintervall zwischen 1 und 240 angeben.');return}
+  if(recurring&&recurrenceUnit==='weeks'){
+    if(yearOnly){alert('Eine wöchentliche Terminserie benötigt ein konkretes Startdatum.');return}
+    if(recurrenceWeeks<1||recurrenceWeeks>52||recurrenceWeekday<1||recurrenceWeekday>7){alert('Bitte Wochenintervall und Wochentag prüfen.');return}
+    if(!recurrenceUntil||recurrenceUntil<start){alert('Bitte ein gültiges Serienende ab dem Startdatum angeben.');return}
+  }
+  const recurrenceInterval=recurring?(recurrenceUnit==='weeks'?recurrenceWeeks:recurrenceMonths):null;
+  const row={team_id:cfg.teamId,employee_id:document.getElementById('trainingEmployee').value,type_id:document.getElementById('trainingType').value||null,title:document.getElementById('trainingTitle').value.trim(),category:document.getElementById('trainingCategory').value.trim()||'Fortbildung',date_precision:yearOnly?'year':'exact',training_year:yearOnly?onlyYear:Number(start.slice(0,4)),start_date:yearOnly?null:start,end_date:yearOnly?null:end,start_time:yearOnly?null:startTime,end_time:yearOnly?null:endTime,recurring,recurrence_unit:recurring?recurrenceUnit:'months',recurrence_interval:recurrenceInterval,recurrence_months:recurring&&recurrenceUnit==='months'?recurrenceMonths:null,recurrence_weekday:recurring&&recurrenceUnit==='weeks'?recurrenceWeekday:null,recurrence_until:recurring&&recurrenceUnit==='weeks'?recurrenceUntil:null,status:document.getElementById('trainingStatus').value,hours:Number(document.getElementById('trainingHours').value||0),cost:Number(document.getElementById('trainingCost').value||0),provider:document.getElementById('trainingProvider').value.trim(),valid_until:document.getElementById('trainingValidUntil').value||null,note:document.getElementById('trainingNote').value.trim(),updated_at:new Date().toISOString()};
   if(!row.employee_id||!row.title){alert('Bitte Mitarbeiter und Titel angeben.');return}
   const keepView=trainingView;
   let res;if(id)res=await supabaseClient.from('teamplan_trainings').update(row).eq('id',id);else res=await supabaseClient.from('teamplan_trainings').insert(row);
@@ -2452,14 +2519,22 @@ function setTrainingZoom(value){
 function changeTrainingZoom(delta){setTrainingZoom(Math.round((trainingZoom+delta)*100)/100)}
 function syncTrainingRecurrenceMode(){
   const recurring=document.getElementById('trainingRecurring').checked;
-  const field=document.getElementById('trainingRecurrenceField');
-  field.classList.toggle('hidden',!recurring);
-  const input=document.getElementById('trainingRecurrenceMonths');
-  input.required=recurring;
-  if(recurring&&!Number(input.value)){
+  const unit=document.getElementById('trainingRecurrenceUnit').value||'months';
+  document.getElementById('trainingRecurrenceUnitField')?.classList.toggle('hidden',!recurring);
+  document.getElementById('trainingRecurrenceField')?.classList.toggle('hidden',!recurring||unit!=='months');
+  document.getElementById('trainingRecurrenceWeeksField')?.classList.toggle('hidden',!recurring||unit!=='weeks');
+  document.getElementById('trainingRecurrenceWeekdayField')?.classList.toggle('hidden',!recurring||unit!=='weeks');
+  document.getElementById('trainingRecurrenceUntilField')?.classList.toggle('hidden',!recurring||unit!=='weeks');
+  const months=document.getElementById('trainingRecurrenceMonths'),weeks=document.getElementById('trainingRecurrenceWeeks'),weekday=document.getElementById('trainingRecurrenceWeekday'),until=document.getElementById('trainingRecurrenceUntil');
+  months.required=recurring&&unit==='months';
+  weeks.required=recurring&&unit==='weeks';
+  weekday.required=recurring&&unit==='weeks';
+  until.required=recurring&&unit==='weeks';
+  if(recurring&&unit==='months'&&!Number(months.value)){
     const type=trainingTypeById(document.getElementById('trainingType').value);
-    input.value=Number(type?.interval_months||12);
+    months.value=Number(type?.interval_months||12);
   }
+  if(recurring&&unit==='weeks'&&!Number(weeks.value))weeks.value=2;
 }
 function setCompactDrawer(buttonId,bodyId,open,storageKey){
   const btn=document.getElementById(buttonId),body=document.getElementById(bodyId);
@@ -2510,6 +2585,7 @@ function initTrainingModuleUI(){
   document.getElementById('trainingZoomRange')?.addEventListener('input',e=>setTrainingZoom(Number(e.target.value)/100));
   document.getElementById('trainingYearOnly')?.addEventListener('change',syncTrainingDateMode);
   document.getElementById('trainingRecurring')?.addEventListener('change',syncTrainingRecurrenceMode);
+  document.getElementById('trainingRecurrenceUnit')?.addEventListener('change',syncTrainingRecurrenceMode);
   document.getElementById('trainingOnlyYear')?.addEventListener('input',updateTrainingVacationWarning);
   document.getElementById('trainingExportBtn')?.addEventListener('click',exportTrainingExcel);
   document.getElementById('trainingPdfBtn')?.addEventListener('click',()=>safeShowDialog('trainingExportDialog'));
