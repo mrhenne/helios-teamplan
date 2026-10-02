@@ -1,0 +1,180 @@
+/* ZNA Core header layout – isolated final overrides */
+.topbar{
+  display:grid!important;
+  grid-template-columns:minmax(500px,620px) minmax(0,1fr)!important;
+  gap:24px!important;
+  align-items:start!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  padding:12px 16px!important;
+  overflow:visible!important;
+}
+
+.topbar-left-zone{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  justify-content:flex-start!important;
+  gap:8px!important;
+  min-width:0!important;
+  width:100%!important;
+}
+.topbar-left-zone .zna-core-brand{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  margin:0!important;
+  padding:0!important;
+  width:auto!important;
+  min-width:0!important;
+}
+.topbar-left-zone .zna-core-logo{
+  display:block!important;
+  width:280px!important;
+  max-width:100%!important;
+  height:auto!important;
+}
+.topbar-left-zone .topbar-module-switch{
+  position:static!important;
+  inset:auto!important;
+  float:none!important;
+  display:flex!important;
+  flex-direction:row!important;
+  width:100%!important;
+  max-width:600px!important;
+  margin:0!important;
+  transform:none!important;
+  align-self:flex-start!important;
+}
+.topbar-left-zone .topbar-module-switch .module-tab{
+  flex:1 1 0!important;
+  min-width:0!important;
+}
+
+.topbar-right-zone{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-end!important;
+  justify-content:flex-start!important;
+  gap:8px!important;
+  min-width:0!important;
+  width:100%!important;
+  padding-top:2px!important;
+}
+.topbar-right-zone .topbar-session,
+.topbar-right-zone .topbar-actions{
+  position:static!important;
+  inset:auto!important;
+  transform:none!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:6px!important;
+  flex-wrap:wrap!important;
+  width:auto!important;
+  max-width:100%!important;
+  min-width:0!important;
+  height:auto!important;
+  margin:0!important;
+  overflow:visible!important;
+}
+.topbar-right-zone .sync-pill{
+  min-width:110px!important;
+  width:auto!important;
+  max-width:none!important;
+  padding:0 11px!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+}
+.topbar-right-zone .topbar-user{
+  min-width:165px!important;
+  width:auto!important;
+  max-width:245px!important;
+  padding:0 11px!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.topbar-right-zone .topbar-online{
+  min-width:76px!important;
+  width:auto!important;
+  max-width:none!important;
+  padding:0 10px!important;
+  overflow:visible!important;
+  white-space:nowrap!important;
+}
+.topbar-right-zone .sync-pill,
+.topbar-right-zone .topbar-user,
+.topbar-right-zone .topbar-online,
+.topbar-right-zone .role-select,
+.topbar-right-zone .top-tool{
+  height:32px!important;
+  min-height:32px!important;
+  max-height:32px!important;
+  box-sizing:border-box!important;
+}
+.topbar-right-zone .top-tool{
+  width:auto!important;
+  min-width:0!important;
+  max-width:none!important;
+  padding:0 10px!important;
+  gap:6px!important;
+  overflow:visible!important;
+  white-space:nowrap!important;
+}
+.topbar-right-zone .top-tool>span{
+  display:inline!important;
+  font-size:7.2px!important;
+  white-space:nowrap!important;
+}
+
+@media(max-width:1500px){
+  .topbar{
+    grid-template-columns:minmax(440px,540px) minmax(0,1fr)!important;
+    gap:18px!important;
+  }
+  .topbar-left-zone .zna-core-logo{width:250px!important}
+  .topbar-left-zone .topbar-module-switch{max-width:520px!important}
+  .topbar-right-zone .topbar-user{
+    min-width:130px!important;
+    max-width:190px!important;
+  }
+  .topbar-right-zone .top-tool{padding:0 8px!important}
+  .topbar-right-zone .top-tool>span{font-size:6.8px!important}
+}
+
+@media(max-width:1200px){
+  .topbar{
+    grid-template-columns:1fr!important;
+    gap:12px!important;
+  }
+  .topbar-left-zone,
+  .topbar-right-zone{
+    width:100%!important;
+    max-width:none!important;
+  }
+  .topbar-left-zone .topbar-module-switch{
+    width:100%!important;
+    max-width:none!important;
+  }
+  .topbar-right-zone{
+    align-items:flex-start!important;
+    padding-top:0!important;
+  }
+  .topbar-right-zone .topbar-session,
+  .topbar-right-zone .topbar-actions{
+    justify-content:flex-start!important;
+    width:100%!important;
+  }
+}
+
+@media(max-width:700px){
+  .topbar-left-zone .zna-core-logo{width:200px!important}
+  .topbar-left-zone .topbar-module-switch .module-tab small{display:none!important}
+  .topbar-right-zone .topbar-user{
+    min-width:0!important;
+    max-width:180px!important;
+  }
+}
