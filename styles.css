@@ -8869,3 +8869,244 @@ body.dark-mode .vacation-count-option.special>b{background:#20372f;color:#9de1ca
     max-height:calc(100vh - 90px)!important;
   }
 }
+
+
+/* === 2026-10-02 Konflikte & offene Punkte: Karten + Sammelbearbeitung === */
+#conflictsDialog{
+  width:min(980px,calc(100vw - 28px))!important;
+  height:min(720px,calc(100vh - 28px))!important;
+}
+#conflictsDialog .dialog-head{
+  align-items:flex-start!important;
+  margin-bottom:10px!important;
+}
+#conflictsDialog .dialog-head p{
+  margin:4px 0 0;
+  color:var(--muted);
+  font-size:7.5px;
+}
+.conflict-summary{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:7px!important;
+}
+.conflict-summary>button{
+  min-height:66px;
+  padding:8px 9px!important;
+  border-radius:11px!important;
+  position:relative;
+}
+.conflict-summary>button strong{
+  font-size:18px!important;
+  line-height:1!important;
+}
+.conflict-summary>button span{
+  font-size:8px!important;
+  font-weight:850!important;
+  color:var(--ink)!important;
+  margin-top:3px!important;
+}
+.conflict-summary>button small{
+  display:block;
+  margin-top:2px;
+  color:var(--muted);
+  font-size:6.2px;
+  line-height:1.25;
+}
+.conflict-tools{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-top:9px;
+}
+.conflict-type-filter{
+  flex:1 1 auto;
+  min-width:0;
+}
+.conflict-type-filter .segment{
+  min-height:29px!important;
+}
+.conflict-sort-label{
+  flex:0 0 auto;
+  display:flex!important;
+  grid-template-columns:none!important;
+  align-items:center;
+  gap:6px!important;
+  font-size:7px!important;
+}
+.conflict-sort-label select{
+  width:112px!important;
+  min-height:29px!important;
+  height:29px!important;
+  padding:0 24px 0 7px!important;
+}
+.conflict-bulkbar{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  min-height:44px;
+  margin-top:8px;
+  padding:7px 8px;
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:rgba(238,245,242,.72);
+}
+.conflict-select-all{
+  display:flex!important;
+  grid-template-columns:none!important;
+  align-items:center;
+  gap:6px!important;
+  font-size:7.5px!important;
+  cursor:pointer;
+}
+.conflict-select-all input{
+  width:14px!important;
+  height:14px!important;
+  min-height:0!important;
+  padding:0!important;
+}
+#conflictSelectedCount{
+  min-width:72px;
+  font-size:7.5px;
+  color:var(--green);
+}
+.conflict-bulk-status{
+  display:flex!important;
+  grid-template-columns:none!important;
+  align-items:center;
+  gap:5px!important;
+  font-size:7px!important;
+}
+.conflict-bulk-status select{
+  width:112px!important;
+  height:29px!important;
+  min-height:29px!important;
+  padding:0 24px 0 7px!important;
+}
+.conflict-bulkbar .btn{
+  min-height:29px!important;
+  height:29px!important;
+  padding:0 8px!important;
+  font-size:7.5px!important;
+}
+#conflictsDialog .conflict-list{
+  display:grid!important;
+  align-content:start;
+  gap:6px!important;
+  padding-right:2px;
+}
+.conflict-card{
+  display:grid;
+  grid-template-columns:24px 48px minmax(0,1fr) auto;
+  align-items:center;
+  gap:8px;
+  min-height:62px;
+  padding:7px 8px;
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:rgba(255,255,255,.64);
+  transition:.14s ease;
+}
+.conflict-card:hover{
+  border-color:rgba(0,107,91,.2);
+  background:rgba(247,251,249,.96);
+}
+.conflict-card.selected{
+  border-color:rgba(0,107,91,.38);
+  background:#edf7f3;
+  box-shadow:inset 3px 0 0 var(--green);
+}
+.conflict-check{
+  display:grid!important;
+  place-items:center;
+  cursor:pointer;
+}
+.conflict-check input{
+  width:15px!important;
+  height:15px!important;
+  min-height:0!important;
+  padding:0!important;
+}
+.conflict-date{
+  width:45px;
+  min-width:45px;
+  height:47px;
+  border:0;
+  border-radius:9px;
+  background:#edf3f1;
+  color:var(--ink);
+  cursor:pointer;
+  display:grid;
+  place-items:center;
+  align-content:center;
+  font-family:inherit;
+}
+.conflict-date strong{font-size:13px!important;line-height:1}
+.conflict-date span{font-size:6.5px!important;font-weight:850!important;margin-top:2px}
+.conflict-date small{font-size:5.5px;color:var(--muted);margin-top:1px}
+.conflict-card-main{
+  min-width:0;
+}
+.conflict-card-head{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  margin-bottom:3px;
+}
+.conflict-card-head small{
+  color:var(--muted);
+  font-size:6.2px;
+}
+.conflict-card-main>strong{
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:8.5px;
+}
+.conflict-card-main>span{
+  display:block;
+  margin-top:2px;
+  color:var(--muted);
+  font-size:6.7px;
+}
+.conflict-card-actions{
+  display:flex;
+  gap:4px;
+}
+.conflict-card-actions .btn{
+  min-height:27px!important;
+  height:27px!important;
+  padding:0 7px!important;
+  font-size:7px!important;
+}
+.conflict-type-staffing .conflict-date{background:#fdebed;color:#a33f47}
+.conflict-type-blackout .conflict-date{background:#fff4dc;color:#8b681a}
+.conflict-type-wish .conflict-date{background:#edf2fa;color:#45688d}
+body.dark-mode .conflict-bulkbar{
+  background:#14241f;
+  border-color:rgba(200,235,226,.12);
+}
+body.dark-mode .conflict-card{
+  background:#172723;
+  border-color:rgba(200,235,226,.12);
+}
+body.dark-mode .conflict-card:hover{background:#1c302a}
+body.dark-mode .conflict-card.selected{background:#1d3b32;border-color:rgba(77,179,150,.34)}
+body.dark-mode .conflict-date{background:#20332e;color:#e7f0ed}
+
+@media(max-width:760px){
+  #conflictsDialog{width:calc(100vw - 12px)!important;height:calc(100vh - 12px)!important}
+  .conflict-summary{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .conflict-tools{align-items:stretch;flex-direction:column}
+  .conflict-type-filter{width:100%}
+  .conflict-sort-label{width:100%;justify-content:space-between}
+  .conflict-sort-label select{flex:1;width:auto!important}
+  .conflict-bulkbar{flex-wrap:wrap}
+  .conflict-bulkbar .spacer{display:none}
+  .conflict-bulk-status{flex:1 1 150px}
+  .conflict-bulk-status select{flex:1;width:auto!important}
+  .conflict-card{grid-template-columns:22px 43px minmax(0,1fr)}
+  .conflict-card-actions{grid-column:2/-1;justify-content:flex-end}
+}
