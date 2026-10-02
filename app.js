@@ -1479,7 +1479,16 @@ function renderRoleControls(){
 async function invokeUserAdmin(body){
   if(!supabaseClient||sessionRole!=='admin')throw new Error('Nur Admins dürfen Benutzer verwalten.');
   const {data,error}=await supabaseClient.functions.invoke('teamplan-users',{body:{teamId:(window.TEAMPLAN_CONFIG||{}).teamId,...body}});
-  if(error)throw error;if(data?.error)throw new Error(data.error);return data;
+  if(error){
+    let message=error.message||'Benutzerverwaltung fehlgeschlagen';
+    try{
+      const payload=await error.context?.json();
+      if(payload?.error)message=payload.error;
+    }catch{}
+    throw new Error(message);
+  }
+  if(data?.error)throw new Error(data.error);
+  return data;
 }
 function employeeOptions(selected='',role=''){
   const internal=[...teamEmployees()].sort((a,b)=>a.order-b.order);
