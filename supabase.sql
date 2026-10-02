@@ -1331,3 +1331,51 @@ alter policy "tasks project lead manage"
 on public.teamplan_tasks
 using ((project_id is not null) and (select private.is_project_lead(teamplan_tasks.project_id)))
 with check ((project_id is not null) and (select private.is_project_lead(teamplan_tasks.project_id)));
+
+
+-- === 2026-10-02 Fortbildungs-Terminserien + Uhrzeiten ===
+alter table public.teamplan_trainings
+  add column if not exists start_time time,
+  add column if not exists end_time time,
+  add column if not exists recurrence_unit text not null default 'months',
+  add column if not exists recurrence_interval integer,
+  add column if not exists recurrence_weekday integer,
+  add column if not exists recurrence_until date;
+
+update public.teamplan_trainings
+set recurrence_unit='months',
+    recurrence_interval=coalesce(recurrence_interval,recurrence_months)
+where recurring=true and recurrence_months is not null;
+
+alter table public.teamplan_trainings
+  drop constraint if exists teamplan_trainings_recurrence_check;
+
+alter table public.teamplan_trainings
+  drop constraint if exists teamplan_trainings_recurrence_series_check;
+
+alter table public.teamplan_trainings
+  add constraint teamplan_trainings_recurrence_series_check check (
+    (recurring=false)
+    or
+    (
+      recurring=true
+      and recurrence_unit in ('months','weeks')
+      and (
+        (recurrence_unit='months' and coalesce(recurrence_interval,recurrence_months) between 1 and 240)
+        or
+        (recurrence_unit='weeks' and recurrence_interval between 1 and 52 and recurrence_weekday between 1 and 7)
+      )
+      and (recurrence_until is null or start_date is null or recurrence_until >= start_date)
+    )
+  );
+
+alter table public.teamplan_trainings
+  drop constraint if exists teamplan_trainings_time_check;
+
+alter table public.teamplan_trainings
+  add constraint teamplan_trainings_time_check check (
+    start_time is null or end_time is null or end_time > start_time
+  );
+
+create index if not exists teamplan_trainings_team_recurrence_series_idx
+  on public.teamplan_trainings(team_id,recurring,recurrence_unit,recurrence_interval,recurrence_until);
