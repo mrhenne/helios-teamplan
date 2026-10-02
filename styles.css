@@ -8819,3 +8819,53 @@ body.dark-mode .vacation-count-option.special>b{background:#20372f;color:#9de1ca
 @media(max-width:900px){
   .vacation-count-menu{width:min(390px,calc(100vw - 28px))!important}
 }
+
+
+/* === 2026-10-02 Fix: Summen-Menü vollständig über dem Kalender anzeigen === */
+#vacationToolbar{
+  position:relative!important;
+  z-index:120!important;
+  overflow:visible!important;
+}
+#vacationToolbar .controls-secondary,
+#vacationToolbar .vacation-count-control{
+  overflow:visible!important;
+}
+#vacationToolbar .vacation-count-control{
+  z-index:130!important;
+}
+#vacationCountMenu{
+  z-index:999!important;
+  top:32px!important;
+  right:0!important;
+  width:410px!important;
+  max-height:min(620px,calc(100vh - 150px))!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain;
+}
+#vacationCountCodes,
+#vacationCountRows{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  grid-auto-rows:minmax(29px,auto)!important;
+}
+#vacationCountCodes .vacation-count-option,
+#vacationCountRows .vacation-count-option{
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  min-height:29px!important;
+}
+#vacationCountRows{
+  max-height:none!important;
+  overflow:visible!important;
+}
+@media(max-width:700px){
+  #vacationCountMenu{
+    position:fixed!important;
+    top:76px!important;
+    left:10px!important;
+    right:10px!important;
+    width:auto!important;
+    max-height:calc(100vh - 90px)!important;
+  }
+}
