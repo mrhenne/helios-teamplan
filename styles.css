@@ -7293,3 +7293,150 @@ body.projects-module-active .projects-toolbar .segment .ui-icon{
     max-width:none!important;
   }
 }
+
+
+/* === 2026-10-02 TOPBAR VISUAL ALIGNMENT FIX === */
+
+/* Desktop: klare 2-Zeilen-Struktur */
+@media(min-width:1050px) and (max-width:1699px){
+  .topbar{
+    grid-template-columns:280px minmax(520px,1fr)!important;
+    grid-template-rows:58px 42px!important;
+    align-items:center!important;
+    column-gap:18px!important;
+    row-gap:4px!important;
+    padding:8px 16px!important;
+  }
+
+  .zna-core-brand{
+    grid-column:1!important;
+    grid-row:1!important;
+    align-self:center!important;
+    justify-self:start!important;
+    padding:0!important;
+  }
+  .zna-core-logo{
+    width:270px!important;
+    max-width:270px!important;
+  }
+
+  .topbar-module-switch{
+    grid-column:2!important;
+    grid-row:1!important;
+    align-self:center!important;
+    justify-self:start!important;
+    width:min(100%,870px)!important;
+    max-width:870px!important;
+    transform:none!important;
+    margin:0!important;
+  }
+
+  .topbar-session{
+    grid-column:1!important;
+    grid-row:2!important;
+    justify-self:start!important;
+    align-self:center!important;
+    display:flex!important;
+    align-items:center!important;
+    gap:7px!important;
+    min-width:0!important;
+    overflow:visible!important;
+  }
+
+  .topbar-actions{
+    grid-column:2!important;
+    grid-row:2!important;
+    justify-self:end!important;
+    align-self:center!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    gap:7px!important;
+    width:auto!important;
+    max-width:100%!important;
+    flex-wrap:nowrap!important;
+    overflow:visible!important;
+  }
+
+  .topbar-session .sync-pill{
+    min-width:104px!important;
+    max-width:none!important;
+    width:auto!important;
+    padding:0 11px!important;
+    overflow:visible!important;
+    text-overflow:clip!important;
+  }
+
+  .topbar-user{
+    min-width:155px!important;
+    max-width:230px!important;
+    width:auto!important;
+    padding:0 11px!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+
+  .topbar-online{
+    min-width:72px!important;
+    max-width:none!important;
+    width:auto!important;
+    padding:0 10px!important;
+    overflow:visible!important;
+  }
+
+  .topbar-session .sync-pill,
+  .topbar-user,
+  .topbar-online{
+    height:32px!important;
+    min-height:32px!important;
+    max-height:32px!important;
+    font-size:7.4px!important;
+    line-height:1!important;
+    white-space:nowrap!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    box-sizing:border-box!important;
+  }
+
+  .topbar-actions .top-tool{
+    height:32px!important;
+    min-height:32px!important;
+    max-height:32px!important;
+    padding:0 10px!important;
+    gap:6px!important;
+  }
+  .topbar-actions .top-tool>span{
+    font-size:7.2px!important;
+  }
+}
+
+/* Breite Displays: ebenfalls sauber mittig ausrichten */
+@media(min-width:1700px){
+  .topbar{
+    align-items:center!important;
+  }
+  .zna-core-brand,
+  .topbar-module-switch,
+  .topbar-session,
+  .topbar-actions{
+    align-self:center!important;
+  }
+  .topbar-module-switch{
+    transform:none!important;
+  }
+  .topbar-session .sync-pill{
+    min-width:104px!important;
+    max-width:none!important;
+    overflow:visible!important;
+  }
+  .topbar-user{
+    min-width:155px!important;
+    max-width:230px!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  .topbar-online{
+    min-width:72px!important;
+    max-width:none!important;
+  }
+}
