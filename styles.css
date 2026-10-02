@@ -7847,3 +7847,107 @@ body.projects-module-active .projects-toolbar{
 body.dark-mode.projects-module-active .projects-toolbar{
   box-shadow:inset 3px 0 0 #d8891c,var(--shadow)!important;
 }
+
+
+/* === 2026-10-02 Fortbildung: Suche, Langzeitprogramme, Teamstatus === */
+.training-teamstatus-controls .search{
+  min-width:170px;
+  height:29px!important;
+  padding:0 9px!important;
+  font-size:7.5px!important;
+}
+
+.training-month-programs{
+  display:grid;
+  gap:4px;
+  margin:5px 0 6px;
+}
+.training-month-program{
+  width:100%;
+  min-height:30px;
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  grid-template-areas:
+    "employee title"
+    "employee range";
+  align-items:center;
+  column-gap:6px;
+  padding:5px 7px;
+  border:1px solid color-mix(in srgb,var(--training-color,#5b8def) 28%,var(--line));
+  border-left:3px solid var(--training-color,#5b8def);
+  border-radius:8px;
+  background:color-mix(in srgb,var(--training-color,#5b8def) 7%,rgba(255,255,255,.72));
+  color:var(--ink);
+  text-align:left;
+  cursor:pointer;
+}
+.training-month-program b{
+  grid-area:employee;
+  font-size:6.5px;
+  white-space:nowrap;
+}
+.training-month-program span{
+  grid-area:title;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:6.5px;
+  font-weight:800;
+}
+.training-month-program small{
+  grid-area:range;
+  font-size:5.6px;
+  color:var(--muted);
+}
+body.dark-mode .training-month-program{
+  background:color-mix(in srgb,var(--training-color,#5b8def) 12%,#172723);
+}
+
+/* Teamstatus: Mitarbeiterpool links, Fort-/Weiterbildungen klar nebeneinander */
+.training-teamstatus-board.all-mode{
+  display:grid!important;
+  grid-template-columns:minmax(180px,220px) minmax(0,1fr)!important;
+  gap:9px!important;
+  align-items:start!important;
+}
+.training-teamstatus-all-grid{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(190px,1fr))!important;
+  gap:8px!important;
+  align-items:stretch!important;
+}
+.training-teamstatus-type-card{
+  min-width:0!important;
+}
+.training-teamstatus-pool{
+  position:sticky;
+  top:8px;
+  align-self:start;
+}
+.training-teamstatus-pool>div{
+  grid-template-columns:1fr!important;
+}
+
+@media(max-width:1250px){
+  .training-teamstatus-all-grid{
+    grid-template-columns:repeat(2,minmax(190px,1fr))!important;
+  }
+}
+@media(max-width:850px){
+  .training-teamstatus-board.all-mode{
+    grid-template-columns:1fr!important;
+  }
+  .training-teamstatus-pool{
+    position:static;
+  }
+  .training-teamstatus-pool>div{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
+@media(max-width:600px){
+  .training-teamstatus-all-grid,
+  .training-teamstatus-pool>div{
+    grid-template-columns:1fr!important;
+  }
+}
