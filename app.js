@@ -1621,6 +1621,23 @@ function trainingIntersectsYear(t,year=trainingYear){
   const start=year+'-01-01',end=year+'-12-31';
   return (t.start_date&&t.end_date&&t.start_date<=end&&t.end_date>=start)||(due&&due>=start&&due<=end);
 }
+function trainingEmployeeMatchesSearch(employee,query=''){
+  const q=String(query||'').trim().toLowerCase();
+  if(!q)return true;
+  return [employee?.name,employee?.role].filter(Boolean).join(' ').toLowerCase().includes(q);
+}
+function trainingViewEmployeeSearch(){
+  return (document.getElementById('trainingSearchInput')?.value||'').trim().toLowerCase();
+}
+function trainingTeamStatusEmployeeSearch(){
+  return (document.getElementById('trainingTeamStatusSearch')?.value||'').trim().toLowerCase();
+}
+function trainingIsLongProgram(t){
+  if(!t||t.date_precision==='year'||!t.start_date||!t.end_date)return false;
+  const start=trainingDate(t.start_date),end=trainingDate(t.end_date);
+  if(!start||!end)return false;
+  return Math.round((end-start)/86400000)+1>31;
+}
 function filteredTrainings(){
   const search=(document.getElementById('trainingSearchInput')?.value||'').trim().toLowerCase();
   const empFilter=sessionRole==='employee'?sessionEmployeeId:(document.getElementById('trainingEmployeeFilter')?.value||'');
@@ -1646,12 +1663,9 @@ function filteredTrainings(){
 function trainingForEmployeeDate(empId,key){
   return trainings.filter(t=>{
     if(t.employee_id!==empId||t.status==='cancelled'||t.date_precision==='year'||!t.start_date||!t.end_date)return false;
+    if(trainingIsLongProgram(t))return false;
     const start=trainingDate(t.start_date),end=trainingDate(t.end_date);
     if(!start||!end)return false;
-    const spanDays=Math.round((end-start)/86400000)+1;
-    // Lange Fort- und Weiterbildungsprogramme beschreiben einen Gesamtzeitraum,
-    // nicht eine tägliche Abwesenheit. Nur konkrete Terminblöcke werden gewarnt.
-    if(spanDays>31)return false;
     return t.start_date<=key&&t.end_date>=key;
   });
 }
@@ -1894,13 +1908,16 @@ function renderTrainingCalendar(items){
   const undatedHtml=undated.length?'<article class="training-undated glass"><div class="training-month-head"><strong>Termin noch offen</strong><span>'+undated.length+'</span></div><div class="training-month-items">'+undated.map(t=>'<button type="button" class="training-month-item undated '+t.status+(t._virtual?' virtual':'')+'" style="--training-color:'+escapeHtml(trainingColor(t))+'" data-training-id="'+(t._sourceId||t.id)+'" data-training-virtual="'+(t._virtual?'1':'0')+'" '+(trainingCanManage()&&!t._virtual?'draggable="true"':'')+'><b>'+escapeHtml(t.title)+(trainingRecurrenceLabel(t)?' <span class="training-repeat-inline">↻</span>':'')+'</b><span>'+escapeHtml(trainingEmployeeName(t.employee_id))+'</span><small>im Jahr '+escapeHtml(String(t.training_year))+(trainingRecurrenceLabel(t)?' · '+escapeHtml(trainingRecurrenceLabel(t)):'')+'</small></button>').join('')+'</div></article>':'';
   box.innerHTML=undatedHtml+MONTHS.map((month,m)=>{
     const monthItems=trainingItemsForMonth(items,trainingYear,m);
+    const programItems=monthItems.filter(trainingIsLongProgram);
+    const dayItems=monthItems.filter(t=>!trainingIsLongProgram(t));
     const cost=monthItems.filter((t,i,a)=>a.findIndex(x=>(x._sourceId||x.id)===(t._sourceId||t.id))===i).reduce((s,t)=>s+Number(t.cost||0),0);
+    const programHtml=programItems.length?'<div class="training-month-programs">'+programItems.map(t=>'<button type="button" class="training-month-program '+t.status+'" style="--training-color:'+escapeHtml(trainingColor(t))+'" data-training-id="'+(t._sourceId||t.id)+'" data-training-virtual="'+(t._virtual?'1':'0')+'"><b>'+escapeHtml(trainingEmployeeName(t.employee_id))+'</b><span>'+escapeHtml(t.title)+'</span><small>'+escapeHtml(formatTrainingDateRange(t))+'</small></button>').join('')+'</div>':'';
     const firstDow=(new Date(trainingYear,m,1).getDay()+6)%7,days=new Date(trainingYear,m+1,0).getDate();
     let cells='';
     for(let i=0;i<firstDow;i++)cells+='<span class="training-day blank"></span>';
     for(let day=1;day<=days;day++){
       const key=trainingYear+'-'+String(m+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
-      const matches=monthItems.filter(t=>t.start_date<=key&&t.end_date>=key),realMatches=matches.filter(t=>!t._virtual);
+      const matches=dayItems.filter(t=>t.start_date<=key&&t.end_date>=key),realMatches=matches.filter(t=>!t._virtual);
       const uniqueReal=[...new Map(realMatches.map(t=>[t.id,t])).values()];
       const statusClass=matches.some(t=>t.status==='in_progress')?'in-progress':matches.some(t=>t.status==='completed')?'completed':matches.some(t=>t.status==='planned')?'planned':matches.length?'cancelled':'';
       const titles=matches.map(t=>trainingEmployeeName(t.employee_id)+': '+t.title).join(' · ');
@@ -1908,7 +1925,7 @@ function renderTrainingCalendar(items){
       const colorStyle=matches.length===1?' style="--training-color:'+escapeHtml(trainingColor(matches[0]))+'"':'';
       cells+='<button type="button" class="training-day '+(matches.length?'has-training '+statusClass:'')+'" data-date="'+key+'" title="'+escapeHtml(titles)+'"'+colorStyle+dragAttrs+'><span>'+day+'</span>'+(matches.length?'<b>'+matches.length+'</b>':'')+'</button>';
     }
-    return '<article class="training-month training-calendar-month glass"><div class="training-month-head"><strong>'+month+'</strong><span>'+monthItems.length+' · '+escapeHtml(euro(cost))+'</span></div><div class="training-weekdays"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div><div class="training-day-grid">'+cells+'</div></article>';
+    return '<article class="training-month training-calendar-month glass"><div class="training-month-head"><strong>'+month+'</strong><span>'+monthItems.length+' · '+escapeHtml(euro(cost))+'</span></div>'+programHtml+'<div class="training-weekdays"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div><div class="training-day-grid">'+cells+'</div></article>';
   }).join('');
 }
 function trainingItemsForEmployeeYear(empId,year){
@@ -2030,7 +2047,7 @@ function renderTrainingTeamStatusAll(types,employees){
 function renderTrainingTeamStatus(){
   const metrics=document.getElementById('trainingTeamStatusMetrics'),board=document.getElementById('trainingTeamStatusBoard');
   if(!metrics||!board)return;
-  const types=trainingTypes.filter(t=>t.active!==false),employees=trainingVisibleEmployees();
+  const types=trainingTypes.filter(t=>t.active!==false),teamSearch=trainingTeamStatusEmployeeSearch(),employees=trainingVisibleEmployees().filter(e=>trainingEmployeeMatchesSearch(e,teamSearch));
   if(!types.length){metrics.innerHTML='';board.innerHTML='<div class="empty-state">Bitte zuerst eine Fortbildungsart im Katalog anlegen.</div>';return}
   if(trainingTeamStatusTypeId==='__all__'){renderTrainingTeamStatusAll(types,employees);return}
   const type=trainingTypeById(trainingTeamStatusTypeId);
@@ -2065,7 +2082,8 @@ function renderTrainingClassic(items){
 }
 function renderTrainingEmployees(items){
   const box=document.getElementById('trainingEmployeeCards');if(!box)return;
-  const employees=trainingVisibleEmployees();
+  const employeeSearch=trainingViewEmployeeSearch();
+  const employees=trainingVisibleEmployees().filter(e=>trainingEmployeeMatchesSearch(e,employeeSearch)||items.some(t=>t.employee_id===e.id));
   box.innerHTML=employees.length?employees.map(e=>{
     const rows=items.filter(t=>t.employee_id===e.id),cost=rows.filter(t=>t.status!=='cancelled').reduce((s,t)=>s+Number(t.cost||0),0),hours=rows.filter(t=>t.status==='completed').reduce((s,t)=>s+Number(t.hours||0),0),budget=trainingBudgetFor(e.id);
     const overdue=rows.filter(t=>trainingDueState(t)==='overdue').length,due=rows.filter(t=>trainingDueState(t)==='due').length;
@@ -2451,6 +2469,7 @@ function initTrainingModuleUI(){
   document.getElementById('trainingTeamStatusType')?.addEventListener('change',e=>{trainingTeamStatusTypeId=e.target.value;localStorage.setItem('teamplan-training-teamstatus-type',trainingTeamStatusTypeId);renderTrainingModule()});
   document.getElementById('trainingTeamStatusYear')?.addEventListener('change',e=>{trainingTeamStatusYear=Number(e.target.value);localStorage.setItem('teamplan-training-teamstatus-year',trainingTeamStatusYear);renderTrainingModule()});
   document.getElementById('trainingTeamStatusSort')?.addEventListener('change',e=>{trainingTeamStatusSort=e.target.value;localStorage.setItem('teamplan-training-teamstatus-sort',trainingTeamStatusSort);renderTrainingModule()});
+  document.getElementById('trainingTeamStatusSearch')?.addEventListener('input',renderTrainingModule);
   document.getElementById('addTrainingBtn')?.addEventListener('click',()=>openTraining());
   document.getElementById('trainingTypesBtn')?.addEventListener('click',()=>{if(!trainingCanManage())return;resetTrainingTypeForm();renderTrainingTypes();safeShowDialog('trainingTypesDialog')});
   document.getElementById('trainingFocusBtn')?.addEventListener('click',enterTrainingFocus);
