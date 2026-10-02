@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261002-10" />
+  <link rel="stylesheet" href="styles.css?v=20261002-11" />
   <link rel="stylesheet" href="header.css?v=20261002-2" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -631,8 +631,24 @@
         <label id="trainingYearOnlyField" class="hidden">Jahr<input id="trainingOnlyYear" type="number" min="2020" max="2100" step="1"></label>
         <label id="trainingStartField">Beginn<input id="trainingStart" type="date"></label>
         <label id="trainingEndField">Ende<input id="trainingEnd" type="date"></label>
-        <label class="training-recurring-toggle"><span><input id="trainingRecurring" type="checkbox"> Wiederkehrend</span></label>
+        <label id="trainingStartTimeField">Startzeit<input id="trainingStartTime" type="time" step="300"></label>
+        <label id="trainingEndTimeField">Endzeit<input id="trainingEndTime" type="time" step="300"></label>
+        <label class="training-recurring-toggle"><span><input id="trainingRecurring" type="checkbox"> Wiederkehrend / Terminserie</span></label>
+        <label id="trainingRecurrenceUnitField" class="hidden">Serienart
+          <select id="trainingRecurrenceUnit">
+            <option value="months">Intervall in Monaten</option>
+            <option value="weeks">Terminserie in Wochen</option>
+          </select>
+        </label>
         <label id="trainingRecurrenceField" class="hidden">Wiederholung alle<input id="trainingRecurrenceMonths" type="number" min="1" max="240" step="1" placeholder="z. B. 24"><small>Monate</small></label>
+        <label id="trainingRecurrenceWeeksField" class="hidden">Wiederholung alle<input id="trainingRecurrenceWeeks" type="number" min="1" max="52" step="1" value="2"><small>Wochen</small></label>
+        <label id="trainingRecurrenceWeekdayField" class="hidden">Wochentag
+          <select id="trainingRecurrenceWeekday">
+            <option value="1">Montag</option><option value="2">Dienstag</option><option value="3">Mittwoch</option>
+            <option value="4">Donnerstag</option><option value="5">Freitag</option><option value="6">Samstag</option><option value="7">Sonntag</option>
+          </select>
+        </label>
+        <label id="trainingRecurrenceUntilField" class="hidden">Serie bis<input id="trainingRecurrenceUntil" type="date"></label>
         <label>Stunden<input id="trainingHours" type="number" min="0" step="0.25" value="0"></label>
         <label>Kosten €<input id="trainingCost" type="number" min="0" step="0.01" value="0"></label>
         <label>Anbieter<input id="trainingProvider" maxlength="120"></label>
@@ -1131,6 +1147,6 @@
       }, true);
     })();
   </script>
-  <script src="app.js?v=20261002-10"></script>
+  <script src="app.js?v=20261002-11"></script>
 </body>
 </html>
