@@ -776,7 +776,7 @@ function renderYearOverview(){
       const d=new Date(year,month,day), key=dateKey(d), counts=dailyCounts(key), conf=conflictLevel(key), weekend=[0,6].includes(d.getDay()), hol=holidays[key],school=schoolBreakForDate(d);
       const total=counts.U+counts.XU+counts.S;
       const absent=absentEmployees(key).map(x=>`${x.employee.name} (${x.codes.join('+')})`).join(', ');
-      html+=`<button type="button" class="mini-day ${weekend?'weekend':''} ${hol?'holiday':''} ${school?'school-holiday':''} ${conf.vacation||conf.total?'conflict':''}" data-date="${key}" title="${escapeHtml([hol,school&&('NRW '+school),absent].filter(Boolean).join(' · '))}"><span class="mini-date">${day}</span><span class="mini-counts">${counts.U?'<b class="u">'+counts.U+'</b>':''}${counts.XU?'<b class="xu">'+counts.XU+'</b>':''}${counts.S?'<b class="s">'+counts.S+'</b>':''}</span>${!total?'<span class="mini-present">'+presentCount(key)+'</span>':''}</button>`;
+      html+=`<button type="button" class="mini-day ${weekend?'weekend':''} ${hol?'holiday':''} ${school?'school-holiday':''} ${conf.vacation||conf.total?'conflict':''}" data-date="${key}" title="${escapeHtml(([hol,school&&('NRW '+school),absent].filter(Boolean).join(' · ')+(hol||school||absent?' · ':'')+'Klicken: Mitarbeiter für diesen Tag planen'))}"><span class="mini-date">${day}</span><span class="mini-counts">${counts.U?'<b class="u">'+counts.U+'</b>':''}${counts.XU?'<b class="xu">'+counts.XU+'</b>':''}${counts.S?'<b class="s">'+counts.S+'</b>':''}</span>${!total?'<span class="mini-present">'+presentCount(key)+'</span>':''}</button>`;
     }
     html+='</div></article>';
   }
@@ -790,7 +790,7 @@ function renderYearOverview(){
   html+='</tbody></table></div></section>';
   document.getElementById('yearOverview').innerHTML=html;
   document.querySelectorAll('.year-month-title').forEach(b=>b.addEventListener('click',()=>{viewDate.setMonth(Number(b.dataset.month));currentView='month';render()}));
-  document.querySelectorAll('.mini-day[data-date]').forEach(b=>b.addEventListener('click',()=>{const d=new Date(b.dataset.date+'T12:00:00');viewDate=new Date(d.getFullYear(),d.getMonth(),1);currentView='month';render()}));
+  document.querySelectorAll('.mini-day[data-date]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openVacationForDate(b.dataset.date)}));
 }
 
 function clearDragSelection(){
@@ -1103,6 +1103,16 @@ function openBulkDialog(selectedEmpId=null){
   bulkSelectedCodes=new Set();document.querySelectorAll('[data-bulk-code]').forEach(b=>b.classList.remove('selected'));
   updateBulkPreview();document.getElementById('bulkDialog').showModal();
 }
+function openVacationForDate(date){
+  openBulkDialog();
+  const start=document.getElementById('bulkStart');
+  const end=document.getElementById('bulkEnd');
+  if(start)start.value=date;
+  if(end)end.value=date;
+  updateBulkPreview();
+  window.setTimeout(()=>document.getElementById('bulkEmployee')?.focus(),0);
+}
+
 function applyBulk(clear=false){
   const empId=document.getElementById('bulkEmployee').value,dates=bulkDates(),mode=document.getElementById('bulkMode').value;
   if(!empId||!dates.length){alert('Bitte einen gültigen Zeitraum auswählen.');return false}
