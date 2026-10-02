@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261002-19" />
+  <link rel="stylesheet" href="styles.css?v=20261002-20" />
   <link rel="stylesheet" href="header.css?v=20261002-3" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -142,6 +142,7 @@
         <p>Damit kannst du Gesamtsumme und sichtbare Einzelzählungen unabhängig voneinander konfigurieren.</p>
       </div>
     </div>
+    <label class="external-visibility-control" title="Externe Personen zur Verwaltung einblenden"><input id="showExternalEmployees" type="checkbox"><span>Externe anzeigen</span></label>
     <div class="employee-info-control">
       <button id="employeeInfoToggle" class="btn ghost view-tool-btn icon-label-btn" type="button" aria-expanded="false" title="Sichtbare Mitarbeiterinformationen wählen"><svg class="ui-icon"><use href="#i-users"></use></svg><span>Infos</span></button>
       <div id="employeeInfoMenu" class="employee-info-menu hidden">
@@ -563,6 +564,7 @@
           <div class="project-member-actions">
             <button id="projectMembersAllBtn" type="button" class="btn ghost">Alle</button>
             <button id="projectMembersNoneBtn" type="button" class="btn ghost">Keine</button>
+            <label class="project-external-toggle"><input id="projectShowExternal" type="checkbox" checked> Externe anzeigen</label>
           </div>
           <input id="projectMemberSearch" class="project-member-search" type="search" placeholder="Mitarbeitende suchen…">
           <div id="projectMembersList" class="project-members-list"></div>
@@ -745,21 +747,26 @@
     <form id="employeeForm" method="dialog">
       <div class="dialog-head"><div><span class="eyebrow">MITARBEITER</span><h2 id="employeeDialogTitle">Mitarbeiter anlegen</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
       <input id="employeeId" type="hidden" />
+      <div class="employee-type-box">
+        <label class="toggle-line employee-external-toggle"><input id="employeeExternal" type="checkbox"> Externe Person / nicht Teil des ZNA-Teams</label>
+        <label id="employeeOrganizationWrap" class="hidden">Organisation / Bereich<input id="employeeOrganization" maxlength="100" placeholder="z. B. IT, Medizintechnik, externe Firma"></label>
+        <small id="employeeExternalHint" class="hidden">Externe Personen werden nicht im Urlaubs- oder Fortbildungsplan mitgezählt, stehen aber für Projekte und Aufgaben zur Verfügung.</small>
+      </div>
       <div class="form-grid two">
         <label>Name<input id="employeeName" required placeholder="Vorname Nachname" /></label>
-        <label>Wochenstunden<input id="employeeHours" type="number" min="1" max="60" step="0.25" value="38.5" required /></label>
-        <label>Stellenanteil %<input id="employeePercent" type="number" min="1" max="100" step="1" value="100" required /></label>
-        <label>Arbeitstage / Woche<input id="employeeWorkdays" type="number" min="1" max="5" step="1" value="5" required /></label>
-        <label>Urlaub Vorjahr / Übertrag<input id="employeeCarry" type="number" min="0" max="99" step="0.5" value="0" /></label>
-        <label>Individuelle Urlaubskorrektur<input id="employeeAdjustment" type="number" min="-99" max="99" step="0.5" value="0" /></label>
-        <label>Rolle<select id="employeeRole"><option value="employee">Mitarbeiter</option><option value="planner">Planer</option><option value="admin">Admin</option><option value="viewer">Nur Lesen</option></select></label>
+        <label data-team-only>Wochenstunden<input id="employeeHours" type="number" min="1" max="60" step="0.25" value="38.5" required /></label>
+        <label data-team-only>Stellenanteil %<input id="employeePercent" type="number" min="1" max="100" step="1" value="100" required /></label>
+        <label data-team-only>Arbeitstage / Woche<input id="employeeWorkdays" type="number" min="1" max="5" step="1" value="5" required /></label>
+        <label data-team-only>Urlaub Vorjahr / Übertrag<input id="employeeCarry" type="number" min="0" max="99" step="0.5" value="0" /></label>
+        <label data-team-only>Individuelle Urlaubskorrektur<input id="employeeAdjustment" type="number" min="-99" max="99" step="0.5" value="0" /></label>
+        <label data-team-only>Rolle<select id="employeeRole"><option value="employee">Mitarbeiter</option><option value="planner">Planer</option><option value="admin">Admin</option><option value="viewer">Nur Lesen</option></select></label>
       </div>
-      <div class="workweek-box">
+      <div class="workweek-box" data-team-only>
         <span>Regelmäßige Arbeitstage</span>
         <div id="workweekToggles" class="weekday-toggles"></div>
         <small>Damit zählt Urlaub nur an tatsächlichen Arbeitstagen korrekt.</small>
       </div>
-      <div class="auto-weekend-box">
+      <div class="auto-weekend-box" data-team-only>
         <label class="toggle-line"><input id="employeeAutoWeekend" type="checkbox"> Freie Wochenenden automatisch als X eintragen</label>
         <div id="autoWeekendOptions" class="form-grid two">
           <label>Rhythmus
@@ -774,8 +781,8 @@
         </div>
         <small>Vom Referenz-Samstag aus werden Samstag und Sonntag im gewählten Rhythmus automatisch mit X markiert.</small>
       </div>
-      <div id="vacationPreview" class="calc-preview"></div>
-      <div class="employee-dialog-tools">
+      <div id="vacationPreview" class="calc-preview" data-team-only></div>
+      <div class="employee-dialog-tools" data-team-only>
         <button type="button" id="employeeRangeBtn" class="btn ghost hidden">▦ Zeitraum planen</button>
         <button type="button" id="employeeCleanupBtn" class="btn ghost hidden">⌫ Planungsdaten löschen…</button>
       </div>
@@ -1214,6 +1221,6 @@
       }, true);
     })();
   </script>
-  <script src="app.js?v=20261002-19"></script>
+  <script src="app.js?v=20261002-20"></script>
 </body>
 </html>
