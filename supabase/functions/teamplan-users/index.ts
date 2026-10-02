@@ -56,11 +56,37 @@ Deno.serve(async (req: Request) => {
         .order("created_at", { ascending: true });
       if (error) throw error;
 
+      await validateRoleEmployee(role, employeeId);
+
       const { data: usersData, error: usersErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
       if (usersErr) throw usersErr;
 
       const emails = new Map((usersData.users || []).map(u => [u.id, u.email || ""]));
       return json({ members: (data || []).map(m => ({ ...m, email: emails.get(m.user_id) || "" })) });
+    }
+
+    async function validateRoleEmployee(role: string, employeeId: string | null) {
+      if (!["employee", "external"].includes(role)) return;
+      if (!employeeId) throw new Error(role === "external" ? "Bitte eine externe Person zuordnen." : "Bitte einen Mitarbeiter zuordnen.");
+
+      const { data: plan, error: planErr } = await admin
+        .from("team_plans")
+        .select("data")
+        .eq("team_id", teamId)
+        .maybeSingle();
+      if (planErr) throw planErr;
+
+      const employees = Array.isArray(plan?.data?.employees) ? plan.data.employees : [];
+      const employee = employees.find((e: any) => String(e?.id || "") === employeeId);
+      if (!employee) throw new Error("Die zugeordnete Person wurde im Team nicht gefunden.");
+
+      const isExternal = employee.external === true;
+      if (role === "external" && !isExternal) {
+        throw new Error("Die Rolle Externer Projektmitarbeiter kann nur einer als extern markierten Person zugeordnet werden.");
+      }
+      if (role === "employee" && isExternal) {
+        throw new Error("Eine externe Person kann nicht die interne Mitarbeiterrolle erhalten. Bitte Externer Projektmitarbeiter wählen.");
+      }
     }
 
     if (action === "invite") {
@@ -69,7 +95,7 @@ Deno.serve(async (req: Request) => {
       const employeeId = body.employeeId ? String(body.employeeId) : null;
       const displayName = String(body.displayName || "").trim();
 
-      if (!email || !["admin", "planner", "employee", "viewer"].includes(role)) {
+      if (!email || !["admin", "planner", "employee", "viewer", "external"].includes(role)) {
         return json({ error: "Ungültige Eingaben" }, 400);
       }
 
@@ -121,9 +147,11 @@ Deno.serve(async (req: Request) => {
       const displayName = String(body.displayName || "").trim();
       const active = body.active !== false;
 
-      if (!userId || !["admin", "planner", "employee", "viewer"].includes(role)) {
+      if (!userId || !["admin", "planner", "employee", "viewer", "external"].includes(role)) {
         return json({ error: "Ungültige Eingaben" }, 400);
       }
+
+      await validateRoleEmployee(role, employeeId);
 
       if (userId === user.id && (!active || role !== "admin")) {
         return json({ error: "Du kannst deinen eigenen Admin-Zugang hier nicht deaktivieren oder herabstufen." }, 400);
