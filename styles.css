@@ -8763,3 +8763,59 @@ body.dark-mode .vacation-count-sigma{
   background:#4db396;
   color:#10251f!important;
 }
+
+
+/* === 2026-10-02 Summen-Konfiguration erweitert === */
+.vacation-count-menu{
+  width:390px!important;
+  max-height:min(620px,calc(100vh - 110px));
+  overflow:auto;
+}
+.vacation-count-section+.vacation-count-section{
+  margin-top:10px;
+  padding-top:10px;
+  border-top:1px solid var(--line);
+}
+.vacation-count-mode{
+  margin-top:7px!important;
+  display:grid!important;
+  gap:4px!important;
+  font-size:6.8px!important;
+  color:var(--muted)!important;
+}
+.vacation-count-mode select{
+  height:29px!important;
+  min-height:29px!important;
+  padding:0 26px 0 8px!important;
+  font-size:7px!important;
+  border-radius:8px!important;
+}
+.vacation-count-option.special>b{
+  width:23px;
+  height:19px;
+  display:grid;
+  place-items:center;
+  border-radius:5px;
+  background:#edf3f1;
+  color:var(--green);
+  font-size:8px;
+  font-weight:900;
+}
+body.dark-mode .vacation-count-option.special>b{background:#20372f;color:#9de1ca}
+
+/* Zählwerte wieder an die übrige Tabellen-Typografie angleichen */
+.plan-table .summary-row td:not(.employee-col),
+.plan-table .aggregate-count-value{
+  font-size:10px!important;
+  font-weight:800!important;
+  letter-spacing:normal!important;
+}
+.plan-table .aggregate-count-row td{
+  height:34px!important;
+}
+.plan-table .aggregate-count-row .employee-col{
+  font-size:10px!important;
+}
+@media(max-width:900px){
+  .vacation-count-menu{width:min(390px,calc(100vw - 28px))!important}
+}
