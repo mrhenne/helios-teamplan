@@ -8188,3 +8188,127 @@ body.dark-mode .training-month-list-item{
 #trainingRecurrenceWeekdayField select{
   width:100%;
 }
+
+
+/* === 2026-10-02 Fokus Fortbildungen + deutlichere Personennamen === */
+body.training-focus #trainingModule{
+  grid-template-rows:auto auto minmax(0,1fr)!important;
+}
+body.training-focus .training-filter-shell,
+body.training-focus .training-hint{
+  display:none!important;
+}
+body.training-focus .training-toolbar{
+  display:flex!important;
+  flex-wrap:nowrap!important;
+  align-items:center!important;
+  gap:6px!important;
+  min-height:42px!important;
+}
+body.training-focus .training-heading,
+body.training-focus #trainingToolsToggle{
+  display:none!important;
+}
+body.training-focus .training-year-nav{
+  flex:0 0 auto;
+}
+body.training-focus .training-view-switch{
+  flex:1 1 auto;
+  min-width:0;
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+body.training-focus .training-view-switch::-webkit-scrollbar{display:none}
+body.training-focus .training-view-switch .segment{
+  flex:0 0 auto;
+  white-space:nowrap;
+}
+body.training-focus #trainingToolsPanel{
+  display:flex!important;
+  min-height:38px!important;
+  padding:4px 7px!important;
+  margin:0!important;
+  border-radius:10px!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:5px!important;
+  overflow:visible!important;
+}
+body.training-focus #trainingToolsPanel .training-tools-group{
+  border:0!important;
+  padding:0!important;
+  min-height:0!important;
+}
+body.training-focus #trainingToolsPanel .training-tools-label,
+body.training-focus #trainingToolsPanel .training-manager-action{
+  display:none!important;
+}
+body.training-focus #trainingToolsPanel .training-tools-group:first-child{
+  display:flex!important;
+  align-items:center!important;
+  gap:5px!important;
+}
+body.training-focus #trainingOverviewView{
+  grid-template-rows:auto auto minmax(0,1fr)!important;
+  min-height:0!important;
+}
+body.training-focus #trainingOverviewView .training-status-dropzones{
+  margin:0!important;
+}
+body.training-focus #trainingOverviewView .training-metrics{
+  margin:0!important;
+}
+body.training-focus .training-content-grid{
+  min-height:0!important;
+  height:100%!important;
+  align-items:stretch!important;
+}
+body.training-focus .training-panel{
+  overflow:hidden!important;
+}
+body.training-focus .training-list{
+  overflow:auto!important;
+  min-height:0!important;
+}
+@media(max-width:900px){
+  body.training-focus .training-toolbar{flex-wrap:wrap!important}
+  body.training-focus .training-view-switch{order:3;flex-basis:100%}
+  body.training-focus #trainingModule{grid-template-rows:auto auto minmax(0,1fr)!important}
+}
+
+/* Personennamen bewusst eine Stufe kräftiger als Begleittext */
+.employee-name,
+.training-employee-head strong,
+.training-my-employee strong,
+.training-teamstatus-person>div>strong,
+.project-member-main>span,
+.training-month-item>span,
+.training-classic-table td:first-child{
+  font-weight:800!important;
+}
+.training-entry-main>span,
+.training-month-list-item small{
+  font-weight:650;
+}
+
+/* Serienvorgaben im Fortbildungskatalog */
+.training-type-series-toggle{
+  padding:7px 8px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:rgba(237,244,241,.66);
+}
+.training-type-series-toggle input{
+  width:14px!important;
+  height:14px!important;
+  min-height:0!important;
+}
+#trainingTypeSeriesIntervalField{position:relative}
+#trainingTypeSeriesIntervalField small{
+  position:absolute;
+  right:8px;
+  bottom:8px;
+  font-size:6px;
+  color:var(--muted);
+}
+body.dark-mode .training-type-series-toggle{background:#172723}
