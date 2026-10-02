@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261002-18" />
+  <link rel="stylesheet" href="styles.css?v=20261002-19" />
   <link rel="stylesheet" href="header.css?v=20261002-3" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -967,7 +967,7 @@
 
   <dialog id="conflictsDialog" class="dialog glass-solid wide-dialog">
     <div class="dialog-panel">
-      <div class="dialog-head"><div><span class="eyebrow">PLANUNGSPRÜFUNG</span><h2>Konflikte & offene Punkte</h2></div><button type="button" class="icon-btn close-dialog">×</button></div>
+      <div class="dialog-head"><div><span class="eyebrow">PLANUNGSPRÜFUNG</span><h2>Konflikte & offene Punkte</h2><p>Prüfen, filtern und mehrere Planeinträge direkt gemeinsam bearbeiten.</p></div><button type="button" class="icon-btn close-dialog">×</button></div>
       <div id="conflictsSummary" class="conflict-summary"></div>
       <div class="conflict-tools">
         <div class="segmented conflict-type-filter" aria-label="Konfliktart filtern">
@@ -978,10 +978,25 @@
         </div>
         <label class="conflict-sort-label">Sortierung
           <select id="conflictSort">
-            <option value="type">nach Art</option>
+            <option value="type">nach Thema</option>
             <option value="date">nach Datum</option>
           </select>
         </label>
+      </div>
+      <div class="conflict-bulkbar">
+        <label class="conflict-select-all"><input id="conflictSelectVisible" type="checkbox"> <span>Alle im aktuellen Thema</span></label>
+        <strong id="conflictSelectedCount">0 ausgewählt</strong>
+        <div class="spacer"></div>
+        <label class="conflict-bulk-status">Status
+          <select id="conflictBulkStatus">
+            <option value="approved">Genehmigt</option>
+            <option value="preliminary" selected>Vorläufig</option>
+            <option value="wish">Wunsch</option>
+            <option value="rejected">Abgelehnt</option>
+          </select>
+        </label>
+        <button id="conflictSelectionClear" type="button" class="btn ghost" disabled>Auswahl löschen</button>
+        <button id="conflictBulkApply" type="button" class="btn primary" disabled>Auf Auswahl anwenden</button>
       </div>
       <div id="conflictsList" class="management-list conflict-list"></div>
     </div>
@@ -1199,6 +1214,6 @@
       }, true);
     })();
   </script>
-  <script src="app.js?v=20261002-17"></script>
+  <script src="app.js?v=20261002-19"></script>
 </body>
 </html>
