@@ -143,12 +143,15 @@ function normalizeState(s){
 function authConfigured(){const c=window.TEAMPLAN_CONFIG||{};return !!(c.supabaseUrl&&c.supabaseAnonKey&&window.supabase)}
 function persist(){
   state.updatedAt=new Date().toISOString(); localStorage.setItem('helios-teamplan-v1',JSON.stringify(state));
-  if(!isApplyingRemote && supabaseClient && sessionRole!=='employee' && sessionRole!=='viewer'){clearTimeout(syncTimer);syncTimer=setTimeout(pushRemote,350)}
+  if(!isApplyingRemote && supabaseClient && canManage()){clearTimeout(syncTimer);syncTimer=setTimeout(pushRemote,350)}
 }
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+function roleLabel(role=sessionRole){
+  return role==='admin'?'Admin':role==='planner'?'Planer':role==='employee'?'Mitarbeiter':role==='external'?'Externer Projektmitarbeiter':'Nur Lesen';
+}
 function actorName(){
-  if(sessionRole==='employee') return state.employees.find(e=>e.id===sessionEmployeeId)?.name || 'Mitarbeiter';
-  return sessionRole==='admin'?'Admin':sessionRole==='planner'?'Planer':'Nur Lesen';
+  if(sessionRole==='employee'||sessionRole==='external') return state.employees.find(e=>e.id===sessionEmployeeId)?.name || (sessionRole==='external'?'Externe Person':'Mitarbeiter');
+  return roleLabel(sessionRole);
 }
 function teamEmployees(){return state.employees.filter(e=>!e.external)}
 function externalEmployees(){return state.employees.filter(e=>!!e.external)}
@@ -1457,7 +1460,12 @@ function renderRoleControls(){
   emp.classList.toggle('hidden',authMode||sessionRole!=='employee');
   const pill=document.getElementById('authUserPill'),logout=document.getElementById('logoutBtn'),onlinePill=document.getElementById('onlinePill');
   pill.classList.toggle('hidden',!authMode);logout.classList.toggle('hidden',!authMode);if(onlinePill)onlinePill.classList.toggle('hidden',!authMode);
-  if(authMode)pill.textContent='Angemeldet: '+(authUser.email||'Benutzer')+' · '+sessionRole;
+  if(authMode)pill.textContent='Angemeldet: '+(authUser.email||'Benutzer')+' · '+roleLabel(sessionRole);
+  const externalAccess=sessionRole==='external';
+  document.getElementById('moduleVacationBtn')?.classList.toggle('hidden',externalAccess);
+  document.getElementById('moduleTrainingBtn')?.classList.toggle('hidden',externalAccess);
+  document.getElementById('moduleProjectsBtn')?.classList.remove('hidden');
+  if(externalAccess&&currentModule!=='projects'){currentModule='projects';localStorage.setItem('teamplan-module','projects')}
   ['blackoutsBtn','addEmployeeBtn','importNamesBtn','planImportBtn'].forEach(id=>{const el=document.getElementById(id);if(el){el.disabled=!canManage();el.classList.toggle('hidden',!canManage())}});
   document.querySelectorAll('.manager-only').forEach(el=>el.classList.toggle('hidden',!canManage()));
   document.getElementById('settingsBtn').disabled=false;
@@ -1473,12 +1481,23 @@ async function invokeUserAdmin(body){
   const {data,error}=await supabaseClient.functions.invoke('teamplan-users',{body:{teamId:(window.TEAMPLAN_CONFIG||{}).teamId,...body}});
   if(error)throw error;if(data?.error)throw new Error(data.error);return data;
 }
-function employeeOptions(selected=''){
-  return '<option value="">Keine Verknüpfung</option>'+[...teamEmployees()].sort((a,b)=>a.order-b.order).map(e=>`<option value="${e.id}" ${e.id===selected?'selected':''}>${escapeHtml(e.name)}</option>`).join('');
+function employeeOptions(selected='',role=''){
+  const internal=[...teamEmployees()].sort((a,b)=>a.order-b.order);
+  const external=[...externalEmployees()].sort((a,b)=>a.order-b.order);
+  const showInternal=role!=='external',showExternal=role!=='employee';
+  let html='<option value="">Keine Verknüpfung</option>';
+  if(showInternal&&internal.length)html+='<optgroup label="ZNA-Team">'+internal.map(e=>'<option value="'+e.id+'" '+(e.id===selected?'selected':'')+'>'+escapeHtml(e.name)+'</option>').join('')+'</optgroup>';
+  if(showExternal&&external.length)html+='<optgroup label="Externe Personen">'+external.map(e=>'<option value="'+e.id+'" '+(e.id===selected?'selected':'')+'>'+escapeHtml(e.name)+(e.organization?' · '+escapeHtml(e.organization):'')+'</option>').join('')+'</optgroup>';
+  return html;
+}
+function syncInviteEmployeeOptions(){
+  const role=document.getElementById('inviteRole')?.value||'employee',select=document.getElementById('inviteEmployee');if(!select)return;
+  const old=select.value;select.innerHTML=employeeOptions(old,role);
+  if(![...select.options].some(o=>o.value===old))select.value='';
 }
 async function openUsersDialog(){
   if(sessionRole!=='admin'){showToast('Nur Admins dürfen Benutzer verwalten');return}
-  document.getElementById('inviteEmployee').innerHTML=employeeOptions('');
+  document.getElementById('inviteEmployee').innerHTML=employeeOptions('',document.getElementById('inviteRole')?.value||'employee');
   safeShowDialog('usersDialog');await renderUsersList();
 }
 async function renderUsersList(){
@@ -1492,14 +1511,20 @@ async function renderUsersList(){
           <option value="admin" ${m.role==='admin'?'selected':''}>Admin</option>
           <option value="planner" ${m.role==='planner'?'selected':''}>Planer</option>
           <option value="employee" ${m.role==='employee'?'selected':''}>Mitarbeiter</option>
+          <option value="external" ${m.role==='external'?'selected':''}>Externer Projektmitarbeiter</option>
           <option value="viewer" ${m.role==='viewer'?'selected':''}>Nur Lesen</option>
         </select>
-        <select class="user-employee">${employeeOptions(m.employee_id||'')}</select>
+        <select class="user-employee">${employeeOptions(m.employee_id||'',m.role)}</select>
         <button type="button" class="btn ghost user-save">Speichern</button>
         <button type="button" class="btn ${m.active?'danger':'ghost'} user-toggle">${m.active?'Deaktivieren':'Reaktivieren'}</button>
         <button type="button" class="btn danger user-delete">Löschen</button>
       </div>`).join(''):'<div class="empty-state">Noch keine Benutzer gefunden.</div>';
     list.querySelectorAll('.user-row').forEach(row=>{
+      row.querySelector('.user-role').addEventListener('change',()=>{
+        const role=row.querySelector('.user-role').value,select=row.querySelector('.user-employee'),old=select.value;
+        select.innerHTML=employeeOptions(old,role);
+        if(![...select.options].some(o=>o.value===old))select.value='';
+      });
       row.querySelector('.user-save').addEventListener('click',async()=>{
         try{await invokeUserAdmin({action:'update',userId:row.dataset.user,role:row.querySelector('.user-role').value,employeeId:row.querySelector('.user-employee').value||null,displayName:row.querySelector('.user-main strong').textContent,active:!row.querySelector('.user-toggle').textContent.includes('Reaktivieren')});showToast('Benutzer aktualisiert');await renderUsersList()}catch(err){alert(err.message)}
       });
@@ -1839,6 +1864,16 @@ async function loadAuthMembership(){
 }
 async function loadRemotePlan(){
   const cfg=window.TEAMPLAN_CONFIG||{};
+  if(sessionRole==='external'){
+    const {data,error}=await supabaseClient.rpc('get_my_project_directory',{p_team_id:cfg.teamId});
+    if(error)throw error;
+    const safe=structuredClone(defaultState);
+    safe.employees=Array.isArray(data)?data:[];
+    safe.entries={};safe.blackouts=[];safe.audit=[];
+    state=normalizeState(safe);
+    renderRoleControls();
+    return true;
+  }
   const {data,error}=await supabaseClient.from('team_plans').select('data,updated_at').eq('team_id',cfg.teamId).maybeSingle();
   if(error)throw error;
   if(data?.data){
@@ -2059,6 +2094,7 @@ function formatTrainingDateRange(t){
 function euro(n){return Number(n||0).toLocaleString('de-DE',{style:'currency',currency:'EUR'})}
 
 function switchModule(module,silent=false){
+  if(sessionRole==='external')module='projects';
   currentModule=['training','projects'].includes(module)?module:'vacation';
   localStorage.setItem('teamplan-module',currentModule);
   if(currentModule!=='vacation'&&document.body.classList.contains('planner-focus'))exitPlannerFocus();
@@ -3064,7 +3100,7 @@ function projectIsLead(projectId){
 }
 function projectCanManageProject(projectId){return projectCanManage()||projectIsLead(projectId)}
 function projectCanManageTask(task){
-  return !!task&&(projectCanManageProject(task.project_id)||(sessionRole==='employee'&&task.assignee_employee_id===(authMembership?.employee_id||sessionEmployeeId)));
+  return !!task&&(projectCanManageProject(task.project_id)||(['employee','external'].includes(sessionRole)&&task.assignee_employee_id===(authMembership?.employee_id||sessionEmployeeId)));
 }
 function currentProjectEmployeeId(){return authMembership?.employee_id||sessionEmployeeId||''}
 function projectEmployeeName(id){return state.employees.find(e=>e.id===id)?.name||'Nicht zugewiesen'}
@@ -3382,7 +3418,7 @@ function renderProjectModule(){
   if(projectView==='calendar')renderProjectCalendar();
   if(projectView==='team')renderProjectTeam();
   if(projectView==='notes')renderProjectNotes();
-  const sub=document.getElementById('projectsHeadingSub');if(sub)sub.textContent=(sessionRole==='employee'?'Meine Aufgaben':'ZNA Management')+' · '+projectProjects.length+' Projekte';
+  const sub=document.getElementById('projectsHeadingSub');if(sub)sub.textContent=(sessionRole==='external'?'Externer Projektzugang':sessionRole==='employee'?'Meine Aufgaben':'ZNA Management')+' · '+projectProjects.length+' Projekte';
   bindProjectRenderedEvents();
 }
 function setProjectView(view){projectView=view;localStorage.setItem('teamplan-project-view',view);renderProjectModule()}
@@ -3921,15 +3957,16 @@ async function completeSignedIn(user){
     }
   };
 
+  const externalAccess=sessionRole==='external';
   await Promise.allSettled([
-    safeModuleLoad('Fortbildungen',()=>retrySyncCall(()=>loadTrainingData(),'Fortbildungen',2)),
+    externalAccess?Promise.resolve():safeModuleLoad('Fortbildungen',()=>retrySyncCall(()=>loadTrainingData(),'Fortbildungen',2)),
     safeModuleLoad('Projekte',()=>retrySyncCall(()=>loadProjectData(),'Projekte',2)),
-    safeModuleLoad('Online-Status',startPresence),
-    safeModuleLoad('Team-Chat',()=>retrySyncCall(()=>startDiscussionRealtime(),'Team-Chat',2))
+    externalAccess?Promise.resolve():safeModuleLoad('Online-Status',startPresence),
+    externalAccess?Promise.resolve():safeModuleLoad('Team-Chat',()=>retrySyncCall(()=>startDiscussionRealtime(),'Team-Chat',2))
   ]);
 
   // Realtime subscriptions are non-critical and are started independently.
-  startTrainingRealtime().catch(err=>console.error('Fortbildungs-Realtime',err));
+  if(!externalAccess)startTrainingRealtime().catch(err=>console.error('Fortbildungs-Realtime',err));
   startProjectRealtime().catch(err=>console.error('Projekt-Realtime',err));
 
   setSync('live','● Live synchron');
@@ -4064,12 +4101,13 @@ document.getElementById('conflictSelectVisible')?.addEventListener('change',e=>{
 document.getElementById('conflictSelectionClear')?.addEventListener('click',()=>{selectedConflictIds.clear();renderConflicts()});
 document.getElementById('conflictBulkApply')?.addEventListener('click',applyConflictBulkStatus);
 document.addEventListener('click',e=>{const btn=e.target.closest('[data-tool-action]');if(btn){e.preventDefault();runToolAction(btn.dataset.toolAction)}});
+document.getElementById('inviteRole')?.addEventListener('change',syncInviteEmployeeOptions);
 document.getElementById('userInviteForm')?.addEventListener('submit',async e=>{
   e.preventDefault();
   const resultBox=document.getElementById('inviteResult');resultBox.classList.add('hidden');resultBox.innerHTML='';
   try{
     const data=await invokeUserAdmin({action:'invite',email:document.getElementById('inviteEmail').value.trim(),displayName:document.getElementById('inviteName').value.trim(),role:document.getElementById('inviteRole').value,employeeId:document.getElementById('inviteEmployee').value||null});
-    e.target.reset();document.getElementById('inviteEmployee').innerHTML=employeeOptions('');
+    e.target.reset();syncInviteEmployeeOptions();
     if(data.delivery==='link'&&data.inviteLink){
       resultBox.innerHTML='<strong>Einladungslink erstellt</strong><span>Schicke diesen einmaligen TeamPlan-Link an den Kollegen. Beim Öffnen wird der Account bestätigt und direkt bei TeamPlan angemeldet.</span><div class="invite-link-row"><input id="generatedInviteLink" readonly value="'+escapeHtml(data.inviteLink)+'"><button type="button" id="copyInviteLink" class="btn primary">Link kopieren</button></div>';
       resultBox.classList.remove('hidden');
