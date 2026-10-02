@@ -1956,7 +1956,11 @@ function trainingItemsForMonth(items,year,month){
 function renderTrainingCalendar(items){
   const box=document.getElementById('trainingYearCalendar');if(!box)return;
   const undated=items.filter(t=>t.date_precision==='year'&&Number(t.training_year)===Number(trainingYear));
-  const undatedHtml=undated.length?'<article class="training-undated glass"><div class="training-month-head"><strong>Termin noch offen</strong><span>'+undated.length+'</span></div><div class="training-month-items">'+undated.map(t=>'<button type="button" class="training-month-item undated '+t.status+(t._virtual?' virtual':'')+'" style="--training-color:'+escapeHtml(trainingColor(t))+'" data-training-id="'+(t._sourceId||t.id)+'" data-training-virtual="'+(t._virtual?'1':'0')+'" '+(trainingCanManage()&&!t._virtual?'draggable="true"':'')+'><b>'+escapeHtml(t.title)+(trainingRecurrenceLabel(t)?' <span class="training-repeat-inline">↻</span>':'')+'</b><span>'+escapeHtml(trainingEmployeeName(t.employee_id))+'</span><small>im Jahr '+escapeHtml(String(t.training_year))+(trainingRecurrenceLabel(t)?' · '+escapeHtml(trainingRecurrenceLabel(t)):'')+'</small></button>').join('')+'</div></article>':'';
+  const undatedCollapsed=localStorage.getItem('teamplan-training-undated-collapsed')==='1';
+  const undatedHtml=undated.length?'<article class="training-undated glass '+(undatedCollapsed?'collapsed':'')+'"><button type="button" class="training-undated-toggle" data-training-undated-toggle aria-expanded="'+(!undatedCollapsed)+'"><span><strong>Termin noch offen</strong><small>Fortbildungen ohne konkretes Datum</small></span><span class="training-undated-toggle-meta"><b>'+undated.length+'</b><i aria-hidden="true">⌄</i></span></button><div class="training-month-items">'+undated.map(t=>{
+    const rec=trainingRecurrenceLabel(t);
+    return '<button type="button" class="training-month-item undated compact '+t.status+(t._virtual?' virtual':'')+'" style="--training-color:'+escapeHtml(trainingColor(t))+'" data-training-id="'+(t._sourceId||t.id)+'" data-training-virtual="'+(t._virtual?'1':'0')+'" '+(trainingCanManage()&&!t._virtual?'draggable="true"':'')+'><i class="training-undated-color"></i><span class="training-undated-main"><b>'+escapeHtml(t.title)+(rec?' <span class="training-repeat-inline">↻</span>':'')+'</b><small><strong>'+escapeHtml(trainingEmployeeName(t.employee_id))+'</strong>'+(rec?' · '+escapeHtml(rec):'')+'</small></span><span class="training-undated-year">'+escapeHtml(String(t.training_year))+'</span></button>';
+  }).join('')+'</div></article>':'';
   box.innerHTML=undatedHtml+MONTHS.map((month,m)=>{
     const monthItems=trainingItemsForMonth(items,trainingYear,m);
     const programItems=monthItems.filter(trainingIsLongProgram);
@@ -2286,6 +2290,13 @@ async function exportTrainingJson(){
   await saveExportFile('TeamPlan_Fortbildungen_'+trainingYear+'.json',JSON.stringify(rows,null,2),'application/json','JSON-Datei',['.json']);
 }
 function bindTrainingRenderedEvents(){
+  document.querySelector('[data-training-undated-toggle]')?.addEventListener('click',()=>{
+    const card=document.querySelector('.training-undated');if(!card)return;
+    const collapsed=!card.classList.contains('collapsed');
+    card.classList.toggle('collapsed',collapsed);
+    localStorage.setItem('teamplan-training-undated-collapsed',collapsed?'1':'0');
+    document.querySelector('[data-training-undated-toggle]')?.setAttribute('aria-expanded',String(!collapsed));
+  });
   if(trainingCanManage())document.querySelectorAll('[data-training-id]:not(.training-day)').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();openTraining(el.dataset.trainingId)}));
   if(trainingCanManage())document.querySelectorAll('.training-day[data-date]').forEach(day=>day.addEventListener('click',e=>{
     if(day.classList.contains('blank'))return;
