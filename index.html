@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261002-16" />
+  <link rel="stylesheet" href="styles.css?v=20261002-17" />
   <link rel="stylesheet" href="header.css?v=20261002-3" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -125,9 +125,21 @@
     <div class="vacation-count-control">
       <button id="vacationCountToggle" class="btn ghost view-tool-btn icon-label-btn vacation-count-toggle" type="button" aria-expanded="false" title="Festlegen, welche Kürzel in der Gesamtsumme gezählt werden"><span class="vacation-count-sigma">Σ</span><span id="vacationCountLabel">Summen konfigurieren</span></button>
       <div id="vacationCountMenu" class="vacation-count-menu hidden">
-        <div class="vacation-count-head"><div><strong>Gesamtsumme</strong><small>Welche Kürzel zählen gemeinsam?</small></div><div><button id="vacationCountAllBtn" type="button">Alle</button><button id="vacationCountNoneBtn" type="button">Keine</button></div></div>
-        <div id="vacationCountCodes" class="vacation-count-codes"></div>
-        <p>Jeder Mitarbeiter wird pro Tag nur einmal gezählt, auch wenn mehrere ausgewählte Kürzel eingetragen sind.</p>
+        <section class="vacation-count-section">
+          <div class="vacation-count-head"><div><strong>Gesamtsumme</strong><small>Welche Kürzel fließen in Σ Gesamt ein?</small></div><div><button id="vacationCountAllBtn" type="button">Alle</button><button id="vacationCountNoneBtn" type="button">Keine</button></div></div>
+          <div id="vacationCountCodes" class="vacation-count-codes"></div>
+          <label class="vacation-count-mode">Zählweise
+            <select id="vacationCountMode">
+              <option value="people">Mitarbeiter pro Tag nur einmal zählen</option>
+              <option value="entries">Jedes ausgewählte Kürzel einzeln zählen</option>
+            </select>
+          </label>
+        </section>
+        <section class="vacation-count-section">
+          <div class="vacation-count-head"><div><strong>Sichtbare Zählzeilen</strong><small>Welche Auswertungen stehen unten im Plan?</small></div><div><button id="vacationCountRowsAllBtn" type="button">Alle</button><button id="vacationCountRowsStandardBtn" type="button">Standard</button></div></div>
+          <div id="vacationCountRows" class="vacation-count-codes"></div>
+        </section>
+        <p>Damit kannst du Gesamtsumme und sichtbare Einzelzählungen unabhängig voneinander konfigurieren.</p>
       </div>
     </div>
     <div class="employee-info-control">
@@ -1187,6 +1199,6 @@
       }, true);
     })();
   </script>
-  <script src="app.js?v=20261002-15"></script>
+  <script src="app.js?v=20261002-17"></script>
 </body>
 </html>
