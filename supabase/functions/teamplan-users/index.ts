@@ -56,8 +56,6 @@ Deno.serve(async (req: Request) => {
         .order("created_at", { ascending: true });
       if (error) throw error;
 
-      await validateRoleEmployee(role, employeeId);
-
       const { data: usersData, error: usersErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
       if (usersErr) throw usersErr;
 
@@ -98,6 +96,8 @@ Deno.serve(async (req: Request) => {
       if (!email || !["admin", "planner", "employee", "viewer", "external"].includes(role)) {
         return json({ error: "Ungültige Eingaben" }, 400);
       }
+
+      await validateRoleEmployee(role, employeeId);
 
       const { data: usersData, error: usersErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
       if (usersErr) throw usersErr;
