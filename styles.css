@@ -8579,3 +8579,147 @@ body.dark-mode.vacation-crosshair-enabled #planner .day-cell.crosshair-intersect
   background:#245244!important;
   outline-color:#70ccb0!important;
 }
+
+
+/* === 2026-10-02 frei konfigurierbare Zählung im Urlaubsplaner === */
+.vacation-count-control{
+  position:relative;
+  display:inline-flex;
+}
+#vacationCountToggle{
+  max-width:190px;
+}
+#vacationCountLabel{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.vacation-count-menu{
+  position:absolute;
+  z-index:65;
+  top:34px;
+  right:0;
+  width:285px;
+  padding:10px;
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:rgba(251,253,252,.99);
+  box-shadow:0 14px 34px rgba(16,52,44,.17);
+}
+.vacation-count-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:8px;
+  padding-bottom:7px;
+  border-bottom:1px solid var(--line);
+}
+.vacation-count-head strong{display:block;font-size:8.5px}
+.vacation-count-head small{display:block;margin-top:2px;font-size:6.5px;color:var(--muted)}
+.vacation-count-head>div:last-child{display:flex;gap:3px}
+.vacation-count-head button{
+  min-height:23px;
+  padding:0 6px;
+  border:1px solid var(--line);
+  border-radius:6px;
+  background:rgba(255,255,255,.72);
+  color:var(--ink);
+  font:inherit;
+  font-size:6.5px;
+  font-weight:800;
+  cursor:pointer;
+}
+.vacation-count-codes{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:3px;
+  margin-top:7px;
+}
+.vacation-count-option{
+  min-width:0;
+  min-height:29px;
+  padding:3px 5px;
+  border-radius:7px;
+  display:flex!important;
+  grid-template-columns:none!important;
+  align-items:center;
+  gap:5px;
+  font-size:7px!important;
+  font-weight:750!important;
+  cursor:pointer;
+}
+.vacation-count-option:hover{background:rgba(226,239,235,.64)}
+.vacation-count-option input{
+  width:13px!important;
+  height:13px!important;
+  min-height:0!important;
+  padding:0!important;
+  margin:0!important;
+}
+.vacation-count-option .chip{
+  min-width:23px!important;
+  height:19px!important;
+  font-size:7px!important;
+}
+.vacation-count-option>span{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.vacation-count-menu>p{
+  margin:7px 0 0;
+  padding-top:6px;
+  border-top:1px solid var(--line);
+  color:var(--muted);
+  font-size:6.2px;
+  line-height:1.35;
+}
+body.dark-mode .vacation-count-menu{
+  background:#172723;
+  border-color:rgba(200,235,226,.12);
+}
+body.dark-mode .vacation-count-head button{
+  background:#20372f;
+  color:#e7f0ed;
+  border-color:rgba(200,235,226,.12);
+}
+body.dark-mode .vacation-count-option:hover{background:#20372f}
+
+/* Zahlen in den Summenzeilen klarer erfassbar */
+.plan-table .summary-row td:not(.employee-col){
+  font-size:12px!important;
+  font-weight:900!important;
+  letter-spacing:.01em;
+}
+.plan-table .aggregate-count-row td{
+  height:39px!important;
+}
+.plan-table .aggregate-count-row .employee-col{
+  font-size:10.5px!important;
+  color:var(--ink)!important;
+  font-weight:900!important;
+  background:rgba(227,240,236,.98)!important;
+}
+.plan-table .aggregate-count-value{
+  font-size:13px!important;
+  font-weight:950!important;
+  background:rgba(227,240,236,.98)!important;
+  color:#176e58!important;
+}
+body.dark-mode .plan-table .aggregate-count-row .employee-col,
+body.dark-mode .plan-table .aggregate-count-value{
+  background:#193129!important;
+  color:#9de1ca!important;
+}
+
+@media(max-width:900px){
+  #vacationToolbar .vacation-count-control{
+    width:100%!important;
+  }
+  #vacationToolbar #vacationCountToggle{
+    width:100%!important;
+    max-width:none!important;
+  }
+  .vacation-count-menu{left:0;right:auto;width:min(285px,calc(100vw - 28px))}
+}
