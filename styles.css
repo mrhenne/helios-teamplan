@@ -8723,3 +8723,43 @@ body.dark-mode .plan-table .aggregate-count-value{
   }
   .vacation-count-menu{left:0;right:auto;width:min(285px,calc(100vw - 28px))}
 }
+
+
+/* === 2026-10-02 Summen-Konfiguration sichtbarer platzieren === */
+#vacationToolbar .vacation-count-toggle{
+  min-width:132px!important;
+  background:rgba(0,107,91,.085)!important;
+  border-color:rgba(0,107,91,.22)!important;
+  color:var(--green)!important;
+  font-weight:850!important;
+}
+#vacationToolbar .vacation-count-toggle:hover{
+  background:rgba(0,107,91,.14)!important;
+  border-color:rgba(0,107,91,.32)!important;
+}
+.vacation-count-sigma{
+  width:18px;
+  height:18px;
+  display:grid!important;
+  place-items:center;
+  border-radius:6px;
+  background:var(--green);
+  color:#fff!important;
+  font-size:10px!important;
+  font-weight:950!important;
+  line-height:1;
+  flex:0 0 18px;
+}
+#vacationToolbar .vacation-count-toggle #vacationCountLabel{
+  font-size:7.5px!important;
+  font-weight:850!important;
+}
+body.dark-mode #vacationToolbar .vacation-count-toggle{
+  background:#1c3d34!important;
+  border-color:rgba(157,225,202,.22)!important;
+  color:#9de1ca!important;
+}
+body.dark-mode .vacation-count-sigma{
+  background:#4db396;
+  color:#10251f!important;
+}
