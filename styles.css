@@ -9110,3 +9110,33 @@ body.dark-mode .conflict-date{background:#20332e;color:#e7f0ed}
   .conflict-card{grid-template-columns:22px 43px minmax(0,1fr)}
   .conflict-card-actions{grid-column:2/-1;justify-content:flex-end}
 }
+
+
+/* === 2026-10-02 Externe Projektmitarbeitende === */
+.employee-type-box{display:grid;gap:7px;margin-bottom:10px;padding:9px 10px;border:1px solid var(--line);border-radius:11px;background:rgba(240,246,244,.7)}
+.employee-external-toggle{margin-top:0!important;color:var(--ink)!important}
+.employee-type-box>small{color:var(--muted);font-size:7px;line-height:1.4}
+body.dark-mode .employee-type-box{background:#14241f;border-color:rgba(200,235,226,.12)}
+
+.external-visibility-control{height:28px;min-height:28px;padding:0 8px;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.72);display:inline-flex!important;grid-template-columns:none!important;align-items:center;gap:5px!important;font-size:7.5px!important;font-weight:800!important;color:var(--ink)!important;cursor:pointer;white-space:nowrap}
+.external-visibility-control input{width:13px!important;height:13px!important;min-height:0!important;padding:0!important;margin:0!important}
+body.dark-mode .external-visibility-control{background:#172723;border-color:rgba(200,235,226,.12);color:#e7f0ed!important}
+
+.external-employee-row>.employee-cell{background:#f7f3eb!important}
+.external-employee-row .employee-card{opacity:.92}
+.external-badge{display:inline-flex;align-items:center;min-height:15px;margin-left:5px;padding:0 5px;border-radius:999px;background:#f1e4ca;color:#8a641a;font-size:5.6px;font-weight:900;vertical-align:middle}
+.external-org{color:#8a6b38!important;font-weight:750!important}
+.external-day-cell{cursor:not-allowed!important;opacity:.48;background-image:repeating-linear-gradient(135deg,rgba(138,100,26,.045) 0 4px,transparent 4px 8px)!important}
+.external-day-cell:hover{background-color:inherit!important}
+body.dark-mode .external-employee-row>.employee-cell{background:#2b291f!important}
+body.dark-mode .external-badge{background:#4a4026;color:#f0cf78}
+body.dark-mode .external-org{color:#d4bc7c!important}
+
+.project-external-toggle{margin-left:auto;min-height:27px;display:flex!important;grid-template-columns:none!important;align-items:center;gap:5px!important;font-size:7px!important;font-weight:800!important;color:var(--muted)!important;cursor:pointer}
+.project-external-toggle input{width:13px!important;height:13px!important;min-height:0!important;padding:0!important;margin:0!important}
+.project-member-row.external{background:rgba(251,247,238,.82);border-color:rgba(161,126,58,.16)}
+.project-member-external-meta{display:block;margin-top:2px;color:#8a6b38;font-size:5.8px;font-weight:650}
+.project-member-external-meta b{display:inline-flex;padding:1px 4px;border-radius:999px;background:#f1e4ca;color:#8a641a;font-size:5.4px;font-weight:900}
+body.dark-mode .project-member-row.external{background:#2b291f;border-color:#51472c}
+body.dark-mode .project-member-external-meta{color:#d4bc7c}
+body.dark-mode .project-member-external-meta b{background:#4a4026;color:#f0cf78}
