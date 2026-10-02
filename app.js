@@ -1978,7 +1978,7 @@ function renderTrainingCalendar(items){
       const quickTitle=(matches.length?titles+' · ':'')+'Klicken: Fortbildung am '+new Date(key+'T12:00:00').toLocaleDateString('de-DE')+' planen';
       cells+='<button type="button" class="training-day training-day-quick '+(matches.length?'has-training '+statusClass:'')+'" data-date="'+key+'" title="'+escapeHtml(quickTitle)+'" aria-label="'+escapeHtml('Fortbildung am '+new Date(key+'T12:00:00').toLocaleDateString('de-DE')+' planen')+'"'+colorStyle+dragAttrs+'><span>'+day+'</span>'+(matches.length?'<b>'+matches.length+'</b>':'')+'</button>';
     }
-    return '<article class="training-month training-calendar-month glass"><div class="training-month-head"><strong>'+month+'</strong><span>'+monthItems.length+' · '+escapeHtml(euro(cost))+'</span></div>'+programHtml+'<div class="training-weekdays"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div><div class="training-day-grid">'+cells+'</div></article>';
+    return '<article class="training-month training-calendar-month glass"><div class="training-month-head"><strong>'+month+'</strong><span>'+monthItems.length+' · '+escapeHtml(euro(cost))+'</span></div>'+monthListHtml+'<div class="training-weekdays"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div><div class="training-day-grid">'+cells+'</div></article>';
   }).join('');
 }
 function trainingItemsForEmployeeYear(empId,year){
