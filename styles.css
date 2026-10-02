@@ -8457,3 +8457,125 @@ body.dark-mode .training-undated-year{background:#243746;color:#afc7dd!important
 @media(max-width:600px){
   .training-undated .training-month-items{grid-template-columns:1fr!important}
 }
+
+
+/* === 2026-10-02 Urlaubsplanung: frei wählbare Kürzelfarben === */
+:root{
+  --code-u-bg:#dfeee9;--code-u-fg:#076554;
+  --code-x-bg:#e9eef1;--code-x-fg:#536971;
+  --code-xu-bg:#f7e5d8;--code-xu-fg:#a35220;
+  --code-s-bg:#e7e5f4;--code-s-fg:#66529d;
+  --code-g-bg:#f7e2e5;--code-g-fg:#a43e49;
+}
+.u{background:var(--code-u-bg)!important;color:var(--code-u-fg)!important}
+.x{background:var(--code-x-bg)!important;color:var(--code-x-fg)!important}
+.xu{background:var(--code-xu-bg)!important;color:var(--code-xu-fg)!important}
+.s{background:var(--code-s-bg)!important;color:var(--code-s-fg)!important}
+.g{background:var(--code-g-bg)!important;color:var(--code-g-fg)!important}
+.context-code.u b{background:var(--code-u-bg)!important;color:var(--code-u-fg)!important}
+.context-code.x b{background:var(--code-x-bg)!important;color:var(--code-x-fg)!important}
+.context-code.xu b{background:var(--code-xu-bg)!important;color:var(--code-xu-fg)!important}
+.context-code.s b{background:var(--code-s-bg)!important;color:var(--code-s-fg)!important}
+.context-code.g b{background:var(--code-g-bg)!important;color:var(--code-g-fg)!important}
+
+.base-code-color-grid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(105px,1fr));
+  gap:7px;
+  margin-top:4px;
+}
+.base-code-color-grid label{
+  min-width:0;
+  padding:7px 8px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:rgba(245,249,247,.72);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:7px;
+}
+.base-code-color-grid label>span{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:7.5px;
+  font-weight:800;
+  white-space:nowrap;
+}
+.base-code-color-grid input[type="color"]{
+  width:30px!important;
+  min-width:30px!important;
+  height:26px!important;
+  min-height:26px!important;
+  padding:2px!important;
+  border-radius:7px!important;
+  cursor:pointer;
+}
+.settings-inline-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:6px;
+  margin-top:8px;
+}
+body.dark-mode .base-code-color-grid label{background:#172723}
+@media(max-width:800px){
+  .base-code-color-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+/* === 2026-10-02 Urlaubsplanung: Navigations-Fadenkreuz === */
+.crosshair-toggle.active{
+  background:#dff1eb!important;
+  border-color:rgba(0,107,91,.26)!important;
+  color:var(--green)!important;
+  box-shadow:inset 0 0 0 1px rgba(0,107,91,.08)!important;
+}
+body.dark-mode .crosshair-toggle.active{
+  background:#1d4438!important;
+  color:#9de1ca!important;
+  border-color:rgba(157,225,202,.22)!important;
+}
+.vacation-crosshair-enabled #planner .employee-row.crosshair-row-active>.day-cell{
+  background-color:rgba(15,139,120,.075)!important;
+}
+.vacation-crosshair-enabled #planner .employee-row.crosshair-row-active>.employee-cell{
+  background:rgba(15,139,120,.12)!important;
+  box-shadow:inset 3px 0 0 rgba(15,139,120,.62)!important;
+}
+.vacation-crosshair-enabled #planner .crosshair-col-active{
+  background-color:rgba(62,132,181,.09)!important;
+}
+.vacation-crosshair-enabled #planner .date-head.crosshair-col-active{
+  background:rgba(213,232,245,.98)!important;
+  color:#315f88!important;
+  box-shadow:inset 0 -3px 0 rgba(49,95,136,.42)!important;
+}
+.vacation-crosshair-enabled #planner .summary-row td.crosshair-col-active{
+  background:rgba(220,235,246,.96)!important;
+  color:#315f88!important;
+}
+.vacation-crosshair-enabled #planner .day-cell.crosshair-intersection{
+  background:rgba(191,229,216,.94)!important;
+  outline:2px solid rgba(0,107,91,.62)!important;
+  outline-offset:-2px!important;
+  z-index:3;
+}
+body.dark-mode.vacation-crosshair-enabled #planner .employee-row.crosshair-row-active>.day-cell{
+  background-color:rgba(77,179,150,.075)!important;
+}
+body.dark-mode.vacation-crosshair-enabled #planner .employee-row.crosshair-row-active>.employee-cell{
+  background:#1c3b32!important;
+}
+body.dark-mode.vacation-crosshair-enabled #planner .crosshair-col-active{
+  background-color:rgba(79,137,184,.12)!important;
+}
+body.dark-mode.vacation-crosshair-enabled #planner .date-head.crosshair-col-active,
+body.dark-mode.vacation-crosshair-enabled #planner .summary-row td.crosshair-col-active{
+  background:#22394b!important;
+  color:#b8d3e8!important;
+}
+body.dark-mode.vacation-crosshair-enabled #planner .day-cell.crosshair-intersection{
+  background:#245244!important;
+  outline-color:#70ccb0!important;
+}
