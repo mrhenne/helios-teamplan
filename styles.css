@@ -7838,3 +7838,12 @@ body.dark-mode .projects-heading::before{
   background:linear-gradient(180deg,#ffc36f,#d8891c);
   box-shadow:0 0 0 3px rgba(216,137,28,.12);
 }
+
+
+/* === 2026-10-02 Project module outer accent === */
+body.projects-module-active .projects-toolbar{
+  box-shadow:inset 3px 0 0 var(--project-accent),var(--shadow)!important;
+}
+body.dark-mode.projects-module-active .projects-toolbar{
+  box-shadow:inset 3px 0 0 #d8891c,var(--shadow)!important;
+}
