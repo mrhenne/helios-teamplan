@@ -69,6 +69,7 @@
               <option value="admin">Admin</option>
               <option value="planner">Planer</option>
               <option value="employee">Mitarbeiter</option>
+              <option value="external">Externer Projektmitarbeiter</option>
               <option value="viewer">Nur Lesen</option>
             </select>
             <select id="roleEmployeeSelect" class="role-select hidden" title="Mitarbeiter auswählen"></select>
@@ -1016,6 +1017,7 @@
         <article><strong>Admin</strong><p>Voller Zugriff: Mitarbeiter, Rollen, Urlaub, Genehmigungen, Sperrzeiten, Einstellungen, Importe, Exporte und Löschungen.</p></article>
         <article><strong>Planer</strong><p>Darf planen, Wünsche genehmigen oder ablehnen, Mitarbeiter-Stammdaten bearbeiten, Sperrzeiten verwalten und Exporte erstellen. Rollen und endgültige Löschungen bleiben beim Admin.</p></article>
         <article><strong>Mitarbeiter</strong><p>Darf ausschließlich die eigene Planung bearbeiten und Urlaubswünsche eintragen. Neue Einträge erhalten automatisch den Status „Wunsch“. Keine Genehmigung fremder Wünsche.</p></article>
+        <article><strong>Externer Projektmitarbeiter</strong><p>Sieht ausschließlich Projekte, denen die externe Person zugeordnet ist, sowie zugehörige Aufgaben. Eigene Aufgaben können bearbeitet und kommentiert werden. Kein Zugriff auf Urlaubsplanung, Fortbildungen oder Teamverwaltung.</p></article>
         <article><strong>Nur Lesen</strong><p>Kann den Plan, Konflikte, Jahresübersicht und Exporte ansehen, aber keine Planung oder Stammdaten verändern.</p></article>
       </div>
       <div class="role-security-note"><strong>Wichtig:</strong> Diese Rollen sind aktuell Bedienrechte in der Web-App. Für echte Zugriffssicherheit mit persönlichen Benutzerkonten brauchen wir später Login + serverseitige Rechte über Supabase Auth/RLS.</div>
@@ -1029,7 +1031,7 @@
         <div class="form-grid two">
           <label>E-Mail<input id="inviteEmail" type="email" required placeholder="name@beispiel.de"></label>
           <label>Anzeigename<input id="inviteName" placeholder="Vorname Nachname"></label>
-          <label>Rolle<select id="inviteRole"><option value="employee">Mitarbeiter</option><option value="planner">Planer</option><option value="viewer">Nur Lesen</option><option value="admin">Admin</option></select></label>
+          <label>Rolle<select id="inviteRole"><option value="employee">Mitarbeiter</option><option value="external">Externer Projektmitarbeiter</option><option value="planner">Planer</option><option value="viewer">Nur Lesen</option><option value="admin">Admin</option></select></label>
           <label>Mitarbeiter verknüpfen<select id="inviteEmployee"><option value="">Keine Verknüpfung</option></select></label>
         </div>
         <button type="submit" class="btn primary">Einladung senden</button>
@@ -1221,6 +1223,6 @@
       }, true);
     })();
   </script>
-  <script src="app.js?v=20261002-20"></script>
+  <script src="app.js?v=20261002-21"></script>
 </body>
 </html>
