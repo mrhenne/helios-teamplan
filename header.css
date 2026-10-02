@@ -24,10 +24,16 @@
   display:flex!important;
   align-items:center!important;
   justify-content:flex-start!important;
-  margin:0!important;
-  padding:0!important;
+  flex:0 0 auto!important;
   width:auto!important;
   min-width:0!important;
+  max-width:none!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:visible!important;
 }
 .topbar-left-zone .zna-core-logo{
   display:block!important;
@@ -41,11 +47,16 @@
   float:none!important;
   display:flex!important;
   flex-direction:row!important;
+  flex:0 0 auto!important;
   width:100%!important;
   max-width:600px!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
   margin:0!important;
   transform:none!important;
   align-self:flex-start!important;
+  overflow:visible!important;
 }
 .topbar-left-zone .topbar-module-switch .module-tab{
   flex:1 1 0!important;
@@ -65,6 +76,7 @@
 .topbar-right-zone .topbar-session,
 .topbar-right-zone .topbar-actions{
   position:static!important;
+  flex:0 0 auto!important;
   inset:auto!important;
   transform:none!important;
   display:flex!important;
