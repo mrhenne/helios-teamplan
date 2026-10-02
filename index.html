@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261002-3" />
+  <link rel="stylesheet" href="styles.css?v=20261002-4" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -46,38 +46,41 @@
     <header class="topbar glass">
       <div class="topbar-left-zone">
         <div class="topbar-brand zna-core-brand">
-        <img class="zna-core-logo" src="assets/zna-core-logo.webp?v=20261001-1" alt="ZNA Core – Team Management & Organisation">
-        <h1 id="appTitle" class="visually-hidden">ZNA Core</h1>
-      </div>
+          <img class="zna-core-logo" src="assets/zna-core-logo.webp?v=20261001-1" alt="ZNA Core – Team Management & Organisation">
+          <h1 id="appTitle" class="visually-hidden">ZNA Core</h1>
+        </div>
+
         <nav class="module-switch topbar-module-switch" aria-label="Modul wechseln">
-      <button id="moduleVacationBtn" type="button" class="module-tab vacation-tab active"><span class="module-tab-icon"><svg class="ui-icon"><use href="#i-calendar"></use></svg></span><span><b>Urlaubsplanung</b><small>Kalender & Abwesenheiten</small></span></button>
-      <button id="moduleTrainingBtn" type="button" class="module-tab training-tab"><span class="module-tab-icon"><svg class="ui-icon"><use href="#i-training"></use></svg></span><span><b>Fortbildungen</b><small>Planung & Nachweise</small></span></button>
-      <button id="moduleProjectsBtn" type="button" class="module-tab projects-tab"><span class="module-tab-icon"><svg class="ui-icon"><use href="#i-grid"></use></svg></span><span><b>Projekte</b><small>Aufgaben & Teamarbeit</small></span></button>
-    </nav>
+          <button id="moduleVacationBtn" type="button" class="module-tab vacation-tab active"><span class="module-tab-icon"><svg class="ui-icon"><use href="#i-calendar"></use></svg></span><span><b>Urlaubsplanung</b><small>Kalender & Abwesenheiten</small></span></button>
+          <button id="moduleTrainingBtn" type="button" class="module-tab training-tab"><span class="module-tab-icon"><svg class="ui-icon"><use href="#i-training"></use></svg></span><span><b>Fortbildungen</b><small>Planung & Nachweise</small></span></button>
+          <button id="moduleProjectsBtn" type="button" class="module-tab projects-tab"><span class="module-tab-icon"><svg class="ui-icon"><use href="#i-grid"></use></svg></span><span><b>Projekte</b><small>Aufgaben & Teamarbeit</small></span></button>
+        </nav>
       </div>
 
       <div class="topbar-right-zone">
         <div class="topbar-session" aria-label="Sitzungsstatus">
-        <div id="syncPill" class="sync-pill local">● Lokal</div>
-        <div id="authUserPill" class="topbar-user hidden"></div>
-        <div id="onlinePill" class="topbar-online hidden" title="Aktuell aktive Nutzer">● 0 online</div>
-        <div class="role-stack">
-          <select id="roleSelect" class="role-select" title="Arbeitsmodus">
-            <option value="admin">Admin</option>
-            <option value="planner">Planer</option>
-            <option value="employee">Mitarbeiter</option>
-            <option value="viewer">Nur Lesen</option>
-          </select>
-          <select id="roleEmployeeSelect" class="role-select hidden" title="Mitarbeiter auswählen"></select>
+          <div id="syncPill" class="sync-pill local">● Lokal</div>
+          <div id="authUserPill" class="topbar-user hidden"></div>
+          <div id="onlinePill" class="topbar-online hidden" title="Aktuell aktive Nutzer">● 0 online</div>
+          <div class="role-stack">
+            <select id="roleSelect" class="role-select" title="Arbeitsmodus">
+              <option value="admin">Admin</option>
+              <option value="planner">Planer</option>
+              <option value="employee">Mitarbeiter</option>
+              <option value="viewer">Nur Lesen</option>
+            </select>
+            <select id="roleEmployeeSelect" class="role-select hidden" title="Mitarbeiter auswählen"></select>
+          </div>
         </div>
-      </div>
+
         <div class="topbar-actions" aria-label="Schnellzugriff">
-        <button id="addEmployeeBtn" class="top-tool global-employee-btn hidden" type="button" title="Mitarbeiter hinzufügen"><svg class="ui-icon"><use href="#i-plus"></use></svg><span>Mitarbeiter</span></button>
-        <button id="usersBtn" class="top-tool hidden" type="button" title="Benutzer verwalten"><svg class="ui-icon"><use href="#i-users"></use></svg><span>Benutzerverwaltung</span></button>
-        <button id="roleHelpBtn" class="top-tool" data-tool-action="roles" type="button" title="Rollen und Rechte erklären"><svg class="ui-icon"><use href="#i-role"></use></svg><span>Rollen & Rechte</span></button>
-        <button id="themeBtn" class="top-tool top-theme-btn" type="button" title="Darstellung wechseln"><svg class="ui-icon"><use href="#i-sun"></use></svg><span>Darstellung: <b id="themeLabel">Hell</b></span></button>
-        <button id="settingsBtn" class="top-tool primary-tool" type="button" title="Einstellungen öffnen"><svg class="ui-icon"><use href="#i-settings"></use></svg><span>Einstellungen</span></button>
-        <button id="logoutBtn" class="top-tool hidden" type="button" title="Abmelden"><svg class="ui-icon"><use href="#i-logout"></use></svg><span>Abmelden</span></button>
+          <button id="addEmployeeBtn" class="top-tool global-employee-btn hidden" type="button" title="Mitarbeiter hinzufügen"><svg class="ui-icon"><use href="#i-plus"></use></svg><span>Mitarbeiter</span></button>
+          <button id="usersBtn" class="top-tool hidden" type="button" title="Benutzer verwalten"><svg class="ui-icon"><use href="#i-users"></use></svg><span>Benutzerverwaltung</span></button>
+          <button id="roleHelpBtn" class="top-tool" data-tool-action="roles" type="button" title="Rollen und Rechte erklären"><svg class="ui-icon"><use href="#i-role"></use></svg><span>Rollen & Rechte</span></button>
+          <button id="themeBtn" class="top-tool top-theme-btn" type="button" title="Darstellung wechseln"><svg class="ui-icon"><use href="#i-sun"></use></svg><span>Darstellung: <b id="themeLabel">Hell</b></span></button>
+          <button id="settingsBtn" class="top-tool primary-tool" type="button" title="Einstellungen öffnen"><svg class="ui-icon"><use href="#i-settings"></use></svg><span>Einstellungen</span></button>
+          <button id="logoutBtn" class="top-tool hidden" type="button" title="Abmelden"><svg class="ui-icon"><use href="#i-logout"></use></svg><span>Abmelden</span></button>
+        </div>
       </div>
     </header>
 
