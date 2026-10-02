@@ -2849,19 +2849,20 @@ function renderProjectCalendar(){
     label.textContent=String(projectCalendarDate.getFullYear());
     const y=projectCalendarDate.getFullYear();
     body.innerHTML='<div class="projects-calendar-year">'+Array.from({length:12},(_,m)=>{
-      const monthTasks=projectTasks.filter(t=>t.due_date&&new Date(t.due_date+'T12:00:00').getFullYear()===y&&new Date(t.due_date+'T12:00:00').getMonth()===m).sort((a,b)=>a.due_date.localeCompare(b.due_date));
-      const monthProjects=projectProjects.filter(p=>p.due_date&&new Date(p.due_date+'T12:00:00').getFullYear()===y&&new Date(p.due_date+'T12:00:00').getMonth()===m).sort((a,b)=>a.due_date.localeCompare(b.due_date));
-      const total=monthTasks.length+monthProjects.length;
-      const items=[
-        ...monthProjects.map(p=>({type:'project',id:p.id,date:p.due_date,title:p.name})),
-        ...monthTasks.map(t=>({type:'task',id:t.id,date:t.due_date,title:t.title}))
-      ].sort((a,b)=>a.date.localeCompare(b.date));
-      const shown=items.slice(0,5);
-      return '<section class="project-year-month"><header><h3>'+MONTHS[m]+'</h3><span>'+total+(total===1?' Termin':' Termine')+'</span></header><div class="project-year-list">'+
-        (shown.length?shown.map(item=>'<button type="button" '+(item.type==='project'?'data-project-id="'+item.id+'"':'data-project-task-id="'+item.id+'"')+'><time>'+escapeHtml(item.date.slice(8,10))+'.'+escapeHtml(item.date.slice(5,7))+'.</time><span>'+(item.type==='project'?'▣ ':'✓ ')+escapeHtml(item.title)+'</span></button>').join(''):'<div class="project-year-empty">Keine Termine</div>')+
-        (total>shown.length?'<small>+'+(total-shown.length)+' weitere</small>':'')+
-      '</div></section>';
-    }).join('')+'</div>';return;
+      const first=new Date(y,m,1),daysInMonth=new Date(y,m+1,0).getDate(),offset=(first.getDay()+6)%7;
+      let cells='';
+      for(let i=0;i<offset;i++)cells+='<span class="project-year-day empty"></span>';
+      for(let day=1;day<=daysInMonth;day++){
+        const key=y+'-'+String(m+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+        const projects=filteredProjects().filter(p=>p.due_date===key);
+        const tasks=filteredProjectTasks().filter(t=>t.due_date===key);
+        const total=projects.length+tasks.length;
+        const title=[...projects.map(p=>'Projekt: '+p.name),...tasks.map(t=>'Aufgabe: '+t.title)].join(' · ');
+        cells+='<button type="button" class="project-year-day '+(total?'has-items':'')+'" data-project-date="'+key+'" title="'+escapeHtml((title?title+' · ':'')+'Klicken: Projekt an diesem Tag anlegen')+'"><span>'+day+'</span>'+(total?'<b>'+total+'</b>':'')+'</button>';
+      }
+      return '<section class="project-year-month"><header><h3>'+MONTHS[m]+'</h3><span>'+filteredProjects().filter(p=>p.due_date&&p.due_date.startsWith(y+'-'+String(m+1).padStart(2,'0'))).length+' Projekte</span></header><div class="project-year-weekdays"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div><div class="project-year-days">'+cells+'</div></section>';
+    }).join('')+'</div>';
+    return;
   }
   label.textContent=MONTHS[projectCalendarDate.getMonth()]+' '+projectCalendarDate.getFullYear();
   const start=startOfCalendarGrid(projectCalendarDate),days=Array.from({length:42},(_,i)=>addDays(start,i));
@@ -3070,6 +3071,16 @@ function openProject(id=null){
   renderProjectDialogTasks(p?.id||'');
   safeShowDialog('projectDialog');
 }
+function openProjectForDate(date){
+  if(!projectCanManage()){showToast('Projekte können nur Admin/Planer anlegen');return}
+  openProject();
+  const start=document.getElementById('projectStart');
+  const due=document.getElementById('projectDue');
+  if(start)start.value=date;
+  if(due)due.value=date;
+  window.setTimeout(()=>document.getElementById('projectName')?.focus(),0);
+}
+
 async function saveProjectFromForm(){
   const id=document.getElementById('projectId').value||null,existing=id?projectProjects.find(x=>x.id===id):null;
   if((!id&&!projectCanManage())||(id&&!projectCanManageProject(id)))return;
@@ -3321,7 +3332,16 @@ function bindProjectRenderedEvents(){
   document.querySelectorAll('.project-task-card[draggable="true"],.project-calendar-item[draggable="true"]').forEach(el=>{el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/project-task-id',el.dataset.projectTaskId);el.classList.add('dragging')});el.addEventListener('dragend',()=>el.classList.remove('dragging'))});
   document.querySelectorAll('.kanban-list .project-task-card').forEach(card=>{card.addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('text/project-task-id'))e.preventDefault()});card.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();const id=e.dataTransfer.getData('text/project-task-id');const col=card.closest('[data-task-drop-status]');if(id&&col)reorderProjectTask(id,card.dataset.projectTaskId,col.dataset.taskDropStatus)})});
   document.querySelectorAll('[data-task-drop-status]').forEach(z=>{z.addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('text/project-task-id')){e.preventDefault();z.classList.add('drag-over')}});z.addEventListener('dragleave',()=>z.classList.remove('drag-over'));z.addEventListener('drop',e=>{e.preventDefault();z.classList.remove('drag-over');const id=e.dataTransfer.getData('text/project-task-id');if(id)updateProjectTaskByDrop(id,{status:z.dataset.taskDropStatus})})});
-  document.querySelectorAll('[data-project-date]').forEach(day=>{day.addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('text/project-task-id')){e.preventDefault();day.classList.add('drag-over')}});day.addEventListener('dragleave',()=>day.classList.remove('drag-over'));day.addEventListener('drop',e=>{e.preventDefault();day.classList.remove('drag-over');const id=e.dataTransfer.getData('text/project-task-id');if(id)updateProjectTaskByDrop(id,{due_date:day.dataset.projectDate})})});
+  document.querySelectorAll('[data-project-date]').forEach(day=>{
+    day.addEventListener('click',e=>{
+      if(e.target.closest('[data-project-id],[data-project-task-id]'))return;
+      e.preventDefault();e.stopPropagation();
+      openProjectForDate(day.dataset.projectDate);
+    });
+    day.addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('text/project-task-id')){e.preventDefault();day.classList.add('drag-over')}});
+    day.addEventListener('dragleave',()=>day.classList.remove('drag-over'));
+    day.addEventListener('drop',e=>{e.preventDefault();day.classList.remove('drag-over');const id=e.dataTransfer.getData('text/project-task-id');if(id)updateProjectTaskByDrop(id,{due_date:day.dataset.projectDate})});
+  });
 }
 function createTaskFromTemplate(id){
   const t=projectTemplates.find(x=>x.id===id);if(!t)return;
