@@ -8125,3 +8125,66 @@ body.dark-mode .project-year-day.has-items{
 @media(max-width:650px){
   .projects-calendar-year{grid-template-columns:1fr!important}
 }
+
+
+/* === 2026-10-02 Fortbildungs-Jahresansicht: vollständige Monatsliste + Terminserien === */
+.training-month-list{
+  display:grid;
+  gap:4px;
+  margin:5px 0 7px;
+  max-height:132px;
+  overflow:auto;
+  padding-right:2px;
+}
+.training-month-list-item{
+  width:100%;
+  min-width:0;
+  min-height:30px;
+  display:grid;
+  grid-template-columns:4px minmax(0,1fr);
+  gap:6px;
+  align-items:stretch;
+  padding:4px 6px 4px 4px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:rgba(255,255,255,.58);
+  color:inherit;
+  text-align:left;
+  cursor:pointer;
+}
+.training-month-list-item>i{
+  width:4px;
+  min-height:100%;
+  border-radius:999px;
+  background:var(--training-color,#5b8def);
+}
+.training-month-list-item>span{
+  min-width:0;
+  display:grid;
+  gap:1px;
+}
+.training-month-list-item b{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:6.5px;
+}
+.training-month-list-item small{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:5.6px;
+  color:var(--muted);
+}
+.training-month-list-item.virtual{
+  border-style:dashed;
+}
+body.dark-mode .training-month-list-item{
+  background:#172723;
+}
+#trainingRecurrenceUnitField select,
+#trainingRecurrenceWeekdayField select{
+  width:100%;
+}
