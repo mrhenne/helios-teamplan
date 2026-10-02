@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261002-14" />
+  <link rel="stylesheet" href="styles.css?v=20261002-15" />
   <link rel="stylesheet" href="header.css?v=20261002-3" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -132,6 +132,14 @@
       </div>
     </div>
     <div class="control-block vacation-mode-block"><span class="control-caption">Urlaub</span><div class="segmented vacation-mode" title="Gesamt: jedes gesetzte U zählt 1,0. Anteilig: jedes U wird mit dem Stellenanteil gewichtet, z. B. 80 % = 0,8 je U. Der Jahresanspruch bleibt unverändert."><button id="vacationFullBtn" class="segment" type="button">Gesamt</button><button id="vacationActualBtn" class="segment active" type="button">Anteilig</button></div></div>
+    <div class="vacation-count-control">
+      <button id="vacationCountToggle" class="btn ghost view-tool-btn icon-label-btn" type="button" aria-expanded="false" title="Gesamtsumme konfigurieren"><svg class="ui-icon"><use href="#i-table"></use></svg><span id="vacationCountLabel">Zählung: U + XU + S</span></button>
+      <div id="vacationCountMenu" class="vacation-count-menu hidden">
+        <div class="vacation-count-head"><div><strong>Gesamtsumme</strong><small>Welche Kürzel zählen gemeinsam?</small></div><div><button id="vacationCountAllBtn" type="button">Alle</button><button id="vacationCountNoneBtn" type="button">Keine</button></div></div>
+        <div id="vacationCountCodes" class="vacation-count-codes"></div>
+        <p>Jeder Mitarbeiter wird pro Tag nur einmal gezählt, auch wenn mehrere ausgewählte Kürzel eingetragen sind.</p>
+      </div>
+    </div>
     <div class="controls-spacer"></div>
     <input id="searchInput" class="search control-search compact-employee-search" placeholder="Mitarbeiter suchen…" />
 
@@ -1063,10 +1071,10 @@
       <div class="form-grid two">
         <label>Vollzeit-Urlaub bei 5-Tage-Woche<input id="settingBaseVacation" type="number" min="20" max="60" step="0.5" /></label>
         <label>Max. gleichzeitig im Urlaub (U)<input id="settingMaxVacation" type="number" min="1" max="99" step="1" /></label>
-        <label>Warnung Gesamt-Abwesenheiten U + XU + S<input id="settingMaxAbsence" type="number" min="1" max="99" step="1" /></label>
+        <label>Warnschwelle für konfigurierte Gesamtsumme<input id="settingMaxAbsence" type="number" min="1" max="99" step="1" /></label>
         <label>Bundesland<select id="settingState"><option value="NW">Nordrhein-Westfalen</option></select></label>
       </div>
-      <label class="toggle-line"><input id="settingCountSchool" type="checkbox" /> Schule in Gesamt-Abwesenheitsalarm einbeziehen</label>
+      <label class="toggle-line"><input id="settingCountSchool" type="checkbox" /> Schule (S) in der konfigurierten Gesamtsumme berücksichtigen</label>
       <label class="toggle-line"><input id="settingConfirmConflicts" type="checkbox" /> Konflikte beim Speichern ausdrücklich anzeigen</label>
       </section>
       <div class="dialog-actions"><div class="spacer"></div><button type="button" class="btn ghost close-dialog">Schließen</button><button id="planningSettingsSaveBtn" type="submit" class="btn primary">Planungsregeln speichern</button></div>
@@ -1179,6 +1187,6 @@
       }, true);
     })();
   </script>
-  <script src="app.js?v=20261002-14"></script>
+  <script src="app.js?v=20261002-15"></script>
 </body>
 </html>
