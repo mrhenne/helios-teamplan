@@ -7789,3 +7789,52 @@ body.projects-module-active .projects-toolbar .segment .ui-icon{
     max-width:180px!important;
   }
 }
+
+
+/* === 2026-10-02 Module heading accent bars === */
+.vacation-heading,
+.training-heading,
+.projects-heading{
+  position:relative!important;
+  padding-left:12px!important;
+}
+
+.vacation-heading::before,
+.training-heading::before,
+.projects-heading::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:2px;
+  bottom:2px;
+  width:4px;
+  border-radius:999px;
+}
+
+.vacation-heading::before{
+  background:linear-gradient(180deg,#4bb49d,#13806c);
+  box-shadow:0 0 0 3px rgba(19,128,108,.10);
+}
+
+.training-heading::before{
+  background:linear-gradient(180deg,#7da5e8,#536fb6);
+  box-shadow:0 0 0 3px rgba(83,111,182,.10);
+}
+
+.projects-heading::before{
+  background:linear-gradient(180deg,#f0a33a,var(--project-accent));
+  box-shadow:0 0 0 3px rgba(216,137,28,.10);
+}
+
+body.dark-mode .vacation-heading::before{
+  background:linear-gradient(180deg,#6ed3bb,#1d8f79);
+  box-shadow:0 0 0 3px rgba(29,143,121,.12);
+}
+body.dark-mode .training-heading::before{
+  background:linear-gradient(180deg,#9ab9ef,#6f88c7);
+  box-shadow:0 0 0 3px rgba(111,136,199,.12);
+}
+body.dark-mode .projects-heading::before{
+  background:linear-gradient(180deg,#ffc36f,#d8891c);
+  box-shadow:0 0 0 3px rgba(216,137,28,.12);
+}
