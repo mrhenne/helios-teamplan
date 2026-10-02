@@ -8013,3 +8013,115 @@ body.dark-mode .training-month-program{
     box-shadow:inset 0 0 0 1px rgba(110,211,187,.22)!important;
   }
 }
+
+
+/* === 2026-10-02 Projekt-Jahresansicht: echte Tageskalender + Schnellplanung === */
+.projects-calendar-year{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:10px!important;
+  align-items:start!important;
+}
+.project-year-month{
+  min-height:0!important;
+  padding:9px!important;
+  display:block!important;
+}
+.project-year-month>header{
+  margin-bottom:5px!important;
+}
+.project-year-weekdays,
+.project-year-days{
+  display:grid;
+  grid-template-columns:repeat(7,minmax(0,1fr));
+  gap:3px;
+}
+.project-year-weekdays{
+  margin-bottom:3px;
+}
+.project-year-weekdays span{
+  text-align:center;
+  font-size:5.1px;
+  font-weight:850;
+  color:var(--muted);
+}
+.project-year-day{
+  position:relative;
+  aspect-ratio:1/1;
+  min-height:24px;
+  border:0;
+  border-radius:6px;
+  background:rgba(230,237,234,.72);
+  color:#6e817a;
+  display:grid;
+  place-items:center;
+  font:700 6.2px Inter,sans-serif;
+  cursor:pointer;
+  transition:background .14s ease,box-shadow .14s ease,transform .14s ease;
+}
+.project-year-day.empty{
+  visibility:hidden;
+}
+.project-year-day.has-items{
+  background:#fff0d8;
+  color:#9a6517;
+  box-shadow:inset 0 0 0 1px rgba(216,137,28,.18);
+}
+.project-year-day b{
+  position:absolute;
+  right:2px;
+  top:2px;
+  min-width:10px;
+  height:10px;
+  padding:0 2px;
+  border-radius:999px;
+  display:grid;
+  place-items:center;
+  background:rgba(255,255,255,.82);
+  font-size:4.4px;
+  line-height:1;
+}
+.project-year-day::before,
+.project-calendar-day[data-project-date]::before{
+  content:"+";
+  position:absolute;
+  left:3px;
+  top:2px;
+  font-size:6px;
+  font-weight:900;
+  color:var(--project-accent-dark);
+  opacity:0;
+  transition:opacity .14s ease;
+}
+.project-calendar-day[data-project-date]{
+  position:relative;
+  cursor:pointer;
+}
+@media(hover:hover) and (pointer:fine){
+  .project-year-day:hover,
+  .project-calendar-day[data-project-date]:hover{
+    box-shadow:inset 0 0 0 1px rgba(216,137,28,.28)!important;
+  }
+  .project-year-day:hover{
+    background:#fff6e8!important;
+    transform:translateY(-1px);
+  }
+  .project-year-day:hover::before,
+  .project-calendar-day[data-project-date]:hover::before{
+    opacity:.85;
+  }
+}
+body.dark-mode .project-year-day{
+  background:#1c2d28;
+  color:#91a49e;
+}
+body.dark-mode .project-year-day.has-items{
+  background:#3b2f1e;
+  color:#f0bf78;
+}
+@media(max-width:1100px){
+  .projects-calendar-year{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:650px){
+  .projects-calendar-year{grid-template-columns:1fr!important}
+}
