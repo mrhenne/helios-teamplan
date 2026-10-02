@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261002-11" />
+  <link rel="stylesheet" href="styles.css?v=20261002-12" />
   <link rel="stylesheet" href="header.css?v=20261002-2" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -669,11 +669,27 @@
         <div class="form-grid two">
           <label>Name<input id="trainingTypeName" required maxlength="120"></label>
           <label>Kategorie<input id="trainingTypeCategory" maxlength="80" value="Pflichtfortbildung"></label>
-          <label>Intervall Monate<input id="trainingTypeInterval" type="number" min="1" max="240" placeholder="z. B. 24"></label>
+          <label>Gültigkeitsintervall Monate<input id="trainingTypeInterval" type="number" min="1" max="240" placeholder="z. B. 24"></label>
           <label>Standardstunden<input id="trainingTypeHours" type="number" min="0" step="0.25" value="0"></label>
           <label>Standardkosten €<input id="trainingTypeCost" type="number" min="0" step="0.01" value="0"></label>
           <label>Farbe<input id="trainingTypeColor" class="training-color-input" type="color" value="#5b8def"></label>
           <label class="toggle-line"><input id="trainingTypeMandatory" type="checkbox"> Pflichtfortbildung</label>
+          <label class="toggle-line span-two training-type-series-toggle"><input id="trainingTypeSeriesEnabled" type="checkbox"> Terminserie als Standard für diese Fortbildung verwenden</label>
+          <label id="trainingTypeSeriesUnitField" class="hidden">Serienart
+            <select id="trainingTypeSeriesUnit">
+              <option value="months">Intervall in Monaten</option>
+              <option value="weeks">Terminserie in Wochen</option>
+            </select>
+          </label>
+          <label id="trainingTypeSeriesIntervalField" class="hidden">Wiederholung alle<input id="trainingTypeSeriesInterval" type="number" min="1" max="240" step="1" placeholder="z. B. 2"><small id="trainingTypeSeriesIntervalHint">Monate</small></label>
+          <label id="trainingTypeSeriesWeekdayField" class="hidden">Wochentag
+            <select id="trainingTypeSeriesWeekday">
+              <option value="1">Montag</option><option value="2">Dienstag</option><option value="3">Mittwoch</option>
+              <option value="4">Donnerstag</option><option value="5">Freitag</option><option value="6">Samstag</option><option value="7">Sonntag</option>
+            </select>
+          </label>
+          <label>Standard-Startzeit<input id="trainingTypeDefaultStartTime" type="time" step="300"></label>
+          <label>Standard-Endzeit<input id="trainingTypeDefaultEndTime" type="time" step="300"></label>
           <label class="span-two">Beschreibung<textarea id="trainingTypeDescription" rows="2" maxlength="500"></textarea></label>
         </div>
         <div class="dialog-actions"><button id="trainingTypeResetBtn" type="button" class="btn ghost">Neu</button><div class="spacer"></div><button type="submit" class="btn primary">Speichern</button></div>
@@ -1147,6 +1163,6 @@
       }, true);
     })();
   </script>
-  <script src="app.js?v=20261002-13"></script>
+  <script src="app.js?v=20261002-12"></script>
 </body>
 </html>
