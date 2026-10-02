@@ -1923,7 +1923,8 @@ function renderTrainingCalendar(items){
       const titles=matches.map(t=>trainingEmployeeName(t.employee_id)+': '+t.title).join(' · ');
       const dragAttrs=trainingCanManage()&&uniqueReal.length===1?' draggable="true" data-training-id="'+uniqueReal[0].id+'"':'';
       const colorStyle=matches.length===1?' style="--training-color:'+escapeHtml(trainingColor(matches[0]))+'"':'';
-      cells+='<button type="button" class="training-day '+(matches.length?'has-training '+statusClass:'')+'" data-date="'+key+'" title="'+escapeHtml(titles)+'"'+colorStyle+dragAttrs+'><span>'+day+'</span>'+(matches.length?'<b>'+matches.length+'</b>':'')+'</button>';
+      const quickTitle=(matches.length?titles+' · ':'')+'Klicken: Fortbildung am '+new Date(key+'T12:00:00').toLocaleDateString('de-DE')+' planen';
+      cells+='<button type="button" class="training-day training-day-quick '+(matches.length?'has-training '+statusClass:'')+'" data-date="'+key+'" title="'+escapeHtml(quickTitle)+'" aria-label="'+escapeHtml('Fortbildung am '+new Date(key+'T12:00:00').toLocaleDateString('de-DE')+' planen')+'"'+colorStyle+dragAttrs+'><span>'+day+'</span>'+(matches.length?'<b>'+matches.length+'</b>':'')+'</button>';
     }
     return '<article class="training-month training-calendar-month glass"><div class="training-month-head"><strong>'+month+'</strong><span>'+monthItems.length+' · '+escapeHtml(euro(cost))+'</span></div>'+programHtml+'<div class="training-weekdays"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div><div class="training-day-grid">'+cells+'</div></article>';
   }).join('');
@@ -2233,7 +2234,12 @@ async function exportTrainingJson(){
   await saveExportFile('TeamPlan_Fortbildungen_'+trainingYear+'.json',JSON.stringify(rows,null,2),'application/json','JSON-Datei',['.json']);
 }
 function bindTrainingRenderedEvents(){
-  if(trainingCanManage())document.querySelectorAll('[data-training-id]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();openTraining(el.dataset.trainingId)}));
+  if(trainingCanManage())document.querySelectorAll('[data-training-id]:not(.training-day)').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();openTraining(el.dataset.trainingId)}));
+  if(trainingCanManage())document.querySelectorAll('.training-day[data-date]').forEach(day=>day.addEventListener('click',e=>{
+    if(day.classList.contains('blank'))return;
+    e.preventDefault();e.stopPropagation();
+    openTrainingForDate(day.dataset.date);
+  }));
   document.querySelectorAll('.training-budget-btn').forEach(b=>b.addEventListener('click',()=>openTrainingBudget(b.dataset.employee)));
   bindTrainingContextMenus();bindTrainingMultiYearEvents();bindTrainingTeamStatusEvents();
 }
@@ -2323,6 +2329,21 @@ function openTraining(id=null){
   document.getElementById('trainingNote').value=t?.note||'';
   document.getElementById('deleteTrainingBtn').classList.toggle('hidden',!t);
   syncTrainingDateMode();syncTrainingRecurrenceMode();updateTrainingVacationWarning();safeShowDialog('trainingDialog');
+}
+function openTrainingForDate(date){
+  if(!trainingCanManage())return;
+  openTraining();
+  const start=document.getElementById('trainingStart');
+  const end=document.getElementById('trainingEnd');
+  const yearOnly=document.getElementById('trainingYearOnly');
+  const onlyYear=document.getElementById('trainingOnlyYear');
+  if(yearOnly)yearOnly.checked=false;
+  if(start)start.value=date;
+  if(end)end.value=date;
+  if(onlyYear)onlyYear.value=String(Number(String(date).slice(0,4))||trainingYear);
+  syncTrainingDateMode();
+  updateTrainingVacationWarning();
+  window.setTimeout(()=>document.getElementById('trainingEmployee')?.focus(),0);
 }
 async function saveTrainingFromForm(){
   if(!trainingCanManage())return;
