@@ -18,7 +18,7 @@ const formatVacationNumber = n => {
 
 const defaultState = {
   version: 1,
-  settings: {baseVacation:30,maxVacation:4,maxAbsence:7,countSchool:true,confirmConflicts:true,state:'NW',vacationDisplayMode:'actual',theme:'light',zoom:1,customCodes:[],codeColors:{...DEFAULT_CODE_COLORS}},
+  settings: {baseVacation:30,maxVacation:4,maxAbsence:7,countSchool:true,countCodes:['U','XU','S'],confirmConflicts:true,state:'NW',vacationDisplayMode:'actual',theme:'light',zoom:1,customCodes:[],codeColors:{...DEFAULT_CODE_COLORS}},
   employees: [
     {id:uid(),name:'Anna Beispiel',hours:38.5,percent:100,workdays:5,workweek:[1,2,3,4,5],carry:0,adjustment:0,role:'employee',autoWeekend:{enabled:false,intervalWeeks:2,anchorDate:''},order:0},
     {id:uid(),name:'Ben Beispiel',hours:30,percent:78,workdays:4,workweek:[1,2,3,4],carry:2,adjustment:0,role:'employee',autoWeekend:{enabled:false,intervalWeeks:2,anchorDate:''},order:1},
@@ -123,7 +123,13 @@ function loadLocal(){
   catch { return structuredClone(defaultState); }
 }
 function normalizeState(s){
-  s.settings={...defaultState.settings,...(s.settings||{})}; s.settings.customCodes=Array.isArray(s.settings.customCodes)?s.settings.customCodes:[]; s.settings.codeColors={...DEFAULT_CODE_COLORS,...(s.settings.codeColors||{})}; s.employees=s.employees||[]; s.entries=s.entries||{}; s.blackouts=s.blackouts||[]; s.audit=s.audit||[];
+  const incomingSettings=s.settings||{};
+  s.settings={...defaultState.settings,...incomingSettings}; s.settings.customCodes=Array.isArray(s.settings.customCodes)?s.settings.customCodes:[]; s.settings.codeColors={...DEFAULT_CODE_COLORS,...(s.settings.codeColors||{})};
+  if(!Array.isArray(incomingSettings.countCodes)){
+    s.settings.countCodes=['U','XU',...(incomingSettings.countSchool===false?[]:['S']),...s.settings.customCodes.filter(c=>c.absence).map(c=>c.key)];
+  }
+  s.settings.countCodes=[...new Set(s.settings.countCodes.map(String))];
+  s.employees=s.employees||[]; s.entries=s.entries||{}; s.blackouts=s.blackouts||[]; s.audit=s.audit||[];
   s.employees.forEach((e,i)=>{e.order=e.order??i;e.workweek=e.workweek||[1,2,3,4,5];e.carry=Number(e.carry||0);e.adjustment=Number(e.adjustment||0);e.role=e.role||'employee';e.autoWeekend=e.autoWeekend||{enabled:false,intervalWeeks:2,anchorDate:''}});
   Object.values(s.entries).forEach(empEntries=>Object.values(empEntries||{}).forEach(v=>{v.status=v.status||'wish';v.plannerMarkers=Array.isArray(v.plannerMarkers)?v.plannerMarkers:[]}));
   return s;
@@ -434,7 +440,7 @@ function renderCustomCodesSettings(){
   const list=document.getElementById('customCodesList');if(!list)return;
   const custom=state.settings.customCodes||[];
   list.innerHTML=custom.length?custom.map(c=>'<div class="custom-code-row" data-key="'+escapeHtml(c.key)+'"><span class="custom-code-swatch" style="--code-color:'+escapeHtml(c.color||'#6f7f8f')+'">'+escapeHtml(c.key)+'</span><div><strong>'+escapeHtml(c.label)+'</strong><small>'+(c.absence?'zählt als Abwesenheit':'nur Kennzeichnung')+'</small></div><button type="button" class="btn danger custom-code-delete">Löschen</button></div>').join(''):'<div class="empty-state">Keine zusätzlichen Kürzel angelegt.</div>';
-  list.querySelectorAll('.custom-code-delete').forEach(btn=>btn.addEventListener('click',()=>{const key=btn.closest('.custom-code-row').dataset.key;if(!confirm('Kürzel '+key+' wirklich löschen? Bereits eingetragene Werte bleiben im Plan sichtbar.'))return;trackAction('Kürzel gelöscht',key);state.settings.customCodes=state.settings.customCodes.filter(c=>c.key!==key);persist();renderCustomCodesSettings();render()}));
+  list.querySelectorAll('.custom-code-delete').forEach(btn=>btn.addEventListener('click',()=>{const key=btn.closest('.custom-code-row').dataset.key;if(!confirm('Kürzel '+key+' wirklich löschen? Bereits eingetragene Werte bleiben im Plan sichtbar.'))return;trackAction('Kürzel gelöscht',key);state.settings.customCodes=state.settings.customCodes.filter(c=>c.key!==key);state.settings.countCodes=(state.settings.countCodes||[]).filter(c=>c!==key);persist();renderCustomCodesSettings();renderVacationCountMenu();render()}));
 }
 function renderDynamicCodes(){
   const custom=state.settings.customCodes||[];
@@ -556,8 +562,59 @@ function flowingMonthDates(){
   return out;
 }
 function activePlannerDates(){return currentView==='month'?flowingMonthDates():monthDates();}
-function dailyCounts(key){let U=0,XU=0,S=0,extraAbsence=0;state.employees.forEach(e=>{const v=entryFor(e.id,key);if(!entryIsActive(v))return;const c=v.codes||[];if(c.includes('U'))U++;if(c.includes('XU'))XU++;if(c.includes('S'))S++;extraAbsence+=c.filter(code=>!['U','X','XU','S','G'].includes(code)&&isAbsenceCode(code)).length});return {U,XU,S,extraAbsence,total:U+XU+(state.settings.countSchool?S:0)+extraAbsence};}
+function selectedCountCodes(){
+  const valid=new Set(allCodeDefs().map(c=>c.key));
+  return (state.settings.countCodes||[]).filter(code=>valid.has(code));
+}
+function dailyCounts(key){
+  let U=0,X=0,XU=0,S=0,G=0,total=0;
+  const selected=new Set(selectedCountCodes());
+  state.employees.forEach(e=>{
+    const v=entryFor(e.id,key);if(!entryIsActive(v))return;
+    const c=v.codes||[];
+    if(c.includes('U'))U++;if(c.includes('X'))X++;if(c.includes('XU'))XU++;if(c.includes('S'))S++;if(c.includes('G'))G++;
+    if(c.some(code=>selected.has(code)))total++;
+  });
+  return {U,X,XU,S,G,total};
+}
 function conflictLevel(key){const c=dailyCounts(key);return {vacation:c.U>state.settings.maxVacation,total:c.total>state.settings.maxAbsence};}
+
+function renderVacationCountMenu(){
+  const box=document.getElementById('vacationCountCodes');if(!box)return;
+  const selected=new Set(selectedCountCodes());
+  box.innerHTML=allCodeDefs().map(def=>{
+    const color=def.color||'#6f7f8f';
+    return '<label class="vacation-count-option"><input type="checkbox" data-count-code="'+escapeHtml(def.key)+'" '+(selected.has(def.key)?'checked':'')+'><b class="chip '+escapeHtml(def.className||'custom-code')+'" style="--code-color:'+escapeHtml(color)+'">'+escapeHtml(def.key)+'</b><span>'+escapeHtml(def.label)+'</span></label>';
+  }).join('');
+  box.querySelectorAll('[data-count-code]').forEach(input=>input.addEventListener('change',()=>{
+    const set=new Set(selectedCountCodes());
+    input.checked?set.add(input.dataset.countCode):set.delete(input.dataset.countCode);
+    state.settings.countCodes=[...set];
+    state.settings.countSchool=set.has('S');
+    persist();updateVacationCountButton();render();
+  }));
+}
+function updateVacationCountButton(){
+  const btn=document.getElementById('vacationCountToggle'),label=document.getElementById('vacationCountLabel');
+  if(!btn||!label)return;
+  const selected=selectedCountCodes();
+  label.textContent=selected.length?'Zählung: '+selected.join(' + '):'Zählung: keine';
+  btn.title=selected.length?'Gesamtsumme aus '+selected.join(', ')+' konfigurieren':'Gesamtsumme konfigurieren';
+}
+function setVacationCountCodes(codes){
+  state.settings.countCodes=[...new Set(codes)];
+  state.settings.countSchool=state.settings.countCodes.includes('S');
+  persist();renderVacationCountMenu();updateVacationCountButton();render();
+}
+function vacationCountSummaryRow(dates){
+  const selected=selectedCountCodes(),label=selected.length?'Gesamt '+selected.join(' + '):'Gesamt';
+  let s='<tr class="summary-row aggregate-count-row"><td class="employee-col">Σ '+escapeHtml(label)+'</td>';
+  dates.forEach(d=>{
+    const key=dateKey(d),n=dailyCounts(key).total,hot=n>state.settings.maxAbsence,warn=n===state.settings.maxAbsence;
+    s+='<td data-date="'+key+'" class="aggregate-count-value '+(hot?'count-hot':warn?'count-warn':'')+'">'+(n?formatVacationNumber(n):'')+'</td>';
+  });
+  return s+'</tr>';
+}
 
 function syncVacationUiPrefs(){
   const work=document.getElementById('employeeInfoWork'),vac=document.getElementById('employeeInfoVacation'),xu=document.getElementById('employeeInfoXU');
@@ -567,6 +624,7 @@ function syncVacationUiPrefs(){
   const row=document.getElementById('vacationToolsRow'),btn=document.getElementById('vacationToolsToggle');
   if(row)row.classList.toggle('vacation-tools-collapsed',!vacationToolsOpen);
   if(btn)btn.setAttribute('aria-expanded',String(vacationToolsOpen));
+  updateVacationCountButton();
 }
 function saveEmployeeInfoPrefs(){
   localStorage.setItem('teamplan-employee-info',JSON.stringify(employeeInfoPrefs));
@@ -630,12 +688,12 @@ function render(){
     dates.forEach(d=>{const key=dateKey(d),v=entryFor(e.id,key),we=[0,6].includes(d.getDay()),nonwork=!isWorkday(e,d),conf=conflictLevel(key),school=schoolBreakForDate(d),monthTone=d.getMonth()%2===0?'month-even':'month-odd',blackout=blackoutForKey(key),status=v.status||'wish';const codes=(v.codes||[]).map(c=>{const d=codeDef(c),weighted=c==='U'&&state.settings.vacationDisplayMode==='actual';return `<span class="cell-code ${codeClassName(c)} ${weighted?'weighted-u':''}"${d.color?` style="--code-color:${escapeHtml(d.color)}"`:''}>${c}${weighted?`<small class="u-weight">${formatVacationNumber(vacationFactor(e))}</small>`:''}</span>`}).join('');const plannerMarkers=(v.plannerMarkers||[]).map(m=>`<span class="planner-marker marker-${m==='V?'?'v':m==='T?'?'t':'k'}">${escapeHtml(m)}</span>`).join('');const dayTrainings=trainingForEmployeeDate(e.id,key);const trainingMark=dayTrainings.length?`<span class="cell-training-mark" title="${escapeHtml(dayTrainings.map(t=>t.title).join(' · '))}">F</span>`:'';const warn=(conf.vacation&&entryIsActive(v)&&v.codes?.includes('U'))||(conf.total&&entryIsActive(v)&&v.codes?.some(c=>['U','XU','S'].includes(c)));html+=`<td class="day-cell ${we?'weekend':''} ${nonwork?'nonwork':''} ${school?'school-holiday-cell':''} ${monthTone} status-${status} ${blackout?'blackout-cell':''}" data-emp="${e.id}" data-date="${key}" title="${escapeHtml([v.note,blackout&&('Sperrzeit: '+blackout.name),school&&('NRW '+school),status&&('Status: '+status),(v.plannerMarkers||[]).length&&('Planer: '+v.plannerMarkers.join(', '))].filter(Boolean).join(' · '))}"><div class="cell-codes">${codes}</div><div class="planner-markers">${plannerMarkers}</div>${trainingMark}${(v.codes||[]).length?`<span class="status-mark status-${status}"></span>`:''}${v.priority?`<span class="cell-priority p${v.priority}"></span>`:''}${v.note?`<span class="cell-note-preview" title="${escapeHtml(v.note)}">${escapeHtml(String(v.note).trim().slice(0,14))}</span>`:''}${warn?'<span class="cell-warning-mark">!</span>':''}</td>`});
     html+='</tr>';
   });
-  html+=summaryRow(state.settings.vacationDisplayMode==='full'?'Urlaub U':'Urlaub U anteilig','U',dates);html+=summaryRow('Wunschfrei XU','XU',dates);html+=summaryRow('Schule S','S',dates);html+=presenceRow(dates);html+=absenceNamesRow(dates);html+='</tbody></table>';
+  html+=summaryRow(state.settings.vacationDisplayMode==='full'?'Urlaub U':'Urlaub U anteilig','U',dates);html+=summaryRow('Wunschfrei XU','XU',dates);html+=summaryRow('Schule S','S',dates);html+=vacationCountSummaryRow(dates);html+=presenceRow(dates);html+=absenceNamesRow(dates);html+='</tbody></table>';
   document.getElementById('planner').innerHTML=html; bindPlannerEvents(); renderMetrics(); syncViewControls(); applyAppearance(); applyCodeColors(); renderDynamicCodes(); renderPresenceUI(); renderUnreadMessageBadge(); updateVacationCrosshairButton();
   if(currentView==='month') setupFlowingMonthScroll();
   if(currentView==='year') renderYearOverview();
 }
-function summaryRow(label,code,dates){const modeClass=code==='U'?(state.settings.vacationDisplayMode==='actual'?' vacation-summary actual':' vacation-summary full'):'';let s=`<tr class="summary-row ${code==='U'?'alarm':''}${modeClass}"><td class="employee-col">Σ ${label}</td>`;dates.forEach(d=>{const key=dateKey(d),c=dailyCounts(key);let n=c[code];if(code==='U'&&state.settings.vacationDisplayMode==='actual'){n=roundTwo(state.employees.reduce((sum,e)=>{const v=entryFor(e.id,key);return sum+(entryIsActive(v)&&v.codes?.includes('U')?vacationFactor(e):0)},0))}const rawU=c.U,hot=code==='U'&&rawU>state.settings.maxVacation,warn=code==='U'&&rawU===state.settings.maxVacation;s+=`<td data-date="${key}" class="${hot?'count-hot':warn?'count-warn':''}">${n?formatVacationNumber(n):''}</td>`});return s+'</tr>'}
+function summaryRow(label,code,dates){const modeClass=code==='U'?(state.settings.vacationDisplayMode==='actual'?' vacation-summary actual':' vacation-summary full'):'';let s=`<tr class="summary-row ${code==='U'?'alarm':''}${modeClass}"><td class="employee-col">Σ ${label}</td>`;dates.forEach(d=>{const key=dateKey(d),c=dailyCounts(key);let n=c[code]||0;if(!Object.prototype.hasOwnProperty.call(c,code)){n=state.employees.reduce((sum,e)=>{const v=entryFor(e.id,key);return sum+(entryIsActive(v)&&v.codes?.includes(code)?1:0)},0)}if(code==='U'&&state.settings.vacationDisplayMode==='actual'){n=roundTwo(state.employees.reduce((sum,e)=>{const v=entryFor(e.id,key);return sum+(entryIsActive(v)&&v.codes?.includes('U')?vacationFactor(e):0)},0))}const rawU=c.U,hot=code==='U'&&rawU>state.settings.maxVacation,warn=code==='U'&&rawU===state.settings.maxVacation;s+=`<td data-date="${key}" class="summary-count-value ${hot?'count-hot':warn?'count-warn':''}">${n?formatVacationNumber(n):''}</td>`});return s+'</tr>'}
 function presenceRow(dates){let s='<tr class="summary-row presence-row"><td class="employee-col">✓ Anwesend</td>';dates.forEach(d=>{const key=dateKey(d),n=presentCount(key);s+=`<td data-date="${key}">${n}</td>`});return s+'</tr>'}
 function absenceNamesRow(dates){
   let s='<tr class="summary-row absence-names-row"><td class="employee-col">↗ Abwesend</td>';
@@ -1516,7 +1574,7 @@ function exportVacationPdf(){
 }
 function openSettings(){
   const s=state.settings;renderBaseCodeColorsSettings();renderCustomCodesSettings();
-  document.getElementById('settingBaseVacation').value=s.baseVacation;document.getElementById('settingMaxVacation').value=s.maxVacation;document.getElementById('settingMaxAbsence').value=s.maxAbsence;document.getElementById('settingCountSchool').checked=s.countSchool;document.getElementById('settingConfirmConflicts').checked=s.confirmConflicts;
+  document.getElementById('settingBaseVacation').value=s.baseVacation;document.getElementById('settingMaxVacation').value=s.maxVacation;document.getElementById('settingMaxAbsence').value=s.maxAbsence;document.getElementById('settingCountSchool').checked=selectedCountCodes().includes('S');document.getElementById('settingConfirmConflicts').checked=s.confirmConflicts;
   document.getElementById('accountName').value=authMembership?.display_name||'';
   document.getElementById('accountEmail').value=authUser?.email||'';
   document.getElementById('accountPassword').value='';
@@ -3838,6 +3896,16 @@ document.getElementById('employeeCleanupBtn')?.addEventListener('click',()=>{con
 document.getElementById('openCleanupBtn')?.addEventListener('click',()=>openCleanupDialog('all'));
 ['cleanupEmployee','cleanupPeriod','cleanupCode'].forEach(id=>document.getElementById(id).addEventListener('change',updateCleanupPreview));
 document.getElementById('cleanupForm')?.addEventListener('submit',e=>{e.preventDefault();applyCleanup()});
+document.getElementById('vacationCountToggle')?.addEventListener('click',e=>{
+  e.stopPropagation();
+  const menu=document.getElementById('vacationCountMenu');
+  const open=menu.classList.contains('hidden');
+  if(open)renderVacationCountMenu();
+  menu.classList.toggle('hidden',!open);
+  document.getElementById('vacationCountToggle').setAttribute('aria-expanded',String(open));
+});
+document.getElementById('vacationCountAllBtn')?.addEventListener('click',()=>setVacationCountCodes(allCodeDefs().map(c=>c.key)));
+document.getElementById('vacationCountNoneBtn')?.addEventListener('click',()=>setVacationCountCodes([]));
 document.getElementById('employeeInfoToggle')?.addEventListener('click',e=>{
   e.stopPropagation();
   const menu=document.getElementById('employeeInfoMenu');
@@ -3854,6 +3922,11 @@ document.addEventListener('click',e=>{
   if(menu&&!menu.classList.contains('hidden')&&!e.target.closest('.employee-info-control')){
     menu.classList.add('hidden');
     document.getElementById('employeeInfoToggle')?.setAttribute('aria-expanded','false');
+  }
+  const countMenu=document.getElementById('vacationCountMenu');
+  if(countMenu&&!countMenu.classList.contains('hidden')&&!e.target.closest('.vacation-count-control')){
+    countMenu.classList.add('hidden');
+    document.getElementById('vacationCountToggle')?.setAttribute('aria-expanded','false');
   }
 });
 syncVacationUiPrefs();
@@ -3930,7 +4003,7 @@ document.getElementById('addCustomCodeBtn')?.addEventListener('click',()=>{
   document.getElementById('customCodeAbsence').checked=false;
   renderCustomCodesSettings();render();showToast('Kürzel '+key+' angelegt');
 });
-document.getElementById('settingsForm')?.addEventListener('submit',e=>{e.preventDefault();if(!canManage())return;trackAction('Planungsregeln geändert');state.settings.baseVacation=Number(document.getElementById('settingBaseVacation').value);state.settings.maxVacation=Number(document.getElementById('settingMaxVacation').value);state.settings.maxAbsence=Number(document.getElementById('settingMaxAbsence').value);state.settings.countSchool=document.getElementById('settingCountSchool').checked;state.settings.confirmConflicts=document.getElementById('settingConfirmConflicts').checked;persist();render();document.getElementById('settingsDialog').close();showToast('Planungsregeln gespeichert')});
+document.getElementById('settingsForm')?.addEventListener('submit',e=>{e.preventDefault();if(!canManage())return;trackAction('Planungsregeln geändert');state.settings.baseVacation=Number(document.getElementById('settingBaseVacation').value);state.settings.maxVacation=Number(document.getElementById('settingMaxVacation').value);state.settings.maxAbsence=Number(document.getElementById('settingMaxAbsence').value);state.settings.countSchool=document.getElementById('settingCountSchool').checked;const countSet=new Set(selectedCountCodes());state.settings.countSchool?countSet.add('S'):countSet.delete('S');state.settings.countCodes=[...countSet];state.settings.confirmConflicts=document.getElementById('settingConfirmConflicts').checked;persist();render();document.getElementById('settingsDialog').close();showToast('Planungsregeln gespeichert')});
 
 document.getElementById('exportBtn')?.addEventListener('click',async()=>{
   const filename='teamplan-backup-'+new Date().toISOString().slice(0,10)+'.json';
