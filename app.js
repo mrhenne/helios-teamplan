@@ -4,6 +4,7 @@ const MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','August',
 const DOW = ['So','Mo','Di','Mi','Do','Fr','Sa'];
 const DOW_LONG = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
 const WORKDAY_LABELS = [{d:1,l:'Mo'},{d:2,l:'Di'},{d:3,l:'Mi'},{d:4,l:'Do'},{d:5,l:'Fr'}];
+const DEFAULT_CODE_COLORS = {U:'#dfeee9',X:'#e9eef1',XU:'#f7e5d8',S:'#e7e5f4',G:'#f7e2e5'};
 
 const uid = () => crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
 const dateKey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -17,7 +18,7 @@ const formatVacationNumber = n => {
 
 const defaultState = {
   version: 1,
-  settings: {baseVacation:30,maxVacation:4,maxAbsence:7,countSchool:true,confirmConflicts:true,state:'NW',vacationDisplayMode:'actual',theme:'light',zoom:1,customCodes:[]},
+  settings: {baseVacation:30,maxVacation:4,maxAbsence:7,countSchool:true,confirmConflicts:true,state:'NW',vacationDisplayMode:'actual',theme:'light',zoom:1,customCodes:[],codeColors:{...DEFAULT_CODE_COLORS}},
   employees: [
     {id:uid(),name:'Anna Beispiel',hours:38.5,percent:100,workdays:5,workweek:[1,2,3,4,5],carry:0,adjustment:0,role:'employee',autoWeekend:{enabled:false,intervalWeeks:2,anchorDate:''},order:0},
     {id:uid(),name:'Ben Beispiel',hours:30,percent:78,workdays:4,workweek:[1,2,3,4],carry:2,adjustment:0,role:'employee',autoWeekend:{enabled:false,intervalWeeks:2,anchorDate:''},order:1},
@@ -68,6 +69,7 @@ let conflictSort = 'type';
 let currentModule = localStorage.getItem('teamplan-module') || 'vacation';
 let employeeInfoPrefs = (()=>{try{return {...{work:false,vacation:true,xu:false},...JSON.parse(localStorage.getItem('teamplan-employee-info')||'{}')}}catch{return {work:false,vacation:true,xu:false}}})();
 let vacationToolsOpen = localStorage.getItem('teamplan-vacation-tools-open') === '1';
+let vacationCrosshairEnabled = localStorage.getItem('teamplan-vacation-crosshair') === '1';
 let projectView = localStorage.getItem('teamplan-project-view') || 'overview';
 if(!['overview','my','roadmap','board','calendar','team','notes'].includes(projectView)){
   projectView='overview';
@@ -121,7 +123,7 @@ function loadLocal(){
   catch { return structuredClone(defaultState); }
 }
 function normalizeState(s){
-  s.settings={...defaultState.settings,...(s.settings||{})}; s.settings.customCodes=Array.isArray(s.settings.customCodes)?s.settings.customCodes:[]; s.employees=s.employees||[]; s.entries=s.entries||{}; s.blackouts=s.blackouts||[]; s.audit=s.audit||[];
+  s.settings={...defaultState.settings,...(s.settings||{})}; s.settings.customCodes=Array.isArray(s.settings.customCodes)?s.settings.customCodes:[]; s.settings.codeColors={...DEFAULT_CODE_COLORS,...(s.settings.codeColors||{})}; s.employees=s.employees||[]; s.entries=s.entries||{}; s.blackouts=s.blackouts||[]; s.audit=s.audit||[];
   s.employees.forEach((e,i)=>{e.order=e.order??i;e.workweek=e.workweek||[1,2,3,4,5];e.carry=Number(e.carry||0);e.adjustment=Number(e.adjustment||0);e.role=e.role||'employee';e.autoWeekend=e.autoWeekend||{enabled:false,intervalWeeks:2,anchorDate:''}});
   Object.values(s.entries).forEach(empEntries=>Object.values(empEntries||{}).forEach(v=>{v.status=v.status||'wish';v.plannerMarkers=Array.isArray(v.plannerMarkers)?v.plannerMarkers:[]}));
   return s;
@@ -376,19 +378,58 @@ function undoLastAction(){
 function entryIsActive(v){return (v?.status||'wish')!=='rejected'}
 function blackoutForKey(key){return (state.blackouts||[]).find(b=>key>=b.start&&key<=b.end)||null}
 function blackoutBlocks(key){const b=blackoutForKey(key);return b?.mode==='block'?b:null}
+function codeForeground(hex){
+  const raw=String(hex||'').replace('#','');
+  if(!/^[0-9a-fA-F]{6}$/.test(raw))return '#173f36';
+  const r=parseInt(raw.slice(0,2),16),g=parseInt(raw.slice(2,4),16),b=parseInt(raw.slice(4,6),16);
+  const luminance=(0.2126*r+0.7152*g+0.0722*b)/255;
+  return luminance>.62?'#173f36':'#ffffff';
+}
+function applyCodeColors(){
+  const root=document.documentElement,colors={...DEFAULT_CODE_COLORS,...(state.settings.codeColors||{})};
+  Object.entries(colors).forEach(([key,color])=>{
+    const token=key.toLowerCase().replace(/[^a-z0-9]/g,'');
+    root.style.setProperty('--code-'+token+'-bg',color);
+    root.style.setProperty('--code-'+token+'-fg',codeForeground(color));
+  });
+}
 function allCodeDefs(){
+  const colors={...DEFAULT_CODE_COLORS,...(state.settings.codeColors||{})};
   const base=[
-    {key:'U',label:'Urlaub',className:'u',absence:true},
-    {key:'X',label:'Frei-WE',className:'x',absence:true},
-    {key:'XU',label:'Wunsch-WE',className:'xu',absence:true},
-    {key:'S',label:'Schule',className:'s',absence:true},
-    {key:'G',label:'Geburtstag',className:'g',absence:false}
+    {key:'U',label:'Urlaub',className:'u',absence:true,color:colors.U},
+    {key:'X',label:'Frei-WE',className:'x',absence:true,color:colors.X},
+    {key:'XU',label:'Wunsch-WE',className:'xu',absence:true,color:colors.XU},
+    {key:'S',label:'Schule',className:'s',absence:true,color:colors.S},
+    {key:'G',label:'Geburtstag',className:'g',absence:false,color:colors.G}
   ];
   return [...base,...(state.settings.customCodes||[])];
 }
 function codeDef(key){return allCodeDefs().find(c=>c.key===key)||{key,label:key,className:'custom-code',absence:false,color:'#6f7f8f'}}
 function codeClassName(key){return codeDef(key).className||'custom-code'}
 function isAbsenceCode(key){return !!codeDef(key).absence}
+function renderBaseCodeColorsSettings(){
+  const colors={...DEFAULT_CODE_COLORS,...(state.settings.codeColors||{})};
+  Object.entries(colors).forEach(([key,color])=>{
+    const input=document.getElementById('baseCodeColor'+key);
+    if(input)input.value=color;
+  });
+}
+function saveBaseCodeColors(){
+  if(!canManage())return;
+  const next={...DEFAULT_CODE_COLORS};
+  Object.keys(next).forEach(key=>{
+    const value=document.getElementById('baseCodeColor'+key)?.value;
+    if(value)next[key]=value;
+  });
+  trackAction('Kürzelfarben geändert');
+  state.settings.codeColors=next;
+  persist();applyCodeColors();render();renderBaseCodeColorsSettings();showToast('Kürzelfarben gespeichert');
+}
+function resetBaseCodeColors(){
+  if(!canManage())return;
+  state.settings.codeColors={...DEFAULT_CODE_COLORS};
+  persist();applyCodeColors();render();renderBaseCodeColorsSettings();showToast('Standardfarben wiederhergestellt');
+}
 function renderCustomCodesSettings(){
   const list=document.getElementById('customCodesList');if(!list)return;
   const custom=state.settings.customCodes||[];
@@ -537,6 +578,32 @@ function toggleVacationTools(){
   localStorage.setItem('teamplan-vacation-tools-open',vacationToolsOpen?'1':'0');
   syncVacationUiPrefs();
 }
+function clearVacationCrosshair(){
+  document.querySelectorAll('.crosshair-row-active,.crosshair-col-active,.crosshair-intersection').forEach(el=>el.classList.remove('crosshair-row-active','crosshair-col-active','crosshair-intersection'));
+}
+function updateVacationCrosshairButton(){
+  const btn=document.getElementById('vacationCrosshairBtn');if(!btn)return;
+  btn.classList.toggle('active',vacationCrosshairEnabled);
+  btn.setAttribute('aria-pressed',String(vacationCrosshairEnabled));
+  btn.title=vacationCrosshairEnabled?'Fadenkreuz ausschalten':'Fadenkreuz einschalten';
+}
+function setVacationCrosshair(enabled){
+  vacationCrosshairEnabled=!!enabled;
+  localStorage.setItem('teamplan-vacation-crosshair',vacationCrosshairEnabled?'1':'0');
+  document.body.classList.toggle('vacation-crosshair-enabled',vacationCrosshairEnabled);
+  updateVacationCrosshairButton();
+  if(!vacationCrosshairEnabled)clearVacationCrosshair();
+}
+function highlightVacationCrosshair(cell){
+  if(!vacationCrosshairEnabled||!cell)return;
+  clearVacationCrosshair();
+  const row=cell.closest('.employee-row'),key=cell.dataset.date;
+  if(row)row.classList.add('crosshair-row-active');
+  if(key){
+    document.querySelectorAll('.day-cell[data-date="'+key+'"],.date-head[data-date="'+key+'"],.summary-row td[data-date="'+key+'"]').forEach(el=>el.classList.add('crosshair-col-active'));
+  }
+  cell.classList.add('crosshair-intersection');
+}
 
 function render(){
   ensureAutoWeekendEntries(viewDate.getFullYear());
@@ -554,7 +621,7 @@ function render(){
   } else {
     html+='</tr><tr><th class="employee-col">Mitarbeiter · Urlaub</th>';
   }
-  dates.forEach(d=>{const key=dateKey(d),we=[0,6].includes(d.getDay()),hol=holidays[key],school=schoolBreakForDate(d),monthBoundary=d.getDate()===1,monthTone=d.getMonth()%2===0?'month-even':'month-odd';html+=`<th class="date-head ${we?'weekend':''} ${hol?'holiday':''} ${school?'school-holiday':''} ${monthTone} ${monthBoundary&&currentView==='month'?'month-boundary':''}" title="${escapeHtml([hol,school&&('NRW '+school)].filter(Boolean).join(' · '))}">${currentView==='month'&&monthBoundary?`<span class="month-mini">${MONTHS[d.getMonth()].slice(0,3)}</span>`:''}${DOW[d.getDay()]}<strong>${d.getDate()}</strong>${hol?`<span class="holiday-label">${escapeHtml(hol)}</span>`:school?`<span class="school-label">${escapeHtml(school.replace('ferien',''))}</span>`:''}</th>`});
+  dates.forEach(d=>{const key=dateKey(d),we=[0,6].includes(d.getDay()),hol=holidays[key],school=schoolBreakForDate(d),monthBoundary=d.getDate()===1,monthTone=d.getMonth()%2===0?'month-even':'month-odd';html+=`<th class="date-head ${we?'weekend':''} ${hol?'holiday':''} ${school?'school-holiday':''} ${monthTone} ${monthBoundary&&currentView==='month'?'month-boundary':''}" data-date="${key}" title="${escapeHtml([hol,school&&('NRW '+school)].filter(Boolean).join(' · '))}">${currentView==='month'&&monthBoundary?`<span class="month-mini">${MONTHS[d.getMonth()].slice(0,3)}</span>`:''}${DOW[d.getDay()]}<strong>${d.getDate()}</strong>${hol?`<span class="holiday-label">${escapeHtml(hol)}</span>`:school?`<span class="school-label">${escapeHtml(school.replace('ferien',''))}</span>`:''}</th>`});
   html+='</tr></thead><tbody>';
   employees.forEach(e=>{
     const used=usedVacation(e),total=vacationEntitlement(e),remain=remainingVacation(e),xu=countCode(e,'XU'); const status=remain<0?'status-bad':remain<=3?'status-low':'status-good';
@@ -564,19 +631,19 @@ function render(){
     html+='</tr>';
   });
   html+=summaryRow(state.settings.vacationDisplayMode==='full'?'Urlaub U':'Urlaub U anteilig','U',dates);html+=summaryRow('Wunschfrei XU','XU',dates);html+=summaryRow('Schule S','S',dates);html+=presenceRow(dates);html+=absenceNamesRow(dates);html+='</tbody></table>';
-  document.getElementById('planner').innerHTML=html; bindPlannerEvents(); renderMetrics(); syncViewControls(); applyAppearance(); renderDynamicCodes(); renderPresenceUI(); renderUnreadMessageBadge();
+  document.getElementById('planner').innerHTML=html; bindPlannerEvents(); renderMetrics(); syncViewControls(); applyAppearance(); applyCodeColors(); renderDynamicCodes(); renderPresenceUI(); renderUnreadMessageBadge(); updateVacationCrosshairButton();
   if(currentView==='month') setupFlowingMonthScroll();
   if(currentView==='year') renderYearOverview();
 }
-function summaryRow(label,code,dates){const modeClass=code==='U'?(state.settings.vacationDisplayMode==='actual'?' vacation-summary actual':' vacation-summary full'):'';let s=`<tr class="summary-row ${code==='U'?'alarm':''}${modeClass}"><td class="employee-col">Σ ${label}</td>`;dates.forEach(d=>{const key=dateKey(d),c=dailyCounts(key);let n=c[code];if(code==='U'&&state.settings.vacationDisplayMode==='actual'){n=roundTwo(state.employees.reduce((sum,e)=>{const v=entryFor(e.id,key);return sum+(entryIsActive(v)&&v.codes?.includes('U')?vacationFactor(e):0)},0))}const rawU=c.U,hot=code==='U'&&rawU>state.settings.maxVacation,warn=code==='U'&&rawU===state.settings.maxVacation;s+=`<td class="${hot?'count-hot':warn?'count-warn':''}">${n?formatVacationNumber(n):''}</td>`});return s+'</tr>'}
-function presenceRow(dates){let s='<tr class="summary-row presence-row"><td class="employee-col">✓ Anwesend</td>';dates.forEach(d=>{const n=presentCount(dateKey(d));s+=`<td>${n}</td>`});return s+'</tr>'}
+function summaryRow(label,code,dates){const modeClass=code==='U'?(state.settings.vacationDisplayMode==='actual'?' vacation-summary actual':' vacation-summary full'):'';let s=`<tr class="summary-row ${code==='U'?'alarm':''}${modeClass}"><td class="employee-col">Σ ${label}</td>`;dates.forEach(d=>{const key=dateKey(d),c=dailyCounts(key);let n=c[code];if(code==='U'&&state.settings.vacationDisplayMode==='actual'){n=roundTwo(state.employees.reduce((sum,e)=>{const v=entryFor(e.id,key);return sum+(entryIsActive(v)&&v.codes?.includes('U')?vacationFactor(e):0)},0))}const rawU=c.U,hot=code==='U'&&rawU>state.settings.maxVacation,warn=code==='U'&&rawU===state.settings.maxVacation;s+=`<td data-date="${key}" class="${hot?'count-hot':warn?'count-warn':''}">${n?formatVacationNumber(n):''}</td>`});return s+'</tr>'}
+function presenceRow(dates){let s='<tr class="summary-row presence-row"><td class="employee-col">✓ Anwesend</td>';dates.forEach(d=>{const key=dateKey(d),n=presentCount(key);s+=`<td data-date="${key}">${n}</td>`});return s+'</tr>'}
 function absenceNamesRow(dates){
   let s='<tr class="summary-row absence-names-row"><td class="employee-col">↗ Abwesend</td>';
   dates.forEach(d=>{
     const list=absentEmployees(dateKey(d));
     const title=list.map(x=>`${x.employee.name} (${x.codes.join('+')})`).join('\n');
     const visible=list.map(x=>`<span class="absent-name" title="${escapeHtml(x.employee.name)}">${escapeHtml(firstName(x.employee.name))}<small>${x.codes.join('+')}</small></span>`).join('');
-    s+=`<td title="${escapeHtml(title)}"><div class="absent-list">${visible||'<span class="none">–</span>'}</div></td>`;
+    s+=`<td data-date="${dateKey(d)}" title="${escapeHtml(title)}"><div class="absent-list">${visible||'<span class="none">–</span>'}</div></td>`;
   });
   return s+'</tr>';
 }
@@ -964,6 +1031,12 @@ function showCellContextMenu(event,empId,key){
   menu.style.left=Math.max(pad,x)+'px';menu.style.top=Math.max(pad,y)+'px';
 }
 function bindPlannerEvents(){
+  const planner=document.getElementById('planner');
+  planner?.addEventListener('pointerover',e=>{
+    const cell=e.target.closest('.day-cell');
+    if(cell)highlightVacationCrosshair(cell);
+  });
+  planner?.addEventListener('pointerleave',()=>{if(vacationCrosshairEnabled)clearVacationCrosshair()});
   document.querySelectorAll('.day-cell').forEach(el=>{
     el.addEventListener('pointerdown',e=>{
       if(focusPanMode&&document.body.classList.contains('planner-focus'))return;
@@ -1442,7 +1515,7 @@ function exportVacationPdf(){
   reportPrintWindow('Urlaubsbericht',buildVacationPdfHtml(options),'vacationExportDialog');
 }
 function openSettings(){
-  const s=state.settings;renderCustomCodesSettings();
+  const s=state.settings;renderBaseCodeColorsSettings();renderCustomCodesSettings();
   document.getElementById('settingBaseVacation').value=s.baseVacation;document.getElementById('settingMaxVacation').value=s.maxVacation;document.getElementById('settingMaxAbsence').value=s.maxAbsence;document.getElementById('settingCountSchool').checked=s.countSchool;document.getElementById('settingConfirmConflicts').checked=s.confirmConflicts;
   document.getElementById('accountName').value=authMembership?.display_name||'';
   document.getElementById('accountEmail').value=authUser?.email||'';
@@ -3784,9 +3857,12 @@ document.addEventListener('click',e=>{
   }
 });
 syncVacationUiPrefs();
+applyCodeColors();
+setVacationCrosshair(vacationCrosshairEnabled);
 document.getElementById('fitEmployeesBtn')?.addEventListener('click',fitAllEmployees);
 document.getElementById('focusFitBtn')?.addEventListener('click',fitAllEmployees);
 document.getElementById('focusModeBtn')?.addEventListener('click',enterPlannerFocus);
+document.getElementById('vacationCrosshairBtn')?.addEventListener('click',()=>{setVacationCrosshair(!vacationCrosshairEnabled);showToast(vacationCrosshairEnabled?'Fadenkreuz aktiviert':'Fadenkreuz deaktiviert')});
 document.getElementById('exitFocusBtn')?.addEventListener('click',exitPlannerFocus);
 document.getElementById('focusSearchBtn')?.addEventListener('click',()=>toggleFocusSearch());
 document.getElementById('focusPanBtn')?.addEventListener('click',()=>setFocusPanMode(!focusPanMode));
@@ -3836,6 +3912,8 @@ document.querySelectorAll('[data-planner-marker]').forEach(b=>b.addEventListener
   selectedPlannerMarkers.has(marker)?selectedPlannerMarkers.delete(marker):selectedPlannerMarkers.add(marker);
   b.classList.toggle('selected',selectedPlannerMarkers.has(marker));
 }));
+document.getElementById('saveBaseCodeColorsBtn')?.addEventListener('click',saveBaseCodeColors);
+document.getElementById('resetBaseCodeColorsBtn')?.addEventListener('click',resetBaseCodeColors);
 document.getElementById('addCustomCodeBtn')?.addEventListener('click',()=>{
   if(!canManage())return;
   const key=document.getElementById('customCodeKey').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4);
