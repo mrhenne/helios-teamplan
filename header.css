@@ -1,9 +1,12 @@
-/* ZNA Core header layout – isolated final overrides */
+/* ZNA Core header layout – final override
+   Desktop: status row on top, modules + actions aligned on one shared row. */
 .topbar{
   display:grid!important;
-  grid-template-columns:minmax(500px,620px) minmax(0,1fr)!important;
-  gap:24px!important;
-  align-items:start!important;
+  grid-template-columns:minmax(520px,720px) minmax(0,1fr)!important;
+  grid-template-rows:auto auto!important;
+  column-gap:24px!important;
+  row-gap:10px!important;
+  align-items:end!important;
   height:auto!important;
   min-height:0!important;
   max-height:none!important;
@@ -11,26 +14,50 @@
   overflow:visible!important;
 }
 
-.topbar-left-zone{
-  display:flex!important;
-  flex-direction:column!important;
-  align-items:flex-start!important;
-  justify-content:flex-start!important;
-  gap:8px!important;
-  min-width:0!important;
-  width:100%!important;
+/* Desktop: flatten the two logical zones into the parent grid so both lower rows align. */
+@media(min-width:1201px){
+  .topbar-left-zone,
+  .topbar-right-zone{
+    display:contents!important;
+  }
+
+  .topbar-left-zone .zna-core-brand{
+    grid-column:1!important;
+    grid-row:1!important;
+    justify-self:start!important;
+    align-self:start!important;
+  }
+
+  .topbar-left-zone .topbar-module-switch{
+    grid-column:1!important;
+    grid-row:2!important;
+    justify-self:start!important;
+    align-self:stretch!important;
+  }
+
+  .topbar-right-zone .topbar-session{
+    grid-column:2!important;
+    grid-row:1!important;
+    justify-self:end!important;
+    align-self:start!important;
+  }
+
+  .topbar-right-zone .topbar-actions{
+    grid-column:2!important;
+    grid-row:2!important;
+    justify-self:end!important;
+    align-self:stretch!important;
+  }
 }
+
 .topbar-left-zone .zna-core-brand{
   display:flex!important;
   align-items:center!important;
   justify-content:flex-start!important;
-  flex:0 0 auto!important;
   width:auto!important;
   min-width:0!important;
   max-width:none!important;
   height:auto!important;
-  min-height:0!important;
-  max-height:none!important;
   margin:0!important;
   padding:0!important;
   overflow:visible!important;
@@ -41,152 +68,252 @@
   max-width:100%!important;
   height:auto!important;
 }
+
+/* Module rail */
 .topbar-left-zone .topbar-module-switch{
   position:static!important;
   inset:auto!important;
   float:none!important;
   display:flex!important;
   flex-direction:row!important;
-  flex:0 0 auto!important;
   width:100%!important;
-  max-width:600px!important;
-  height:auto!important;
-  min-height:0!important;
-  max-height:none!important;
+  max-width:720px!important;
+  min-height:46px!important;
   margin:0!important;
+  padding:3px!important;
   transform:none!important;
-  align-self:flex-start!important;
+  border-radius:14px!important;
+  background:rgba(236,243,240,.78)!important;
+  border:1px solid var(--line)!important;
+  box-shadow:0 5px 18px rgba(20,62,52,.045)!important;
   overflow:visible!important;
 }
 .topbar-left-zone .topbar-module-switch .module-tab{
   flex:1 1 0!important;
   min-width:0!important;
+  min-height:38px!important;
+  padding:5px 9px!important;
+  border-radius:10px!important;
 }
+.topbar-left-zone .topbar-module-switch .module-tab-icon{
+  width:25px!important;
+  height:25px!important;
+  flex-basis:25px!important;
+}
+.topbar-left-zone .topbar-module-switch .module-tab b{font-size:8.5px!important}
+.topbar-left-zone .topbar-module-switch .module-tab small{font-size:6px!important}
 
-.topbar-right-zone{
-  display:flex!important;
-  flex-direction:column!important;
-  align-items:flex-end!important;
-  justify-content:flex-start!important;
-  gap:8px!important;
-  min-width:0!important;
-  width:100%!important;
-  padding-top:2px!important;
-}
-.topbar-right-zone .topbar-session,
-.topbar-right-zone .topbar-actions{
+/* Session row */
+.topbar-right-zone .topbar-session{
   position:static!important;
-  flex:0 0 auto!important;
   inset:auto!important;
   transform:none!important;
   display:flex!important;
   align-items:center!important;
   justify-content:flex-end!important;
-  gap:6px!important;
-  flex-wrap:wrap!important;
+  gap:7px!important;
+  flex-wrap:nowrap!important;
   width:auto!important;
   max-width:100%!important;
   min-width:0!important;
-  height:auto!important;
+  min-height:34px!important;
   margin:0!important;
   overflow:visible!important;
+}
+.topbar-right-zone .sync-pill,
+.topbar-right-zone .topbar-user,
+.topbar-right-zone .topbar-online,
+.topbar-right-zone .role-select{
+  height:34px!important;
+  min-height:34px!important;
+  max-height:34px!important;
+  box-sizing:border-box!important;
+  border-radius:11px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  font-size:7.2px!important;
+  font-weight:800!important;
+  white-space:nowrap!important;
 }
 .topbar-right-zone .sync-pill{
   min-width:110px!important;
   width:auto!important;
   max-width:none!important;
   padding:0 11px!important;
-  overflow:visible!important;
-  text-overflow:clip!important;
-  white-space:nowrap!important;
 }
 .topbar-right-zone .topbar-user{
   min-width:165px!important;
   width:auto!important;
-  max-width:245px!important;
+  max-width:250px!important;
   padding:0 11px!important;
   overflow:hidden!important;
   text-overflow:ellipsis!important;
-  white-space:nowrap!important;
 }
 .topbar-right-zone .topbar-online{
-  min-width:76px!important;
+  min-width:78px!important;
   width:auto!important;
   max-width:none!important;
   padding:0 10px!important;
-  overflow:visible!important;
-  white-space:nowrap!important;
 }
-.topbar-right-zone .sync-pill,
-.topbar-right-zone .topbar-user,
-.topbar-right-zone .topbar-online,
-.topbar-right-zone .role-select,
-.topbar-right-zone .top-tool{
-  height:32px!important;
-  min-height:32px!important;
-  max-height:32px!important;
+
+/* Action rail: deliberately mirrors the module rail */
+.topbar-right-zone .topbar-actions{
+  position:static!important;
+  inset:auto!important;
+  transform:none!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:3px!important;
+  flex-wrap:nowrap!important;
+  width:max-content!important;
+  max-width:100%!important;
+  min-width:0!important;
+  min-height:46px!important;
+  margin:0!important;
+  padding:3px!important;
   box-sizing:border-box!important;
+  border-radius:14px!important;
+  background:rgba(236,243,240,.78)!important;
+  border:1px solid var(--line)!important;
+  box-shadow:0 5px 18px rgba(20,62,52,.045)!important;
+  overflow:visible!important;
 }
 .topbar-right-zone .top-tool{
   width:auto!important;
   min-width:0!important;
   max-width:none!important;
+  height:38px!important;
+  min-height:38px!important;
+  max-height:38px!important;
   padding:0 10px!important;
   gap:6px!important;
+  border-radius:10px!important;
+  border:1px solid transparent!important;
+  background:transparent!important;
+  color:var(--ink)!important;
+  box-shadow:none!important;
   overflow:visible!important;
   white-space:nowrap!important;
+  transition:.16s ease!important;
+}
+.topbar-right-zone .top-tool:hover{
+  transform:none!important;
+  background:rgba(255,255,255,.78)!important;
+  border-color:var(--line)!important;
+}
+.topbar-right-zone .top-tool .ui-icon{
+  width:15px!important;
+  height:15px!important;
+  min-width:15px!important;
 }
 .topbar-right-zone .top-tool>span{
   display:inline!important;
   font-size:7.2px!important;
+  font-weight:800!important;
   white-space:nowrap!important;
 }
-
-@media(max-width:1500px){
-  .topbar{
-    grid-template-columns:minmax(440px,540px) minmax(0,1fr)!important;
-    gap:18px!important;
-  }
-  .topbar-left-zone .zna-core-logo{width:250px!important}
-  .topbar-left-zone .topbar-module-switch{max-width:520px!important}
-  .topbar-right-zone .topbar-user{
-    min-width:130px!important;
-    max-width:190px!important;
-  }
-  .topbar-right-zone .top-tool{padding:0 8px!important}
-  .topbar-right-zone .top-tool>span{font-size:6.8px!important}
+.topbar-right-zone .top-tool.primary-tool{
+  background:var(--green)!important;
+  color:#fff!important;
+  border-color:transparent!important;
+  box-shadow:0 5px 12px rgba(0,107,91,.14)!important;
+}
+.topbar-right-zone .top-tool.primary-tool:hover{
+  background:var(--green2)!important;
+  color:#fff!important;
+}
+body.dark-mode .topbar-left-zone .topbar-module-switch,
+body.dark-mode .topbar-right-zone .topbar-actions{
+  background:#152821!important;
+  border-color:rgba(200,235,226,.12)!important;
+}
+body.dark-mode .topbar-right-zone .top-tool{
+  color:#e7f0ed!important;
+}
+body.dark-mode .topbar-right-zone .top-tool:hover{
+  background:#1b302a!important;
+  border-color:rgba(200,235,226,.12)!important;
+}
+body.dark-mode .topbar-right-zone .top-tool.primary-tool{
+  background:var(--green2)!important;
+  color:#fff!important;
 }
 
+/* Keep the shared lower row on one line for normal desktop widths. */
+@media(min-width:1201px) and (max-width:1600px){
+  .topbar{
+    grid-template-columns:minmax(470px,610px) minmax(0,1fr)!important;
+    column-gap:16px!important;
+  }
+  .topbar-left-zone .zna-core-logo{width:245px!important}
+  .topbar-left-zone .topbar-module-switch{max-width:610px!important}
+  .topbar-right-zone .topbar-user{
+    min-width:130px!important;
+    max-width:185px!important;
+  }
+  .topbar-right-zone .top-tool{
+    padding:0 7px!important;
+    gap:5px!important;
+  }
+  .topbar-right-zone .top-tool>span{font-size:6.7px!important}
+  .topbar-right-zone .top-tool .ui-icon{
+    width:13px!important;
+    height:13px!important;
+    min-width:13px!important;
+  }
+}
+
+/* Tablet and small desktop: stack the two logical zones cleanly instead of squeezing. */
 @media(max-width:1200px){
   .topbar{
     grid-template-columns:1fr!important;
+    grid-template-rows:auto!important;
     gap:12px!important;
   }
   .topbar-left-zone,
   .topbar-right-zone{
+    display:flex!important;
+    flex-direction:column!important;
     width:100%!important;
     max-width:none!important;
+    min-width:0!important;
+    gap:8px!important;
+  }
+  .topbar-left-zone{align-items:flex-start!important}
+  .topbar-right-zone{
+    align-items:flex-start!important;
+    padding-top:0!important;
   }
   .topbar-left-zone .topbar-module-switch{
     width:100%!important;
     max-width:none!important;
   }
-  .topbar-right-zone{
-    align-items:flex-start!important;
-    padding-top:0!important;
+  .topbar-right-zone .topbar-session{
+    justify-content:flex-start!important;
+    flex-wrap:wrap!important;
+    width:100%!important;
   }
-  .topbar-right-zone .topbar-session,
   .topbar-right-zone .topbar-actions{
     justify-content:flex-start!important;
+    flex-wrap:wrap!important;
     width:100%!important;
+    max-width:none!important;
   }
 }
 
 @media(max-width:700px){
+  .topbar{padding:9px!important}
   .topbar-left-zone .zna-core-logo{width:200px!important}
   .topbar-left-zone .topbar-module-switch .module-tab small{display:none!important}
   .topbar-right-zone .topbar-user{
     min-width:0!important;
     max-width:180px!important;
+  }
+  .topbar-right-zone .top-tool{
+    height:36px!important;
+    min-height:36px!important;
+    max-height:36px!important;
+    padding:0 8px!important;
   }
 }
