@@ -1379,3 +1379,46 @@ alter table public.teamplan_trainings
 
 create index if not exists teamplan_trainings_team_recurrence_series_idx
   on public.teamplan_trainings(team_id,recurring,recurrence_unit,recurrence_interval,recurrence_until);
+
+
+-- === 2026-10-02 training_catalog_series_defaults ===
+alter table public.teamplan_training_types
+  add column if not exists series_enabled boolean not null default false,
+  add column if not exists series_unit text not null default 'months',
+  add column if not exists series_interval integer,
+  add column if not exists series_weekday integer,
+  add column if not exists default_start_time time,
+  add column if not exists default_end_time time;
+
+alter table public.teamplan_training_types
+  drop constraint if exists teamplan_training_types_series_check;
+
+alter table public.teamplan_training_types
+  add constraint teamplan_training_types_series_check check (
+    (series_enabled=false)
+    or (
+      series_enabled=true
+      and series_unit in ('months','weeks')
+      and (
+        (series_unit='months' and series_interval between 1 and 240)
+        or
+        (series_unit='weeks' and series_interval between 1 and 52 and series_weekday between 1 and 7)
+      )
+    )
+  );
+
+alter table public.teamplan_training_types
+  drop constraint if exists teamplan_training_types_default_time_check;
+
+alter table public.teamplan_training_types
+  add constraint teamplan_training_types_default_time_check check (
+    default_start_time is null or default_end_time is null or default_end_time > default_start_time
+  );
+
+update public.teamplan_training_types
+set series_enabled = true,
+    series_unit = 'months',
+    series_interval = interval_months
+where interval_months is not null
+  and series_enabled = false
+  and series_interval is null;
