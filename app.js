@@ -56,6 +56,75 @@ let sessionEmployeeId = localStorage.getItem('teamplan-session-employee') || '';
 let authUser = null;
 let authMembership = null;
 let loginMode = 'login';
+
+const INACTIVITY_LOGOUT_MS = 15 * 60 * 1000;
+const INACTIVITY_WARNING_MS = 60 * 1000;
+let inactivityDeadline = 0;
+let inactivityTickTimer = null;
+let inactivityLastReset = 0;
+let inactivityLogoutPending = false;
+
+function formatSessionCountdown(ms){
+  const total=Math.max(0,Math.ceil(ms/1000));
+  return String(Math.floor(total/60)).padStart(2,'0')+':'+String(total%60).padStart(2,'0');
+}
+function renderSessionTimer(){
+  const timer=document.getElementById('sessionTimer'),value=document.getElementById('sessionTimerValue');
+  if(!timer||!value)return;
+  if(!authUser||!inactivityDeadline){
+    timer.classList.add('hidden','warning');
+    value.textContent='15:00';
+    return;
+  }
+  const remaining=Math.max(0,inactivityDeadline-Date.now());
+  value.textContent=formatSessionCountdown(remaining);
+  timer.classList.remove('hidden');
+  timer.classList.toggle('warning',remaining<=INACTIVITY_WARNING_MS);
+  timer.title='Automatische Abmeldung bei Inaktivität in '+formatSessionCountdown(remaining);
+}
+async function inactivityLogout(){
+  if(inactivityLogoutPending||!authUser)return;
+  inactivityLogoutPending=true;
+  stopInactivityTimer();
+  try{
+    if(supabaseClient)await supabaseClient.auth.signOut();
+  }catch(err){
+    console.error('Automatische Abmeldung fehlgeschlagen',err);
+    authUser=null;authMembership=null;renderRoleControls();showLogin();
+  }finally{
+    inactivityLogoutPending=false;
+    showToast('Aus Sicherheitsgründen nach 15 Minuten Inaktivität abgemeldet');
+  }
+}
+function checkInactivity(){
+  if(!authUser||!inactivityDeadline)return;
+  renderSessionTimer();
+  if(Date.now()>=inactivityDeadline)inactivityLogout();
+}
+function resetInactivityTimer(force=false){
+  if(!authUser)return;
+  const now=Date.now();
+  if(!force&&now-inactivityLastReset<1000)return;
+  inactivityLastReset=now;
+  inactivityDeadline=now+INACTIVITY_LOGOUT_MS;
+  renderSessionTimer();
+}
+function startInactivityTimer(){
+  stopInactivityTimer();
+  if(!authUser)return;
+  resetInactivityTimer(true);
+  inactivityTickTimer=window.setInterval(checkInactivity,1000);
+}
+function stopInactivityTimer(){
+  if(inactivityTickTimer){window.clearInterval(inactivityTickTimer);inactivityTickTimer=null}
+  inactivityDeadline=0;inactivityLastReset=0;
+  renderSessionTimer();
+}
+['pointerdown','keydown','touchstart','wheel'].forEach(eventName=>{
+  document.addEventListener(eventName,()=>resetInactivityTimer(),{passive:true,capture:true});
+});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkInactivity()});
+window.addEventListener('focus',checkInactivity);
 let plannerScrollLeft = null;
 let presenceChannel = null;
 let onlinePresence = new Map();
@@ -3943,6 +4012,7 @@ async function retrySyncCall(fn,label,attempts=3){
 async function completeSignedIn(user){
   if(!user)throw new Error('Anmeldung erfolgreich, aber kein Benutzerkonto wurde zurückgegeben.');
   authUser=user;
+  startInactivityTimer();
 
   // Only authentication-critical data may block the login screen.
   await retrySyncCall(()=>loadAuthMembership(),'Team-Zuordnung');
@@ -4008,7 +4078,7 @@ async function initRemote(){
       window.setTimeout(async()=>{
         if(event==='SIGNED_OUT'||!session){
           await stopProjectRealtime();await stopTrainingRealtime();await stopDiscussionRealtime();await stopPresence();
-          authUser=null;authMembership=null;renderRoleControls();setSync('local','● Abgemeldet');showLogin();return;
+          stopInactivityTimer();authUser=null;authMembership=null;renderRoleControls();setSync('local','● Abgemeldet');showLogin();return;
         }
         if(event==='TOKEN_REFRESHED'){
           authUser=session.user||authUser;
