@@ -368,3 +368,55 @@ body.dark-mode .topbar-right-zone .top-tool.primary-tool{
     padding:0 6px!important;
   }
 }
+
+/* 2026-10-10 iPhone structural repair: never let legacy grid placement create ghost columns. */
+@media(max-width:700px){
+  .app-shell{min-width:0!important}
+  .topbar{display:flex!important;flex-direction:column!important;width:100%!important;max-width:100%!important;gap:10px!important;overflow:hidden!important}
+  .topbar-left-zone,.topbar-right-zone{display:flex!important;flex-direction:column!important;align-items:stretch!important;min-width:0!important;width:100%!important;gap:8px!important}
+  .topbar-left-zone .zna-core-brand{width:100%!important;justify-content:flex-start!important}
+  .topbar-left-zone .zna-core-logo{width:190px!important;max-width:70%!important}
+  .topbar-left-zone .topbar-module-switch{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;width:100%!important;min-width:0!important;overflow:hidden!important;gap:3px!important}
+  .topbar-left-zone .topbar-module-switch .module-tab{width:100%!important;min-width:0!important;flex:none!important;gap:4px!important;justify-content:center!important;padding:5px 2px!important}
+  .topbar-left-zone .topbar-module-switch .module-tab-icon{width:24px!important;height:24px!important;flex:0 0 24px!important}
+  .topbar-left-zone .topbar-module-switch .module-tab b{font-size:9px!important;white-space:normal!important;overflow-wrap:anywhere!important}
+  .topbar-right-zone .topbar-session{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;grid-auto-flow:row!important;align-items:center!important;justify-content:stretch!important;gap:5px!important;width:100%!important;min-width:0!important}
+  .topbar-right-zone .topbar-session>*{grid-column:auto!important;grid-row:auto!important;min-width:0!important;max-width:100%!important}
+  .topbar-right-zone .topbar-session #syncPill{grid-column:1!important;grid-row:1!important;max-width:100%!important;min-width:0!important;width:100%!important;justify-content:flex-start!important}
+  .topbar-right-zone .topbar-session #sessionTimer{grid-column:2!important;grid-row:1!important}
+  .topbar-right-zone .topbar-session #authUserPill{grid-column:1/-1!important;grid-row:2!important;width:100%!important;max-width:100%!important;font-size:10px!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  .topbar-right-zone .topbar-session #onlinePill{display:none!important}
+  .topbar-right-zone .topbar-session .role-stack{grid-column:1/-1!important;grid-row:3!important;width:100%!important;min-width:0!important;position:static!important;display:grid!important;grid-template-columns:1fr!important}
+  .topbar-right-zone .topbar-session .role-stack select{position:static!important;right:auto!important;left:auto!important;transform:none!important;margin:0!important;width:100%!important;max-width:100%!important;height:38px!important;min-height:38px!important;max-height:none!important;font-size:12px!important}
+  .topbar-right-zone .topbar-actions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:5px!important;width:100%!important;max-width:100%!important;min-width:0!important;min-height:0!important;overflow:hidden!important;justify-content:stretch!important}
+  .topbar-right-zone .topbar-actions .top-tool{width:100%!important;min-width:0!important;min-height:40px!important;height:40px!important;max-height:40px!important;padding:0 5px!important;overflow:hidden!important}
+  .topbar-right-zone .topbar-actions .top-tool>span{display:none!important}
+  .topbar-right-zone .topbar-actions .top-tool svg{width:18px!important;height:18px!important}
+}
+@media(max-width:700px){
+  #vacationToolbar.planner-controls{display:flex!important;flex-direction:column!important;align-items:stretch!important;width:100%!important;min-width:0!important;gap:8px!important}
+  #vacationToolbar .controls-row{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important;width:100%!important;min-width:0!important;align-items:stretch!important}
+  #vacationToolbar .controls-row>*{grid-column:auto!important;grid-row:auto!important;min-width:0!important;max-width:100%!important;position:relative!important;left:auto!important;right:auto!important;top:auto!important;transform:none!important;margin:0!important;justify-self:stretch!important;align-self:stretch!important}
+  #vacationToolbar .vacation-heading{grid-column:1/-1!important;display:flex!important;width:100%!important;min-height:35px!important}
+  #vacationToolbar .controls-spacer{display:none!important}
+  #vacationToolbar .date-nav-block{display:grid!important;grid-template-columns:auto 34px minmax(0,1fr) 34px!important;gap:2px!important;width:100%!important;height:44px!important;min-height:44px!important;align-items:center!important;padding:2px!important;overflow:hidden!important}
+  #vacationToolbar .date-nav-block .control-caption{grid-column:1!important;grid-row:1!important;font-size:8px!important;margin:0 2px!important}
+  #vacationToolbar .date-nav-block .icon-btn{position:static!important;grid-row:1!important;width:34px!important;height:36px!important;min-width:34px!important;min-height:36px!important;margin:0!important;transform:none!important}
+  #vacationToolbar .date-nav-block .icon-btn:first-of-type{grid-column:2!important}
+  #vacationToolbar .date-nav-block .date-select{position:static!important;grid-column:3!important;grid-row:1!important;width:100%!important;min-width:0!important;height:36px!important;min-height:36px!important;padding:0 4px!important;font-size:11px!important;transform:none!important}
+  #vacationToolbar .date-nav-block .icon-btn:last-of-type{grid-column:4!important}
+  #vacationToolbar .view-switch{display:flex!important;align-items:center!important;grid-column:1/-1!important;width:100%!important;min-width:0!important;height:44px!important}
+  #vacationToolbar .view-switch .segment{flex:1 1 0!important}
+  #vacationToolbar .today-btn{grid-column:1/-1!important;width:100%!important}
+  #vacationToolbar .zoom-block{grid-column:1/-1!important;display:flex!important;align-items:center!important;gap:6px!important;min-width:0!important}
+  #vacationToolbar .zoom-block #zoomRange{flex:1 1 auto!important;width:100%!important;min-width:35px!important}
+  #vacationToolbar .compact-employee-search{width:100%!important;min-width:0!important}
+  #vacationToolbar .vacation-mode-block{display:flex!important;align-items:center!important;gap:6px!important;min-width:0!important}
+  #vacationToolbar .vacation-tools-head,#vacationToolbar .controls-legend{display:flex!important;width:100%!important;min-width:0!important}
+  #vacationToolbar .vacation-tools-head{flex-wrap:wrap!important}
+}
+@media(max-width:390px){
+  #vacationToolbar .controls-row{grid-template-columns:1fr!important}
+  #vacationToolbar .controls-row>*{grid-column:1!important}
+  #vacationToolbar .date-nav-block{grid-template-columns:30px 34px minmax(0,1fr) 34px!important}
+}
