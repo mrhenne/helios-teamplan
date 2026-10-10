@@ -102,8 +102,13 @@ function checkInactivity(){
   if(Date.now()>=inactivityDeadline)inactivityLogout();
 }
 function resetInactivityTimer(force=false){
-  if(!authUser)return;
+  if(!authUser||inactivityLogoutPending)return;
   const now=Date.now();
+  // A suspended mobile tab must not revive a session that has already expired.
+  if(!force&&inactivityDeadline&&now>=inactivityDeadline){
+    inactivityLogout();
+    return;
+  }
   if(!force&&now-inactivityLastReset<1000)return;
   inactivityLastReset=now;
   inactivityDeadline=now+INACTIVITY_LOGOUT_MS;
