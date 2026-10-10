@@ -420,3 +420,13 @@ body.dark-mode .topbar-right-zone .top-tool.primary-tool{
   #vacationToolbar .controls-row>*{grid-column:1!important}
   #vacationToolbar .date-nav-block{grid-template-columns:30px 34px minmax(0,1fr) 34px!important}
 }
+
+/* iPhone fix: collapsed tools must outrank mobile controls-row display rules. */
+@media(max-width:700px){
+  #vacationToolbar #vacationToolsRow.vacation-tools-collapsed{
+    display:none!important;
+  }
+  #vacationToolbar #vacationToolsRow:not(.vacation-tools-collapsed){
+    display:grid!important;
+  }
+}
