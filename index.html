@@ -1200,6 +1200,7 @@
       if (!form || !button || !window.supabase || !window.TEAMPLAN_CONFIG) return;
 
       const cfg = window.TEAMPLAN_CONFIG;
+      if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) return;
       const client = window.TEAMPLAN_LOGIN_CLIENT || window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
       window.TEAMPLAN_LOGIN_CLIENT = client;
       window.TEAMPLAN_LOGIN_FALLBACK_ACTIVE = true;

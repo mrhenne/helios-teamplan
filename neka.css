@@ -664,3 +664,9 @@ html[data-theme="dark"] body #vacationToolbar #vacationToolsRow:not(.vacation-to
 #vacationToolbar .vacation-count-toggle{background:var(--tn-field)!important;border-color:var(--tn-line)!important;color:var(--tn-ink)!important}
 #vacationToolbar .vacation-count-sigma{font-weight:800;color:var(--tn-accent)}
 #vacationToolbar:has(#yearViewBtn.active) .controls-primary .date-nav-block:first-of-type{display:none!important}
+@media(max-width:700px){
+  .nk-module .tn-side{flex-wrap:wrap!important;overflow:visible!important}
+  .nk-module .tn-nav{flex-wrap:wrap!important;width:100%}
+  .nk-module .tn-nav-tools{border-left:0!important;padding-left:0!important;margin-left:0!important;border-top:1px solid var(--tn-line);padding-top:6px!important}
+  .nk-module .tn-nav .tn-nav-item{flex:1 1 calc(33% - 4px)!important;justify-content:center!important}
+}

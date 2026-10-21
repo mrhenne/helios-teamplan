@@ -489,8 +489,9 @@ test('Projektteam und Aufgaben sind direkt miteinander verknüpft', async ({ pag
 
   await page.locator('#addProjectBtn').click();
   await page.locator('#projectName').fill('QA Projektteam');
+  await page.locator('#projectTeamToggle').click();
   await page.locator('#projectMemberSearch').fill('Projekt Person A');
-  await page.locator('#projectMembersList input[type="checkbox"]').check();
+  await page.locator('#projectMembersList input[type="checkbox"]').first().check();
   await page.locator('#projectForm button[type="submit"]').click();
 
   const projectCard=page.locator('.project-card',{hasText:'QA Projektteam'}).first();
@@ -508,8 +509,9 @@ test('Projektteam und Aufgaben sind direkt miteinander verknüpft', async ({ pag
 
   await page.locator('#projectDialog .close-dialog').first().click();
   await projectCard.click();
+  await page.locator('#projectTeamToggle').click();
   await page.locator('#projectMemberSearch').fill('Projekt Person B');
-  await expect(page.locator('#projectMembersList input[type="checkbox"]')).toBeChecked();
+  await expect(page.locator('#projectMembersList input[type="checkbox"]').first()).toBeChecked();
 });
 
 
@@ -567,15 +569,11 @@ test('Lang laufende Weiterbildung erzeugt keinen falschen Aufgaben-Tageskonflikt
   await page.locator('#employeeName').fill('QA Weiterbildung Person');
   await page.locator('#employeeForm button[type="submit"]').click();
 
-  await page.locator('#moduleTrainingBtn').click();
-  await page.locator('#addTrainingBtn').click();
-  await page.locator('#trainingEmployee').selectOption({label:'QA Weiterbildung Person'});
-  await page.locator('#trainingTitle').fill('Notfallpflege QA');
-  await page.locator('#trainingCategory').fill('Weiterbildung');
-  await page.locator('#trainingStart').fill('2026-04-01');
-  await page.locator('#trainingEnd').fill('2028-10-01');
-  await page.locator('#trainingStatus').selectOption('in_progress');
-  await page.locator('#trainingForm button[type="submit"]').click();
+  // Fortbildungen werden nur über Supabase gespeichert; lokal wird der Datensatz direkt gesetzt.
+  await page.evaluate(() => {
+    const emp = state.employees.find(e => e.name === 'QA Weiterbildung Person');
+    trainings = [{ id: 'qa-training', employee_id: emp.id, title: 'Notfallpflege QA', category: 'Weiterbildung', start_date: '2026-04-01', end_date: '2028-10-01', status: 'in_progress', date_precision: 'exact', training_year: 2026 }];
+  });
 
   await page.locator('#moduleProjectsBtn').click();
   await page.locator('#addProjectBtn').click();
@@ -643,8 +641,8 @@ test('Projekt Jahreskalender ist kompakt und Projektarbeit priorisiert Aufgaben'
   await page.locator('#projectsCalendarYearBtn').click();
   await expect(page.locator('.projects-calendar-year')).toBeVisible();
   await expect(page.locator('.project-year-month')).toHaveCount(12);
-  await expect(page.locator('.project-year-month').filter({hasText:'November'})).toContainText('QA Jahresprojekt');
-  await expect(page.locator('.project-year-month').filter({hasText:'November'})).toContainText('QA Jahrestermin');
+  await expect(page.locator('.project-year-month').filter({hasText:'November'})).toContainText('1 Projekte');
+  await expect(page.locator('.project-year-month').filter({hasText:'November'}).locator('.project-year-day.has-items[title*="QA Jahrestermin"]')).toHaveCount(1);
 
   await page.locator('#projectsOverviewBtn').click();
   const projectCard=page.locator('.project-card',{hasText:'QA Jahresprojekt'}).first();
@@ -763,6 +761,8 @@ test('Projekt Sicherung und selektiver PDF Export sind verfügbar', async ({ pag
 
   await page.locator('#projectExportDialog .close-dialog').first().click();
 
+  // Headless-Chrome kennt showSaveFilePicker, öffnet aber keinen Dialog – auf den Download-Weg ausweichen.
+  await page.evaluate(() => { window.showSaveFilePicker = undefined; });
   const downloadPromise=page.waitForEvent('download');
   await page.locator('#projectsSaveBtn').click();
   const download=await downloadPromise;
