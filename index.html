@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css?v=20261010-2" />
   <link rel="stylesheet" href="header.css?v=20261010-4" />
+  <link rel="stylesheet" href="training-neka.css?v=20261021-1" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -220,33 +221,47 @@
     </section>
 
     <section id="trainingModule" class="training-module hidden">
-      <section class="toolbar glass training-toolbar">
-        <div class="training-heading">
-          <span class="eyebrow">FORTBILDUNGSPLANER</span>
-          <div><strong id="trainingHeadingTitle">Fortbildungen</strong><span id="trainingHeadingSub">Teamübersicht</span></div>
-        </div>
+     <div class="tn-shell">
+      <aside class="tn-side" aria-label="Fortbildungsplaner Navigation">
+        <div class="tn-side-brand"><span class="tn-side-logo"><svg class="ui-icon"><use href="#i-training"></use></svg></span><span><b>Fortbildungen</b><small>ZNA Core</small></span></div>
+        <nav class="tn-nav training-view-switch" aria-label="Ansichten">
+          <button id="trainingOverviewBtn" class="segment tn-nav-item active" type="button"><svg class="ui-icon"><use href="#i-grid"></use></svg><span>Übersicht</span></button>
+          <button id="trainingCalendarBtn" class="segment tn-nav-item" type="button"><svg class="ui-icon"><use href="#i-calendar"></use></svg><span>Jahreskalender</span></button>
+          <button id="trainingMultiYearBtn" class="segment tn-nav-item" type="button"><svg class="ui-icon"><use href="#i-table"></use></svg><span>Mehrjahre</span></button>
+          <button id="trainingTeamStatusBtn" class="segment tn-nav-item" type="button"><svg class="ui-icon"><use href="#i-users"></use></svg><span>Teamstatus</span></button>
+          <button id="trainingEmployeesBtn" class="segment tn-nav-item" type="button"><svg class="ui-icon"><use href="#i-role"></use></svg><span>Mitarbeiter</span></button>
+          <button id="trainingClassicBtn" class="segment tn-nav-item" type="button"><svg class="ui-icon"><use href="#i-list"></use></svg><span>Liste</span></button>
+        </nav>
+        <span class="tn-side-label">Werkzeuge</span>
+        <nav class="tn-nav tn-nav-tools" aria-label="Werkzeuge">
+          <button id="trainingTypesBtn" class="tn-nav-item training-manager-action" type="button"><svg class="ui-icon"><use href="#i-book"></use></svg><span>Katalog</span></button>
+          <button id="trainingExportBtn" class="tn-nav-item training-manager-action" type="button"><svg class="ui-icon"><use href="#i-table"></use></svg><span>Excel-Export</span></button>
+          <button id="trainingPdfBtn" class="tn-nav-item" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>PDF-Export</span></button>
+          <button id="trainingCsvBtn" class="tn-nav-item training-manager-action" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>CSV-Export</span></button>
+          <button id="trainingJsonBtn" class="tn-nav-item training-manager-action" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>JSON-Export</span></button>
+        </nav>
+        <div id="trainingSideCard" class="tn-side-card"></div>
+      </aside>
 
-        <div class="training-year-nav">
-          <button id="trainingPrevYear" class="icon-btn" type="button" aria-label="Vorheriges Jahr">‹</button>
-          <select id="trainingYearSelect" class="date-select" aria-label="Fortbildungsjahr"></select>
-          <button id="trainingNextYear" class="icon-btn" type="button" aria-label="Nächstes Jahr">›</button>
+      <div class="tn-main">
+      <section class="training-toolbar tn-head">
+        <div class="training-heading tn-greeting">
+          <span id="trainingGreeting" class="tn-greeting-hello">Hallo,</span>
+          <strong id="trainingHeadingTitle">Team.</strong>
+          <span id="trainingHeadingSub">Hier ist euer Fortbildungsjahr.</span>
         </div>
-
-        <div class="segmented training-view-switch">
-          <button id="trainingOverviewBtn" class="segment active" type="button"><svg class="ui-icon"><use href="#i-grid"></use></svg><span>Übersicht</span></button>
-          <button id="trainingCalendarBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-calendar"></use></svg><span>Jahr</span></button>
-          <button id="trainingMultiYearBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-table"></use></svg><span>Mehrjahre</span></button>
-          <button id="trainingTeamStatusBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-users"></use></svg><span>Teamstatus</span></button>
-          <button id="trainingEmployeesBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-role"></use></svg><span>Mitarbeiter</span></button>
-          <button id="trainingClassicBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-list"></use></svg><span>Liste</span></button>
+        <div class="tn-head-actions">
+          <div class="training-year-nav">
+            <button id="trainingPrevYear" class="icon-btn" type="button" aria-label="Vorheriges Jahr">‹</button>
+            <select id="trainingYearSelect" class="date-select" aria-label="Fortbildungsjahr"></select>
+            <button id="trainingNextYear" class="icon-btn" type="button" aria-label="Nächstes Jahr">›</button>
+          </div>
+          <button id="trainingToolsToggle" class="tn-pill-btn icon-label-btn" type="button" aria-expanded="false"><svg class="ui-icon"><use href="#i-settings"></use></svg><span>Ansicht</span><b class="drawer-chevron">⌄</b></button>
+          <button id="addTrainingBtn" class="tn-pill-btn primary training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-plus"></use></svg><span>Fortbildung</span></button>
         </div>
-
-        <div class="controls-spacer"></div>
-        <button id="trainingToolsToggle" class="btn ghost icon-label-btn" type="button" aria-expanded="false"><svg class="ui-icon"><use href="#i-settings"></use></svg><span>Werkzeuge</span><b class="drawer-chevron">⌄</b></button>
-        <button id="addTrainingBtn" class="btn primary training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-plus"></use></svg><span>Fortbildung</span></button>
       </section>
 
-      <section id="trainingToolsPanel" class="training-tools-panel glass" hidden>
+      <section id="trainingToolsPanel" class="training-tools-panel tn-card" hidden>
         <div class="training-tools-group">
           <span class="training-tools-label">Ansicht</span>
           <div class="training-zoom-control">
@@ -255,25 +270,12 @@
             <button id="trainingZoomInBtn" type="button" aria-label="Fortbildungsansicht vergrößern">+</button>
             <strong id="trainingZoomLabel">100%</strong>
           </div>
-          <button id="trainingFocusBtn" class="btn ghost icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-focus"></use></svg><span>Fokus</span></button>
-          <button id="trainingExitFocusBtn" class="btn ghost hidden icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-x"></use></svg><span>Fokus beenden</span></button>
-        </div>
-
-        <div class="training-tools-group training-manager-action">
-          <span class="training-tools-label">Verwaltung</span>
-          <button id="trainingTypesBtn" class="btn ghost training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-book"></use></svg><span>Katalog</span></button>
-        </div>
-
-        <div class="training-tools-group training-manager-action">
-          <span class="training-tools-label">Export</span>
-          <button id="trainingExportBtn" class="btn ghost training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-table"></use></svg><span>Excel</span></button>
-          <button id="trainingPdfBtn" class="btn ghost icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>PDF</span></button>
-          <button id="trainingCsvBtn" class="btn ghost training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>CSV</span></button>
-          <button id="trainingJsonBtn" class="btn ghost training-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>JSON</span></button>
+          <button id="trainingFocusBtn" class="tn-pill-btn icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-focus"></use></svg><span>Fokus</span></button>
+          <button id="trainingExitFocusBtn" class="tn-pill-btn hidden icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-x"></use></svg><span>Fokus beenden</span></button>
         </div>
       </section>
 
-      <section class="training-filter-shell glass">
+      <section class="training-filter-shell tn-card">
         <button id="trainingFilterToggle" class="compact-drawer-toggle" type="button" aria-expanded="false">
           <svg class="ui-icon"><use href="#i-list"></use></svg>
           <span>Suche & Filter</span>
@@ -299,18 +301,21 @@
 
       <section id="trainingOverviewView" class="training-view">
         <div id="trainingOverviewDropzones" class="training-status-dropzones training-manager-action"></div>
-        <div id="trainingMetrics" class="training-metrics training-cockpit"></div>
-        <div class="training-content-grid training-overview-grid">
-          <article class="glass training-panel training-panel-running">
-            <div class="training-panel-head"><div><span class="eyebrow">JETZT</span><h2>In Durchführung</h2><p>Aktuell laufende Fort- und Weiterbildungen</p></div></div>
+        <div class="tn-hero-grid">
+          <article id="trainingHero" class="tn-hero"></article>
+          <div id="trainingMetrics" class="training-metrics training-cockpit tn-kpis"></div>
+        </div>
+        <div class="training-content-grid training-overview-grid tn-lower">
+          <article class="tn-card training-panel tn-timeline-card">
+            <div class="training-panel-head"><div><h2>Zeitleiste</h2><p>Das Fortbildungsjahr auf einen Blick</p></div><button id="trainingTimelineAdd" class="tn-icon-add training-manager-action" type="button" aria-label="Fortbildung planen">+</button></div>
+            <div id="trainingTimeline" class="tn-timeline"></div>
+            <div class="tn-sub-head"><span>Jetzt</span><small>laufend</small></div>
             <div id="trainingRunningList" class="training-list"></div>
-          </article>
-          <article class="glass training-panel">
-            <div class="training-panel-head"><div><span class="eyebrow">ALS NÄCHSTES</span><h2>Geplant</h2><p>Bevorstehende Termine und Jahresplanungen</p></div></div>
+            <div class="tn-sub-head"><span>Als nächstes</span><small>geplant</small></div>
             <div id="trainingUpcomingList" class="training-list"></div>
           </article>
-          <article class="glass training-panel training-panel-attention">
-            <div class="training-panel-head"><div><span class="eyebrow">HANDLUNGSBEDARF</span><h2>Fällig & überfällig</h2><p>Pflichtfortbildungen mit Priorität</p></div></div>
+          <article class="tn-card training-panel training-panel-attention">
+            <div class="training-panel-head"><div><h2>Hinweise</h2><p>Fällig, überfällig und Überschneidungen</p></div></div>
             <div id="trainingDueList" class="training-list"></div>
           </article>
         </div>
@@ -366,9 +371,8 @@
         </div>
       </section>
 
-      <section class="hint glass training-hint">
-        <strong>Fortbildungen:</strong> Termine, Weiterbildungen, Status und Budgets im Blick behalten.
-      </section>
+      </div>
+     </div>
     </section>
 
     <section id="projectsModule" class="projects-module hidden">

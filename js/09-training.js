@@ -378,21 +378,96 @@ function bindTrainingDragDrop(){
     });
   });
 }
+function trainingRealItems(items){return items.filter(t=>!t._virtual)}
+function trainingMonthBuckets(items,valueOf){
+  const out=Array(12).fill(0);
+  trainingRealItems(items).forEach(t=>{if(t.date_precision==='year'||!t.start_date)return;const m=Number(t.start_date.slice(5,7))-1;if(m>=0&&m<12&&t.start_date.startsWith(String(trainingYear)))out[m]+=valueOf(t)});
+  return out;
+}
+function trainingSparkSvg(values,color){
+  const max=Math.max(...values,1),w=120,h=34,step=w/(values.length-1);
+  const pts=values.map((v,i)=>[i*step,h-3-(v/max)*(h-8)]);
+  const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  return '<svg class="tn-spark" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" aria-hidden="true"><path d="'+d+' L'+w+' '+h+' L0 '+h+'Z" fill="'+color+'" opacity=".12"/><path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
+function trainingBarsSvg(values,color){
+  const max=Math.max(...values,1);
+  return '<svg class="tn-bars" viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true">'+values.map((v,i)=>{const h=Math.max(2,v/max*30);return '<rect x="'+(i*10+1)+'" y="'+(32-h)+'" width="7" height="'+h+'" rx="2.5" fill="'+color+'" opacity="'+(v?0.75:0.18)+'"/>'}).join('')+'</svg>';
+}
+function trainingStats(items){
+  const real=trainingRealItems(items).filter(t=>t.status!=='cancelled');
+  const count=st=>real.filter(t=>t.status===st).length;
+  const completed=count('completed'),running=count('in_progress'),planned=count('planned');
+  const due=items.filter(t=>trainingDueState(t)==='due').length,overdue=items.filter(t=>trainingDueState(t)==='overdue').length;
+  const undated=items.filter(t=>t.status!=='cancelled'&&t.date_precision==='year').length;
+  const hours=real.filter(t=>t.status==='completed').reduce((s,t)=>s+Number(t.hours||0),0);
+  const cost=real.reduce((s,t)=>s+Number(t.cost||0),0);
+  const budget=trainingVisibleEmployees().reduce((s,e)=>s+trainingBudgetFor(e.id),0);
+  const total=real.length,quota=total?Math.round(completed/total*100):0;
+  return {completed,running,planned,due,overdue,undated,hours,cost,budget,total,quota};
+}
+function trainingArrow(){return '<svg class="tn-kpi-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>'}
 function renderTrainingMetrics(items){
   const box=document.getElementById('trainingMetrics');if(!box)return;
-  const planned=items.filter(t=>t.status==='planned').length;
-  const running=items.filter(t=>t.status==='in_progress').length;
-  const due=items.filter(t=>trainingDueState(t)==='due').length;
-  const overdue=items.filter(t=>trainingDueState(t)==='overdue').length;
-  const undated=items.filter(t=>t.status!=='cancelled'&&t.date_precision==='year').length;
+  const st=trainingStats(items);
+  const hoursByMonth=trainingMonthBuckets(items,t=>Number(t.hours||0)),plannedByMonth=trainingMonthBuckets(items,t=>t.status==='planned'?1:0);
+  const budgetPct=st.budget?Math.min(100,Math.round(st.cost/st.budget*100)):0;
+  const tile=(tone,label,big,unit,chip,deco,left,right,view)=>'<article class="tn-kpi tone-'+tone+'"'+(view?' data-training-kpi-view="'+view+'" tabindex="0" role="button"':'')+'><header><span>'+label+'</span>'+trainingArrow()+'</header><div class="tn-kpi-body"><strong>'+big+'</strong><em>'+unit+'</em>'+(chip?'<b class="tn-kpi-chip">'+chip+'</b>':'')+'</div><div class="tn-kpi-deco">'+deco+'</div><footer><span>'+left+'</span><span>'+right+'</span></footer></article>';
   box.innerHTML=
-    '<article><span>In Durchführung</span><strong>'+running+'</strong><small>läuft aktuell</small></article>'+
-    '<article><span>Geplant</span><strong>'+planned+'</strong><small>'+trainingYear+'</small></article>'+
-    '<article class="'+(overdue?'metric-alert':'')+'"><span>Handlungsbedarf</span><strong>'+due+' / '+overdue+'</strong><small>bald / überfällig</small></article>'+
-    '<article><span>Termin offen</span><strong>'+undated+'</strong><small>nur Jahr bekannt</small></article>';
+    tile('violet','In Durchführung',st.running,st.running===1?'Fortbildung':'Fortbildungen',st.running?'läuft aktuell':'',trainingSparkSvg(trainingMonthBuckets(items,t=>t.status==='in_progress'?1:0),'#8b5cf6'),'Jetzt',String(trainingYear),'calendar')+
+    tile('blue','Geplant',st.planned,'Termine',st.undated?st.undated+' ohne Datum':'',trainingBarsSvg(plannedByMonth,'#4f8ff0'),'Jan','Dez','calendar')+
+    tile(st.overdue?'rose':'peach','Handlungsbedarf',st.due+st.overdue,'fällig',st.overdue?st.overdue+' überfällig':'',trainingSparkSvg([0,1,0,2,1,Math.max(1,st.due),st.overdue,st.due+st.overdue],st.overdue?'#d9505a':'#e0892c'),'bald '+st.due,'überfällig '+st.overdue,'classic')+
+    tile('mint','Fortbildungsstunden',formatVacationNumber(st.hours),'Std.',st.total?st.completed+' absolviert':'',trainingSparkSvg(hoursByMonth,'#1a9a82'),'Absolviert',String(trainingYear),'employees')+
+    tile('amber','Budget',budgetPct,'% genutzt',st.budget?euro(st.budget)+' Budget':'kein Budget',
+      '<div class="tn-meter"><i style="width:'+budgetPct+'%"></i></div>',euro(st.cost),'von '+euro(st.budget),'employees')+
+    tile('sky','Teamabdeckung',st.quota,'% absolviert','von '+st.total,'<div class="tn-meter sky"><i style="width:'+st.quota+'%"></i></div>',st.completed+' absolviert',(st.total-st.completed)+' offen','teamstatus');
+  box.querySelectorAll('[data-training-kpi-view]').forEach(el=>{
+    const go=()=>setTrainingView(el.dataset.trainingKpiView);
+    el.addEventListener('click',go);el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}});
+  });
+}
+function trainingArc(r,pct,color,width=10){
+  const c=2*Math.PI*r,len=Math.max(0,Math.min(1,pct))*c;
+  return '<circle cx="110" cy="110" r="'+r+'" fill="none" stroke="'+color+'" stroke-opacity=".14" stroke-width="'+width+'"/><circle cx="110" cy="110" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="'+width+'" stroke-linecap="round" stroke-dasharray="'+len.toFixed(1)+' '+(c-len).toFixed(1)+'" transform="rotate(-90 110 110)"/>';
+}
+function renderTrainingHero(items){
+  const box=document.getElementById('trainingHero');if(!box)return;
+  const st=trainingStats(items),total=Math.max(st.total,1);
+  const call=(cls,label,value,sub)=>'<div class="tn-callout '+cls+'"><i></i><span>'+label+'</span><b>'+value+'</b><small>'+sub+'</small></div>';
+  box.innerHTML='<div class="tn-hero-ring"><svg viewBox="0 0 220 220" role="img" aria-label="Fortbildungsfortschritt '+st.quota+' Prozent">'+
+    trainingArc(98,st.completed/total,'#13a085',11)+trainingArc(78,st.running/total,'#8b5cf6',11)+trainingArc(58,st.planned/total,'#4f8ff0',11)+
+    '</svg><div class="tn-hero-ring-center"><strong>'+st.quota+'<small>%</small></strong><span>absolviert</span></div></div>'+
+    call('c-a','Absolviert',st.completed,'Fortbildungen')+call('c-b','In Durchführung',st.running,'laufend')+call('c-c','Geplant',st.planned,'Termine')+call('c-d','Offen',Math.max(0,st.total-st.completed-st.running-st.planned),'ohne Status')+
+    '<p class="tn-hero-note">Echtzeit-Überblick<br>für ein besser<br>qualifiziertes Team.</p>';
+}
+function renderTrainingTimeline(items){
+  const box=document.getElementById('trainingTimeline');if(!box)return;
+  const year=trainingYear,start=new Date(year,0,1).getTime(),span=new Date(year+1,0,1).getTime()-start;
+  const dated=trainingRealItems(items).filter(t=>t.date_precision!=='year'&&t.start_date&&t.end_date&&t.status!=='cancelled').sort((a,b)=>a.start_date.localeCompare(b.start_date));
+  const lanes=[];
+  const bars=dated.map(t=>{
+    const s=Math.max(start,new Date(t.start_date+'T00:00:00').getTime()),e=Math.min(start+span,new Date(t.end_date+'T23:59:59').getTime());
+    if(e<start||s>start+span)return '';
+    const left=(s-start)/span*100,width=Math.max(1.4,(e-s)/span*100);
+    let lane=lanes.findIndex(end=>end<=left);if(lane<0){lane=lanes.length;lanes.push(0)}lanes[lane]=left+width+.4;
+    return '<button type="button" class="tn-bar '+t.status+'" style="left:'+left.toFixed(2)+'%;width:'+width.toFixed(2)+'%;top:'+lane*16+'px;--training-color:'+escapeHtml(trainingColor(t))+'" data-training-id="'+t.id+'" data-training-virtual="0" title="'+escapeHtml(trainingEmployeeName(t.employee_id)+': '+t.title+' · '+formatTrainingDateRange(t))+'"></button>';
+  }).join('');
+  const today=new Date(),showToday=today.getFullYear()===year,todayPct=showToday?(today.getTime()-start)/span*100:0;
+  const monthShort=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  box.innerHTML='<div class="tn-tl-track" style="height:'+(Math.max(1,Math.min(lanes.length,4))*16+10)+'px">'+bars+(showToday?'<span class="tn-tl-today" style="left:'+todayPct.toFixed(2)+'%"><b>'+today.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})+'</b></span>':'')+'</div><div class="tn-tl-scale">'+monthShort.map(m=>'<span>'+m+'</span>').join('')+'</div>';
+}
+function renderTrainingSideCard(items){
+  const box=document.getElementById('trainingSideCard');if(!box)return;
+  const st=trainingStats(items),open=st.due+st.overdue;
+  box.innerHTML='<b>'+(open?open+' Fortbildung'+(open===1?'':'en')+' brauch'+(open===1?'t':'en')+' Aufmerksamkeit':'Alles im grünen Bereich')+'</b><small>'+(open?'Teamstatus prüfen und Termine nachplanen.':'Kein Pflichttermin ist bald fällig oder überfällig.')+'</small><button type="button" class="tn-side-card-btn">Teamstatus öffnen</button>';
+  box.querySelector('.tn-side-card-btn')?.addEventListener('click',()=>setTrainingView('teamstatus'));
+}
+function trainingGreeting(){
+  const h=new Date().getHours();
+  return h<11?'Guten Morgen,':h<17?'Guten Tag,':'Guten Abend,';
 }
 function renderTrainingOverview(items){
-  renderTrainingMetrics(items);
+  renderTrainingMetrics(items);renderTrainingHero(items);renderTrainingTimeline(items);
   const today=dateKey(new Date());
   const running=items.filter(t=>t.status==='in_progress').sort((a,b)=>(a.start_date||String(a.training_year)+'-01-01').localeCompare(b.start_date||String(b.training_year)+'-01-01')).slice(0,30);
   const upcoming=items.filter(t=>t.status==='planned'&&(t.date_precision==='year'?Number(t.training_year)>=new Date().getFullYear():(t.end_date&&t.end_date>=today))).sort((a,b)=>{
@@ -788,8 +863,11 @@ function renderTrainingModule(){
   if(trainingView==='employees')renderTrainingEmployees(items);
   if(trainingView==='classic')renderTrainingClassic(items);
   renderTrainingDropzones();applyTrainingZoom();
-  const scope=sessionRole==='employee'?'Meine Fortbildungen':'Teamübersicht';
-  document.getElementById('trainingHeadingSub').textContent=scope+' · '+trainingYear;
+  const own=sessionRole==='employee',me=own?state.employees.find(e=>e.id===sessionEmployeeId):null;
+  document.getElementById('trainingGreeting').textContent=trainingGreeting();
+  document.getElementById('trainingHeadingTitle').textContent=(me?me.name.split(' ')[0]:'Team')+'.';
+  document.getElementById('trainingHeadingSub').textContent='Hier ist '+(own?'dein':'euer')+' Fortbildungsjahr '+trainingYear+'.';
+  renderTrainingSideCard(items);
   bindTrainingRenderedEvents();bindTrainingDragDrop();
 }
 function setTrainingView(view){
@@ -1115,6 +1193,7 @@ function initTrainingModuleUI(){
   document.getElementById('trainingTeamStatusSort')?.addEventListener('change',e=>{trainingTeamStatusSort=e.target.value;localStorage.setItem('teamplan-training-teamstatus-sort',trainingTeamStatusSort);renderTrainingModule()});
   document.getElementById('trainingTeamStatusSearch')?.addEventListener('input',renderTrainingModule);
   document.getElementById('addTrainingBtn')?.addEventListener('click',()=>openTraining());
+  document.getElementById('trainingTimelineAdd')?.addEventListener('click',()=>openTraining());
   document.getElementById('trainingTypesBtn')?.addEventListener('click',()=>{if(!trainingCanManage())return;resetTrainingTypeForm();renderTrainingTypes();safeShowDialog('trainingTypesDialog')});
   document.getElementById('trainingFocusBtn')?.addEventListener('click',enterTrainingFocus);
   document.getElementById('trainingExitFocusBtn')?.addEventListener('click',exitTrainingFocus);
