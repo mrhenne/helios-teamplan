@@ -1,80 +1,106 @@
-# TeamPlan · Gemeinsame Urlaubsplanung
+# ZNA Core · Team Management & Organisation
 
-Moderne, mobil nutzbare Urlaubsplanung im Helios-inspirierten Look. Die App läuft ohne Build-Schritt direkt auf GitHub Pages. Ohne Backend arbeitet sie lokal im Browser. Mit Supabase werden Änderungen zwischen mehreren Geräten live synchronisiert.
+Mobil nutzbare Team-App im Helios-inspirierten Look mit drei Modulen: **Urlaubsplanung**, **Fortbildungen** und **Projekte**. Die App läuft ohne Build-Schritt direkt auf GitHub Pages. Mit Supabase (Login, Rollen, Live-Sync) arbeitet das Team gemeinsam; ohne Konfiguration läuft sie lokal im Browser.
 
-## Funktionen
+## Module
 
-- Mitarbeitende anlegen, bearbeiten, löschen und per Drag & Drop sortieren
-- Wochenstunden, Stellenanteil, Arbeitstage pro Woche und individuelle Arbeitstage
-- Automatische Urlaubsberechnung auf Basis der tatsächlichen Arbeitstage pro Woche
-- Übertrag und individuelle Urlaubskorrektur
-- Mehrfachbelegung pro Datum: `U`, `X`, `XU`, `S`, `G`, z. B. `U + G`
-- Priorität Normal / Wichtig / Hoch und freie Notiz je Planeintrag
-- Resturlaub, bereits geplanter Urlaub und XU je Mitarbeiter
-- Tagessummen für Urlaub, XU und Schule
-- Einstellbare Warnschwelle für maximale parallele Urlaube
-- Zusätzliche Warnschwelle für U + XU + optional Schule
-- Wochenenden und gesetzliche Feiertage in Nordrhein-Westfalen hervorgehoben
-- Warnung, wenn Urlaub auf einem nicht regulären Arbeitstag eingetragen wird
-- Mitarbeiter-Suche
-- JSON Backup und Wiederherstellung
-- Responsive Oberfläche, Druckansicht, Liquid-Glass-Stil
-- Optionaler Live-Sync über Supabase Realtime
+**Urlaubsplanung**
+- Mitarbeitende mit Wochenstunden, Stellenanteil, Arbeitstagen, Übertrag und Korrektur
+- Mehrfachbelegung pro Datum (`U`, `X`, `XU`, `S`, `G`, eigene Kürzel), Priorität, Notiz, Status Wunsch → genehmigt
+- Resturlaub, Tagessummen, Warnschwellen, Sperrzeiten, Konfliktprüfung
+- NRW-Feiertage und -Schulferien, Monats- und Jahresansicht, Fokusmodus, Excel/PDF-Export
+- Team-Chat zu Planungsfragen, Live-Präsenz, Verlauf
 
-## Wichtige Logik bei Teilzeit
+**Fortbildungen**
+- Übersicht, Kalender, Mehrjahresmatrix, Teamstatus, Mitarbeiteransicht
+- Fortbildungsarten mit Farben, Terminserien (monatlich/wöchentlich), Budgets, Export
 
-Die Urlaubstage werden nicht einfach aus dem Stellenanteil in Prozent berechnet. Wer z. B. 80 % arbeitet, aber weiterhin Montag bis Freitag arbeitet, hat bei gleichem Tarifanspruch dieselbe Zahl Urlaubstage wie eine Vollzeitkraft. Reduziert wird der Anspruch, wenn sich die Zahl der regelmäßigen Arbeitstage pro Woche reduziert.
+**Projekte**
+- Übersicht, Meine Aufgaben, Roadmap, Kanban, Kalender (Monat/Jahr), Team, Notizboard
+- Mehrere Verantwortliche, Checklisten, Kommentare, wiederkehrende Aufgaben, Vorlagen, PDF-Export
 
-Formel:
+**Rollen:** Admin, Planer, Mitarbeiter, Externer Projektmitarbeiter, Nur Lesen – durchgesetzt per Row Level Security in Supabase.
+
+## Urlaubsanspruch bei Teilzeit
+
+Der Anspruch richtet sich nach den regelmäßigen Arbeitstagen pro Woche, nicht nach dem Stellenanteil:
 
 `Vollzeit-Urlaub × Arbeitstage pro Woche / 5 + Übertrag + Korrektur`
 
 Beispiel: 30 Tage Vollzeitanspruch und 4 Arbeitstage pro Woche = 24 Urlaubstage.
 
+## Projektstruktur
+
+| Datei / Ordner | Inhalt |
+| --- | --- |
+| `index.html` | Oberfläche, Dialoge, SVG-Icons, Login-Fallback |
+| `styles.css`, `header.css` | Gestaltung (`header.css` wird zuletzt geladen) |
+| `js/01-core.js` … `js/12-main.js` | App-Logik, nach Bereichen aufgeteilt (siehe unten) |
+| `config.js` | Supabase-URL, Publishable Key, Team-ID |
+| `supabase.sql` | Datenbankschema, RLS-Policies, RPC-Funktionen |
+| `supabase/functions/teamplan-users` | Edge Function für die Benutzerverwaltung (nur Admins) |
+| `tests/` | Statische Prüfung und Playwright-Browsertests |
+| `tools/` | Werkzeuge für Umbauten (CSS-Bereinigung, Optik-Vergleich) |
+
+Die Skripte in `js/` sind klassische Skripte ohne Build-Schritt und teilen sich einen gemeinsamen globalen Scope. **Die Reihenfolge in `index.html` ist wichtig:** Grundlagen zuerst, `12-main.js` (Start und Verdrahtung der Bedienelemente) zuletzt.
+
+| Skript | Bereich |
+| --- | --- |
+| `01-core.js` | Konstanten, Zustand, Sitzungs-Timer, Rechte, Hilfsfunktionen |
+| `02-chat.js` | Team-Chat, Lesestatus, Live-Präsenz, Rückgängig |
+| `03-vacation-model.js` | Kürzel, Urlaubsanspruch, Feiertage, Ferien, Tageszählung |
+| `04-vacation-planner.js` | Planer-Ansicht, Zellen, Drag-Auswahl, Dialoge, Import |
+| `05-admin.js` | Rollen, Benutzerverwaltung, Sperrzeiten, Verlauf |
+| `06-vacation-conflicts.js` | Konfliktprüfung |
+| `07-vacation-export.js` | Excel- und PDF-Export Urlaub |
+| `08-auth.js` | Einstellungen, Konto, Ersteinrichtung, Anmeldung |
+| `09-training.js` | Modul Fortbildungen |
+| `10-projects.js` | Modul Projekte |
+| `11-sync.js` | Supabase-Verbindung und Live-Sync |
+| `12-main.js` | App-Start |
+
+Nach Änderungen an CSS/JS die Versionsnummer `?v=…` in `index.html` erhöhen, damit iPhones nicht die alte Datei aus dem Cache laden.
+
 ## Lokal starten
 
-Da die App vollständig statisch ist, reicht ein kleiner Webserver:
-
 ```bash
-python3 -m http.server 8080
+npm run serve        # oder: python3 -m http.server 8080
 ```
 
-Dann `http://localhost:8080` öffnen.
+Dann `http://localhost:8080` öffnen. Ohne gültige `config.js` läuft die App im Lokalmodus (Daten nur im Browser).
 
-## GitHub Pages
+## Tests
 
-Der Workflow unter `.github/workflows/pages.yml` deployt den Stand aus `main` automatisch über GitHub Pages.
+```bash
+npm install
+npm run test:qa
+```
 
-## Gemeinsame Live-Nutzung mit Supabase
+`test:static` prüft IDs, Icons, Tabellen und RLS-Abdeckung; `test:browser` startet die Playwright-Tests (Chrome) in vier Bildschirmgrößen.
 
-GitHub Pages ist nur der Webserver. Für eine gemeinsame Planung braucht die App einen zentralen Datenspeicher.
+### Optik bei Umbauten absichern
 
-1. Kostenloses Supabase-Projekt erstellen.
-2. `supabase.sql` im SQL Editor ausführen.
-3. `config.example.js` nach `config.js` kopieren.
-4. `supabaseUrl`, `supabaseAnonKey` und eine eindeutige `teamId` eintragen.
-5. `config.js` committen.
-6. Seite neu laden. Oben rechts muss `● Live synchron` erscheinen.
+Für Aufräumarbeiten, die nichts am Aussehen ändern sollen:
 
-### Sicherheit
+```bash
+node tools/visual/seed.js                       # einmalig: Beispieldaten erzeugen
+node tools/visual/snapshot.js ../snap-vorher    # vor dem Umbau
+node tools/visual/snapshot.js ../snap-nachher   # nach dem Umbau
+node tools/visual/compare.js ../snap-vorher ../snap-nachher
+```
 
-Die mitgelieferte SQL Policy ist bewusst für einen internen Prototyp sehr offen. Wer die GitHub-Pages-Adresse und den Supabase-Key kennt, kann den Plan lesen bzw. ändern. Für produktiven Klinikbetrieb sollten vor echten Personaldaten mindestens diese Punkte ergänzt werden:
+Der Vergleich prüft die berechneten Styles aller Elemente in allen Modulen, Rollen und Dialogen – hell/dunkel, Desktop/Tablet/iPhone und Druckansicht. `npm run css:clean` (`tools/css-clean.js`) entfernt nachweislich wirkungsloses CSS (nie verwendete Selektoren, sicher überschriebene Deklarationen).
 
-- Supabase Auth oder SSO
-- Rollen `Admin`, `Planer`, `Mitarbeiter`, `Nur Lesen`
-- Row Level Security je Team
-- Audit-Log mit Änderungsverlauf
-- Datenschutzprüfung und Freigabe durch die zuständige IT / Datenschutzstelle
+## Betrieb
 
-## Sinnvolle nächste Ausbaustufe
+- **Hosting:** GitHub Pages, deployt automatisch aus `main` (`.github/workflows/pages.yml`).
+- **Datenbank:** Supabase-Projekt `oiqmolyvapczccqschur`. Neue Schemaänderungen als Migration einspielen und in `supabase.sql` nachtragen.
+- Im selben Supabase-Projekt liegen auch die Tabellen `members`, `projects`, `tasks`, `notes` der separaten **Flowly**-App (`flowly-pm.vercel.app`). Nicht ohne Rücksprache entfernen.
 
-- Login und rollenbasierte Rechte
-- Genehmigungsworkflow: Wunsch → geprüft → genehmigt / abgelehnt
-- Urlaubssperren und Mindestbesetzung pro Qualifikation
-- Skill-Mix, z. B. Notfallpflege, Praxisanleitung, MTS, Schockraum
-- Jahresübersicht und Heatmap
-- Excel / PDF Export
-- automatische Feiertage für weitere Bundesländer
-- Historie / Undo
-- mobile Schnellansicht für Mitarbeitende
-- separate Wunschphase, damit Mitarbeitende nicht direkt genehmigten Urlaub verändern
+## Sicherheit
+
+- Anmeldung über Supabase Auth, Teamzugehörigkeit und Rolle in `team_members`
+- Row Level Security auf allen Tabellen; Hilfsfunktionen im nicht öffentlichen Schema `private`
+- Benutzerverwaltung nur über die Edge Function mit Admin-Prüfung
+- Automatischer Logout nach 15 Minuten Inaktivität
+- Offene Empfehlung: „Leaked Password Protection“ in Supabase Auth aktivieren (Dashboard → Authentication → Passwords)

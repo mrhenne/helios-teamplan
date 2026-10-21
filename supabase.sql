@@ -1675,3 +1675,28 @@ $$;
 
 revoke all on function public.get_my_project_directory(text) from public, anon;
 grant execute on function public.get_my_project_directory(text) to authenticated;
+
+-- =========================================================
+-- 2026-10-21: Aufräumen nach Supabase Security/Performance Advisor
+-- =========================================================
+-- Ersteinrichtung des Teams ist abgeschlossen: Setup-Funktion nicht mehr über die API erreichbar.
+-- Für ein neues Team bei Bedarf wieder freigeben: grant execute on function public.bootstrap_first_admin(text, text, text) to authenticated;
+revoke execute on function public.bootstrap_first_admin(text, text, text) from authenticated, anon, public;
+
+-- Bewusst SECURITY DEFINER und für angemeldete Nutzer aufrufbar (Advisor-Hinweis 0029 ist hier gewollt):
+--   set_my_plan_entry        – Mitarbeitende schreiben nur eigene Urlaubswünsche (Rolle + employee_id geprüft)
+--   update_my_display_name   – ändert nur den eigenen Anzeigenamen
+--   get_my_project_directory – liefert Externen nur Personen aus ihren eigenen Projekten
+-- Alle drei prüfen auth.uid() und die Teamrolle selbst; ohne DEFINER würde RLS diese Teilzugriffe blockieren.
+
+-- Tabellen der separaten Flowly-App (flowly-pm.vercel.app) im selben Projekt:
+-- auth.uid() einmal je Abfrage auswerten, Zugriff nur für angemeldete Nutzer (gleiche Logik wie zuvor).
+do $$
+declare t text;
+begin
+  foreach t in array array['members','projects','tasks','notes'] loop
+    if exists (select 1 from pg_policies where schemaname='public' and tablename=t and policyname=t||'_owner_all') then
+      execute format('alter policy %I on public.%I to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id)', t||'_owner_all', t);
+    end if;
+  end loop;
+end $$;
