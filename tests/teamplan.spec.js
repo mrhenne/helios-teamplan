@@ -17,7 +17,7 @@ async function bootLocal(page) {
   page.on('pageerror', err => fatal.push(String(err)));
   await page.reload();
   await page.waitForLoadState('domcontentloaded');
-  await expect(page.locator('#appTitle')).toContainText('TeamPlan');
+  await expect(page.locator('#appTitle')).toContainText('ZNA Core');
   return fatal;
 }
 
