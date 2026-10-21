@@ -34,7 +34,7 @@ Beispiel: 30 Tage Vollzeitanspruch und 4 Arbeitstage pro Woche = 24 Urlaubstage.
 | Datei / Ordner | Inhalt |
 | --- | --- |
 | `index.html` | Oberfläche, Dialoge, SVG-Icons, Login-Fallback |
-| `styles.css`, `header.css` | Gestaltung (`header.css` wird zuletzt geladen) |
+| `styles.css`, `header.css`, `neka.css` | Gestaltung (`neka.css` ist das aktuelle Designsystem und wird zuletzt geladen; `header.css` enthält nur noch Tablet-/Handy-Regeln der Kopfzeile) |
 | `js/01-core.js` … `js/12-main.js` | App-Logik, nach Bereichen aufgeteilt (siehe unten) |
 | `config.js` | Supabase-URL, Publishable Key, Team-ID |
 | `supabase.sql` | Datenbankschema, RLS-Policies, RPC-Funktionen |

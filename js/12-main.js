@@ -17,7 +17,7 @@ document.getElementById('zoomOutBtn')?.addEventListener('click',()=>changeZoom(-
 document.getElementById('zoomInBtn')?.addEventListener('click',()=>changeZoom(.05));
 document.getElementById('zoomRange')?.addEventListener('input',e=>setZoom(Number(e.target.value)/100));
 document.getElementById('themeBtn')?.addEventListener('click',toggleTheme);
-document.getElementById('roleSelect')?.addEventListener('change',e=>{sessionRole=e.target.value;localStorage.setItem('teamplan-session-role',sessionRole);renderRoleControls();render();showToast('Modus: '+e.target.options[e.target.selectedIndex].text)});
+document.getElementById('roleSelect')?.addEventListener('change',e=>{sessionRole=e.target.value;vacationToolsOpen=false;localStorage.setItem('teamplan-vacation-tools-open','0');localStorage.setItem('teamplan-session-role',sessionRole);syncVacationUiPrefs();renderRoleControls();render();showToast('Modus: '+e.target.options[e.target.selectedIndex].text)});
 document.getElementById('roleEmployeeSelect')?.addEventListener('change',e=>{sessionEmployeeId=e.target.value;localStorage.setItem('teamplan-session-employee',sessionEmployeeId);render();});
 document.getElementById('monthViewBtn')?.addEventListener('click',()=>{currentView='month';plannerScrollLeft=null;clearDragSelection();render()});
 document.getElementById('yearViewBtn')?.addEventListener('click',()=>{currentView='year';clearDragSelection();render()});
@@ -111,6 +111,26 @@ document.getElementById('employeeInfoWork')?.addEventListener('change',e=>{emplo
 document.getElementById('employeeInfoVacation')?.addEventListener('change',e=>{employeeInfoPrefs.vacation=e.target.checked;saveEmployeeInfoPrefs()});
 document.getElementById('employeeInfoXU')?.addEventListener('change',e=>{employeeInfoPrefs.xu=e.target.checked;saveEmployeeInfoPrefs()});
 document.getElementById('vacationToolsToggle')?.addEventListener('click',toggleVacationTools);
+document.getElementById('vacationViewToggle')?.addEventListener('click',e=>{
+  e.stopPropagation();
+  const menu=document.getElementById('vacationViewMenu');
+  const open=menu.classList.contains('hidden');
+  menu.classList.toggle('hidden',!open);
+  e.currentTarget.setAttribute('aria-expanded',String(open));
+});
+document.addEventListener('click',e=>{
+  const viewMenu=document.getElementById('vacationViewMenu');
+  if(viewMenu&&!viewMenu.classList.contains('hidden')&&!e.target.closest('.vt-menu-wrap')){
+    viewMenu.classList.add('hidden');
+    document.getElementById('vacationViewToggle')?.setAttribute('aria-expanded','false');
+  }
+  if(vacationToolsOpen&&(!e.target.closest('.vt-menu-wrap')||(e.target.closest('#vacationToolsRow .module-tool-btn')&&!e.target.closest('.file-btn')))){
+    vacationToolsOpen=false;localStorage.setItem('teamplan-vacation-tools-open','0');syncVacationUiPrefs();
+  }
+});
+window.addEventListener('resize',fitPlannerViewport);
+if(window.ResizeObserver){const ro=new ResizeObserver(()=>fitPlannerViewport());['vacationToolbar','topbar'].forEach(id=>{const el=document.getElementById(id)||document.querySelector('.'+id);if(el)ro.observe(el)})}
+fitPlannerViewport();
 document.addEventListener('click',e=>{
   const menu=document.getElementById('employeeInfoMenu');
   if(menu&&!menu.classList.contains('hidden')&&!e.target.closest('.employee-info-control')){

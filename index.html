@@ -121,11 +121,28 @@
     <div class="controls-spacer"></div>
     
   </div>
-  <div class="controls-row controls-secondary">
+  <div class="controls-row controls-secondary vt-bar">
+    <input id="searchInput" class="search control-search compact-employee-search" placeholder="Mitarbeiter suchen…" />
+    <div class="vt-menu-wrap">
+      <button id="vacationViewToggle" class="btn ghost view-tool-btn icon-label-btn" type="button" aria-expanded="false" title="Zoom, Fokus, Fadenkreuz und Anzeige"><svg class="ui-icon"><use href="#i-focus"></use></svg><span>Ansicht</span><b class="vacation-tools-chevron">⌄</b></button>
+      <div id="vacationViewMenu" class="vt-menu hidden">
     <div class="control-block zoom-block"><span class="control-caption">Zoom</span><button id="zoomOutBtn" class="zoom-btn" type="button">−</button><input id="zoomRange" type="range" min="10" max="140" step="5" value="100"><button id="zoomInBtn" class="zoom-btn" type="button">+</button><strong id="zoomLabel">100%</strong></div>
     <button id="fitEmployeesBtn" class="btn ghost view-tool-btn" type="button" title="Alle Mitarbeiter in die Höhe einpassen">↕ Alle einpassen</button>
     <button id="focusModeBtn" class="btn ghost view-tool-btn icon-label-btn" type="button" title="Nur Zeitraum und Planung anzeigen"><svg class="ui-icon"><use href="#i-focus"></use></svg><span>Fokus</span></button>
     <button id="vacationCrosshairBtn" class="btn ghost view-tool-btn icon-label-btn crosshair-toggle" type="button" aria-pressed="false" title="Fadenkreuz einschalten"><svg class="ui-icon"><use href="#i-crosshair"></use></svg><span>Fadenkreuz</span></button>
+    <label class="external-visibility-control" title="Externe Personen zur Verwaltung einblenden"><input id="showExternalEmployees" type="checkbox"><span>Externe anzeigen</span></label>
+    <div class="control-block vacation-mode-block"><span class="control-caption">Urlaub</span><div class="segmented vacation-mode" title="Gesamt: jedes gesetzte U zählt 1,0. Anteilig: jedes U wird mit dem Stellenanteil gewichtet, z. B. 80 % = 0,8 je U. Der Jahresanspruch bleibt unverändert."><button id="vacationFullBtn" class="segment" type="button">Gesamt</button><button id="vacationActualBtn" class="segment active" type="button">Anteilig</button></div></div>
+      </div>
+    </div>
+    <div class="employee-info-control">
+      <button id="employeeInfoToggle" class="btn ghost view-tool-btn icon-label-btn" type="button" aria-expanded="false" title="Sichtbare Mitarbeiterinformationen wählen"><svg class="ui-icon"><use href="#i-users"></use></svg><span>Infos</span></button>
+      <div id="employeeInfoMenu" class="employee-info-menu hidden">
+        <strong>Mitarbeiterinfos</strong>
+        <label><input id="employeeInfoWork" type="checkbox"> Arbeitszeit & Stellenanteil</label>
+        <label><input id="employeeInfoVacation" type="checkbox"> Urlaubsstand</label>
+        <label><input id="employeeInfoXU" type="checkbox"> XU / Wunschfrei</label>
+      </div>
+    </div>
     <div class="vacation-count-control">
       <button id="vacationCountToggle" class="btn ghost view-tool-btn icon-label-btn vacation-count-toggle" type="button" aria-expanded="false" title="Festlegen, welche Kürzel in der Gesamtsumme gezählt werden"><span class="vacation-count-sigma">Σ</span><span id="vacationCountLabel">Summen konfigurieren</span></button>
       <div id="vacationCountMenu" class="vacation-count-menu hidden">
@@ -146,30 +163,11 @@
         <p>Damit kannst du Gesamtsumme und sichtbare Einzelzählungen unabhängig voneinander konfigurieren.</p>
       </div>
     </div>
-    <label class="external-visibility-control" title="Externe Personen zur Verwaltung einblenden"><input id="showExternalEmployees" type="checkbox"><span>Externe anzeigen</span></label>
-    <div class="employee-info-control">
-      <button id="employeeInfoToggle" class="btn ghost view-tool-btn icon-label-btn" type="button" aria-expanded="false" title="Sichtbare Mitarbeiterinformationen wählen"><svg class="ui-icon"><use href="#i-users"></use></svg><span>Infos</span></button>
-      <div id="employeeInfoMenu" class="employee-info-menu hidden">
-        <strong>Mitarbeiterinfos</strong>
-        <label><input id="employeeInfoWork" type="checkbox"> Arbeitszeit & Stellenanteil</label>
-        <label><input id="employeeInfoVacation" type="checkbox"> Urlaubsstand</label>
-        <label><input id="employeeInfoXU" type="checkbox"> XU / Wunschfrei</label>
-      </div>
-    </div>
-    <div class="control-block vacation-mode-block"><span class="control-caption">Urlaub</span><div class="segmented vacation-mode" title="Gesamt: jedes gesetzte U zählt 1,0. Anteilig: jedes U wird mit dem Stellenanteil gewichtet, z. B. 80 % = 0,8 je U. Der Jahresanspruch bleibt unverändert."><button id="vacationFullBtn" class="segment" type="button">Gesamt</button><button id="vacationActualBtn" class="segment active" type="button">Anteilig</button></div></div>
-    <div class="controls-spacer"></div>
-    <input id="searchInput" class="search control-search compact-employee-search" placeholder="Mitarbeiter suchen…" />
-
-  </div>
-    <div class="vacation-tools-head">
-      <button id="vacationToolsToggle" class="btn ghost icon-label-btn" type="button" aria-expanded="false"><svg class="ui-icon"><use href="#i-grid"></use></svg><span>Werkzeuge</span><b class="vacation-tools-chevron">⌄</b></button>
-      <span class="vacation-tools-hint">Konflikte, Verlauf, Chat, Sperrzeiten und Export</span>
-    </div>
+    <div class="vt-menu-wrap">
+      <button id="vacationToolsToggle" class="btn ghost view-tool-btn icon-label-btn" type="button" aria-expanded="false" title="Konflikte, Verlauf, Sperrzeiten, Import und Export"><svg class="ui-icon"><use href="#i-grid"></use></svg><span>Werkzeuge</span><b class="vacation-tools-chevron">⌄</b></button>
     <div id="vacationToolsRow" class="controls-row vacation-module-actions vacation-tools-collapsed">
-      <span class="module-tools-label"><svg class="ui-icon"><use href="#i-calendar"></use></svg> Werkzeuge</span>
       <button id="conflictsBtn" class="btn ghost module-tool-btn" data-tool-action="conflicts" title="Konflikte prüfen"><svg class="ui-icon"><use href="#i-alert"></use></svg><span>Konflikte</span></button>
       <button id="historyBtn" class="btn ghost module-tool-btn" data-tool-action="history" title="Änderungsverlauf"><svg class="ui-icon"><use href="#i-history"></use></svg><span>Verlauf</span></button>
-      <button id="discussionsBtn" class="btn ghost module-tool-btn" title="Team-Chat zur Urlaubsplanung"><svg class="ui-icon"><use href="#i-chat"></use></svg><span>Team-Chat</span><b id="discussionBadge" class="tool-badge hidden">0</b></button>
       <button id="blackoutsBtn" class="btn ghost module-tool-btn" data-tool-action="blackouts" title="Sperrzeiten verwalten"><svg class="ui-icon"><use href="#i-ban"></use></svg><span>Sperrzeiten</span></button>
       <span class="module-tool-separator"></span>
       <button id="planImportBtn" class="btn ghost module-tool-btn" data-tool-action="plan-import" title="Urlaubsplan importieren"><svg class="ui-icon"><use href="#i-upload"></use></svg><span>Plan</span></button>
@@ -178,8 +176,12 @@
       <button id="exportBtn" class="btn ghost module-tool-btn" title="JSON-Sicherung"><svg class="ui-icon"><use href="#i-download"></use></svg><span>Backup</span></button>
       <label class="btn ghost module-tool-btn file-btn" title="JSON-Sicherung importieren"><svg class="ui-icon"><use href="#i-upload"></use></svg><span>Import</span><input id="importInput" type="file" accept="application/json" hidden></label>
     </div>
+    </div>
+    <button id="discussionsBtn" class="btn ghost view-tool-btn icon-label-btn" type="button" title="Team-Chat zur Urlaubsplanung"><svg class="ui-icon"><use href="#i-chat"></use></svg><span>Team-Chat</span><b id="discussionBadge" class="tool-badge hidden">0</b></button>
+    <div class="controls-spacer"></div>
   <div class="legend controls-legend">
     <span><b class="chip u">U</b> Urlaub</span><span><b class="chip x">X</b> Frei-WE</span><span><b class="chip xu">XU</b> Wunsch-WE</span><span><b class="chip s">S</b> Schule</span><span><b class="chip g">G</b> Geburtstag</span><span><b class="chip training-chip">F</b> Fortbildung</span><span id="customLegend"></span><span><b class="holiday-key"></b> NRW Ferien</span>
+  </div>
   </div>
 </section>
 
@@ -217,9 +219,6 @@
       <div id="yearOverview" class="year-overview"></div>
     </section>
 
-    <section id="vacationHint" class="hint glass">
-      <strong>Bedienung:</strong> Zelle anklicken, mehrere Kürzel wählen und optional Priorität/Notiz setzen. Mitarbeitende links per Drag & Drop sortieren. Wochenenden und NRW-Feiertage werden automatisch hervorgehoben.
-    </section>
 
     <section id="trainingModule" class="training-module nk-module hidden">
      <div class="tn-shell">
@@ -238,8 +237,7 @@
           <button id="trainingTypesBtn" class="tn-nav-item training-manager-action" type="button"><svg class="ui-icon"><use href="#i-book"></use></svg><span>Katalog</span></button>
           <button id="trainingExportBtn" class="tn-nav-item training-manager-action" type="button"><svg class="ui-icon"><use href="#i-table"></use></svg><span>Excel-Export</span></button>
           <button id="trainingPdfBtn" class="tn-nav-item" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>PDF-Export</span></button>
-          <button id="trainingCsvBtn" class="tn-nav-item training-manager-action" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>CSV-Export</span></button>
-          <button id="trainingJsonBtn" class="tn-nav-item training-manager-action" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>JSON-Export</span></button>
+          <button id="trainingJsonBtn" class="tn-nav-item training-manager-action" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>Sicherung (JSON)</span></button>
         </nav>
         <div id="trainingSideCard" class="tn-side-card"></div>
       </aside>
@@ -407,6 +405,7 @@
           <span id="projectsHeadingSub">ZNA Management</span>
         </div>
         <div class="tn-head-actions">
+          <select id="projectsTemplateSelect" class="project-manager-action tn-head-select" aria-label="Schnellaufgabe aus Vorlage"><option value="">Aus Vorlage…</option></select>
           <button id="addProjectBtn" class="tn-pill-btn project-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-plus"></use></svg><span>Projekt</span></button>
           <button id="addTaskBtn" class="tn-pill-btn primary project-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-plus"></use></svg><span>Aufgabe</span></button>
         </div>
@@ -429,7 +428,6 @@
           <option value="waiting">Rückfrage</option>
           <option value="done">Erledigt</option>
         </select>
-        <select id="projectsTemplateSelect" class="project-manager-action"><option value="">Schnellaufgabe aus Vorlage…</option></select>
         </div>
       </section>
 

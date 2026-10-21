@@ -143,6 +143,7 @@ function render(){
   document.getElementById('planner').innerHTML=html; bindPlannerEvents(); renderMetrics(); syncViewControls(); applyAppearance(); applyCodeColors(); renderDynamicCodes(); renderPresenceUI(); renderUnreadMessageBadge(); updateVacationCrosshairButton();
   if(currentView==='month') setupFlowingMonthScroll();
   if(currentView==='year') renderYearOverview();
+  fitPlannerViewport();
 }
 function summaryRow(label,code,dates){const modeClass=code==='U'?(state.settings.vacationDisplayMode==='actual'?' vacation-summary actual':' vacation-summary full'):'';let s=`<tr class="summary-row ${code==='U'?'alarm':''}${modeClass}"><td class="employee-col">Σ ${label}</td>`;dates.forEach(d=>{const key=dateKey(d),c=dailyCounts(key);let n=c[code]||0;if(!Object.prototype.hasOwnProperty.call(c,code)){n=teamEmployees().reduce((sum,e)=>{const v=entryFor(e.id,key);return sum+(entryIsActive(v)&&v.codes?.includes(code)?1:0)},0)}if(code==='U'&&state.settings.vacationDisplayMode==='actual'){n=roundTwo(teamEmployees().reduce((sum,e)=>{const v=entryFor(e.id,key);return sum+(entryIsActive(v)&&v.codes?.includes('U')?vacationFactor(e):0)},0))}const rawU=c.U,hot=code==='U'&&rawU>state.settings.maxVacation,warn=code==='U'&&rawU===state.settings.maxVacation;s+=`<td data-date="${key}" class="summary-count-value ${hot?'count-hot':warn?'count-warn':''}">${n?formatVacationNumber(n):''}</td>`});return s+'</tr>'}
 function presenceRow(dates){let s='<tr class="summary-row presence-row"><td class="employee-col">✓ Anwesend</td>';dates.forEach(d=>{const key=dateKey(d),n=presentCount(key);s+=`<td data-date="${key}">${n}</td>`});return s+'</tr>'}
@@ -265,6 +266,13 @@ function enterPlannerFocus(){
 }
 function exitPlannerFocus(){
   setFocusPanMode(false);toggleFocusSearch(false);document.body.classList.remove('planner-focus');
+}
+function fitPlannerViewport(){
+  const planner=document.getElementById('planner');if(!planner)return;
+  const inactive=document.body.classList.contains('planner-focus')||window.innerWidth<=900||currentModule!=='vacation'||currentView==='year';
+  if(inactive){planner.style.maxHeight='';return}
+  const top=planner.getBoundingClientRect().top+window.scrollY;
+  planner.style.maxHeight=Math.max(360,Math.floor(window.innerHeight-top-16))+'px';
 }
 function fitAllEmployees(){
   if(currentView!=='month'){currentView='month';render()}

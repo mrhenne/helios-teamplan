@@ -220,6 +220,7 @@ function switchModule(module,silent=false){
   document.body.classList.toggle('projects-module-active',projects);
   if(training)renderTrainingModule();
   if(projects)renderProjectModule();
+  if(typeof fitPlannerViewport==='function')fitPlannerViewport();
   if(!silent)showToast(vacation?'Urlaubsplanung':training?'Fortbildungsplaner':'Projektmanagement');
 }
 function applyTrainingRoleUI(){
@@ -811,13 +812,6 @@ function bindTrainingMultiYearEvents(){
     });
   });
 }
-async function exportTrainingCsv(){
-  const rows=filteredTrainings().filter(t=>!t._virtual);
-  const cols=['Mitarbeiter','Titel','Kategorie','Von','Bis','Startzeit','Endzeit','Jahr','Wiederkehrend','Serienart','Intervall','Wochentag','Serie bis','Status','Stunden','Kosten','Anbieter'];
-  const q=v=>'"'+String(v??'').replaceAll('"','""')+'"';
-  const csv=[cols.map(q).join(';')].concat(rows.map(t=>[trainingEmployeeName(t.employee_id),t.title,t.category,t.start_date||'',t.end_date||'',String(t.start_time||'').slice(0,5),String(t.end_time||'').slice(0,5),t.training_year||'',t.recurring?'Ja':'Nein',t.recurring?(t.recurrence_unit||'months'):'',t.recurring?(t.recurrence_interval||t.recurrence_months||''):'',t.recurrence_weekday?trainingWeekdayLabel(t.recurrence_weekday):'',t.recurrence_until||'',trainingStatusLabel(t),t.hours||0,t.cost||0,t.provider||''].map(q).join(';'))).join('\n');
-  await saveExportFile('TeamPlan_Fortbildungen_'+trainingYear+'.csv','\ufeff'+csv,'text/csv;charset=utf-8','CSV-Datei',['.csv']);
-}
 async function exportTrainingJson(){
   const rows=filteredTrainings().filter(t=>!t._virtual);
   await saveExportFile('TeamPlan_Fortbildungen_'+trainingYear+'.json',JSON.stringify(rows,null,2),'application/json','JSON-Datei',['.json']);
@@ -1172,6 +1166,9 @@ function initCompactDrawer(buttonId,bodyId,storageKey){
 }
 
 function initTrainingModuleUI(){
+  document.addEventListener('dragstart',e=>{if(e.target.closest?.('.nk-module [data-training-id],.nk-module .training-day[draggable=true]'))document.body.classList.add('training-dragging')});
+  document.addEventListener('dragend',()=>document.body.classList.remove('training-dragging'));
+  document.addEventListener('drop',()=>document.body.classList.remove('training-dragging'));
   document.getElementById('moduleVacationBtn')?.addEventListener('click',()=>switchModule('vacation'));
   document.getElementById('moduleTrainingBtn')?.addEventListener('click',()=>switchModule('training'));
   document.getElementById('trainingOverviewBtn')?.addEventListener('click',()=>setTrainingView('overview'));
@@ -1207,7 +1204,6 @@ function initTrainingModuleUI(){
   document.getElementById('trainingExportBtn')?.addEventListener('click',exportTrainingExcel);
   document.getElementById('trainingPdfBtn')?.addEventListener('click',()=>safeShowDialog('trainingExportDialog'));
   document.getElementById('trainingExportForm')?.addEventListener('submit',e=>{e.preventDefault();exportTrainingPdf()});
-  document.getElementById('trainingCsvBtn')?.addEventListener('click',exportTrainingCsv);
   document.getElementById('trainingJsonBtn')?.addEventListener('click',exportTrainingJson);
   document.getElementById('trainingForm')?.addEventListener('submit',e=>{e.preventDefault();saveTrainingFromForm()});
   document.getElementById('deleteTrainingBtn')?.addEventListener('click',deleteTraining);

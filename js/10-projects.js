@@ -138,7 +138,7 @@ function populateProjectControls(){
   const lead=document.getElementById('projectLead');if(lead)lead.innerHTML=employeeOptions;
   const ass=document.getElementById('projectTaskAssignee');if(ass)ass.innerHTML=employeeOptions;
   const tpl=document.getElementById('projectsTemplateSelect');
-  if(tpl){tpl.innerHTML='<option value="">Schnellaufgabe aus Vorlage…</option>'+projectTemplates.filter(x=>x.active!==false).map(x=>'<option value="'+x.id+'">'+escapeHtml(x.name)+'</option>').join('')}
+  if(tpl){tpl.innerHTML='<option value="">Aus Vorlage…</option>'+projectTemplates.filter(x=>x.active!==false).map(x=>'<option value="'+x.id+'">'+escapeHtml(x.name)+'</option>').join('')}
 }
 function filteredProjectTasks(){
   const q=(document.getElementById('projectsSearchInput')?.value||'').trim().toLowerCase();

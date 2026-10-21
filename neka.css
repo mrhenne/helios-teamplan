@@ -530,3 +530,137 @@ html[data-theme="dark"] .zna-core-logo{background:#fff;border-radius:14px;paddin
   #vacationToolbar .vacation-heading #vacationHeadingTitle,.nk-module .tn-greeting strong,.nk-module .tn-greeting #trainingHeadingTitle,.projects-module .tn-greeting #projectsHeadingTitle{font-size:34px!important}
   #vacationToolbar .date-nav-block .control-caption{margin-right:8px!important}
 }
+
+/* =====================================================================
+   Überarbeitung: schlanke Kopfzeile, Menüs statt Dauerleisten, ruhige Icons
+   ===================================================================== */
+
+/* Icons: eine Strichstärke, eine Größe */
+.ui-icon{fill:none!important;stroke:currentColor!important;stroke-width:1.7!important;stroke-linecap:round!important;stroke-linejoin:round!important;width:17px;height:17px}
+.btn .ui-icon,.tn-pill-btn .ui-icon,.segment .ui-icon,.top-tool .ui-icon,.module-tool-btn .ui-icon,.icon-label-btn .ui-icon{width:16px!important;height:16px!important}
+.close-dialog,.icon-btn.close-dialog{width:34px!important;height:34px!important;border-radius:50%!important;background:var(--tn-soft)!important;border:1px solid var(--tn-line)!important;font-size:18px!important;line-height:1;display:grid;place-items:center;padding:0!important}
+.close-dialog:hover{background:var(--tn-soft-2)!important}
+.tool-badge{background:var(--tn-rose)!important;color:#fff!important;border-radius:999px!important;font-size:var(--fs-xs)!important;min-width:18px;height:18px;display:inline-grid;place-items:center;padding:0 5px}
+.drawer-chevron,.vacation-tools-chevron{font-size:11px!important;opacity:.55;font-weight:700}
+
+/* ---- Kopfzeile: eine Reihe (Desktop) ---- */
+@media(min-width:1201px){
+  .topbar{display:flex!important;flex-direction:row!important;align-items:center!important;gap:14px!important;padding:8px 14px!important;grid-template-columns:none!important;grid-template-rows:none!important;height:auto!important;min-height:0!important}
+  .topbar-left-zone,.topbar-right-zone{display:flex!important;flex-direction:row!important;align-items:center!important;gap:12px!important;min-width:0!important}
+  .topbar-left-zone{flex:1 1 auto}
+  .topbar-right-zone{flex:0 1 auto;margin-left:auto}
+  .topbar-left-zone .zna-core-brand,.topbar .topbar-brand{grid-column:auto!important;grid-row:auto!important;align-self:center!important;flex:none}
+  .zna-core-logo{height:34px!important;width:auto!important;max-width:none!important}
+  .topbar-module-switch{grid-column:auto!important;grid-row:auto!important;align-self:center!important;height:auto!important;display:flex!important;gap:2px!important;padding:3px!important;width:auto!important;min-width:0!important}
+  .module-tab{padding:6px 14px 6px 8px!important;height:38px!important;min-height:0!important;gap:8px!important;width:auto!important}
+  .module-tab small{display:none!important}
+  .module-tab b{font-size:var(--fs-sm)!important;white-space:nowrap}
+  .module-tab-icon{width:26px!important;height:26px!important}
+  .topbar-session{grid-column:auto!important;grid-row:auto!important;display:flex!important;align-items:center!important;gap:6px!important;flex-wrap:nowrap!important}
+  .topbar-session>*{white-space:nowrap}
+  .sync-pill,.topbar-user,.topbar-online,.session-timer{padding:6px 12px!important;height:auto!important;line-height:1.2}
+  .topbar-user{max-width:210px;overflow:hidden;text-overflow:ellipsis}
+  .role-stack{display:flex;gap:6px}
+  .role-select{width:auto!important;min-width:110px;height:34px!important;padding:0 28px 0 12px!important}
+  .topbar-actions{grid-column:auto!important;grid-row:auto!important;display:flex!important;align-items:center!important;gap:2px!important;padding:3px!important;height:auto!important;width:auto!important;flex-wrap:nowrap!important}
+  .top-tool{width:36px!important;height:36px!important;padding:0!important;display:grid!important;place-items:center;border-radius:50%!important;position:relative}
+  .top-tool>span{display:none!important}
+  .top-tool .ui-icon{width:18px!important;height:18px!important;margin:0!important}
+  .top-tool.primary-tool{background:var(--tn-ink)!important;color:var(--tn-solid)!important}
+  .top-tool.hidden{display:none!important}
+}
+@media(max-width:1500px) and (min-width:1201px){.topbar-user{max-width:130px}.sync-pill{padding:6px 10px!important}}
+
+/* ---- Menüs (Popover) ---- */
+.vt-menu-wrap,.employee-info-control,.vacation-count-control{position:relative;display:inline-flex}
+.vt-menu,#vacationToolsRow:not(.vacation-tools-collapsed){position:absolute!important;top:calc(100% + 10px);left:0;z-index:70;min-width:260px;padding:14px!important;border-radius:20px!important;background:var(--tn-glass-strong)!important;backdrop-filter:var(--tn-blur);-webkit-backdrop-filter:var(--tn-blur);border:1px solid rgba(255,255,255,.75)!important;box-shadow:0 24px 60px rgba(20,32,29,.2)!important}
+.vt-menu{display:grid;gap:10px;min-width:300px}
+.vt-menu.hidden{display:none!important}
+.vt-menu .control-block,.vt-menu .zoom-block{display:flex;align-items:center;gap:8px;background:none!important;border:0!important;box-shadow:none!important;padding:0!important}
+.vt-menu .btn,.vt-menu .external-visibility-control{width:100%;justify-content:flex-start}
+.vt-menu .vacation-mode-block{justify-content:space-between}
+#vacationToolsRow:not(.vacation-tools-collapsed){display:grid!important;grid-template-columns:1fr 1fr;gap:6px!important;min-width:340px;width:auto;height:auto!important;margin:0!important}
+#vacationToolsRow .module-tool-separator{display:none!important}
+#vacationToolsRow .module-tool-btn,#vacationToolsRow .file-btn{width:100%;justify-content:flex-start!important;border-radius:14px!important;padding:10px 12px!important;background:var(--tn-soft)!important}
+#vacationToolsRow .module-tool-btn:hover{background:var(--tn-soft-2)!important}
+.employee-info-menu,.vacation-count-menu{top:calc(100% + 10px)!important;left:0!important;right:auto!important;z-index:70}
+.vacation-count-menu{width:min(420px,calc(100vw - 28px))!important}
+
+/* ---- Urlaubsplanung: kompakter Kopf, Plan nutzt die Resthöhe ---- */
+#vacationToolbar.planner-controls{gap:10px!important;margin-bottom:10px!important}
+#vacationToolbar .vacation-heading .tn-greeting-hello{display:none!important}
+#vacationToolbar .vacation-heading #vacationHeadingTitle{font-size:var(--fs-2xl)!important;line-height:1.1!important}
+#vacationToolbar .vacation-heading #vacationHeadingSub{margin-top:2px!important}
+#vacationToolbar .controls-secondary.vt-bar{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:8px!important;padding:8px 12px!important;border-radius:999px!important;border-top:1px solid rgba(255,255,255,.7)!important;min-height:0!important}
+#vacationToolbar .vt-bar .search.control-search{width:200px;flex:0 0 auto;margin:0!important;padding:8px 14px!important}
+#vacationToolbar .vt-bar .controls-legend{display:flex!important;flex-wrap:nowrap!important;gap:4px 12px!important;padding:0 6px!important;margin-left:auto;overflow:hidden}
+#vacationToolbar .vt-bar .controls-legend>span{white-space:nowrap;font-size:var(--fs-xs)!important;color:var(--tn-muted)!important}
+#vacationToolbar .vt-bar .controls-spacer{display:none!important}
+#vacationToolbar .vt-bar .view-tool-btn{padding:8px 14px!important}
+#vacationToolbar .vt-bar .view-tool-btn>span{font-size:var(--fs-sm)!important}
+@media(max-width:1450px){#vacationToolbar .vt-bar .controls-legend{display:none!important}}
+.planner-wrap{margin-bottom:0!important}
+.planner{overscroll-behavior:contain}
+.app-shell{padding-bottom:8px!important}
+
+/* ---- Fortbildungen / Projekte: weniger Dauerleisten ---- */
+.training-status-dropzones{display:none!important}
+body.training-dragging .training-status-dropzones{display:flex!important;position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:90;margin:0!important;padding:10px 16px!important;border-radius:999px!important;background:var(--tn-glass-strong)!important;backdrop-filter:var(--tn-blur);-webkit-backdrop-filter:var(--tn-blur);box-shadow:0 20px 50px rgba(20,32,29,.25)!important;border:1px solid rgba(255,255,255,.8)!important}
+.nk-module .training-filter-shell,.nk-module .projects-filter-shell{justify-self:start;width:fit-content;max-width:100%;border-radius:999px!important;padding:4px 8px!important}
+.nk-module .training-filter-shell:has(.compact-drawer-body:not([hidden])),.nk-module .projects-filter-shell:has(.compact-drawer-body:not([hidden])){width:100%;border-radius:var(--tn-radius)!important;padding:8px 12px!important}
+.tn-head-select{width:auto!important;min-width:150px;border-radius:999px!important;padding:9px 34px 9px 16px!important;font-size:var(--fs-sm)!important;font-weight:700!important;background:var(--tn-glass)!important;box-shadow:var(--tn-shadow)}
+/* Kopfzeile Basisoptik (früher in header.css) */
+.topbar-brand{display:flex;align-items:center}
+.topbar-actions .top-tool{display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.topbar-user{display:inline-flex;align-items:center}
+
+/* Kopfzeile Desktop – erhöhte Spezifität gegen Altregeln */
+@media(min-width:1201px){
+  body .topbar{flex-wrap:nowrap!important}
+  body .topbar .topbar-left-zone{flex:1 1 auto!important;min-width:0!important;width:auto!important;max-width:none!important}
+  body .topbar .topbar-right-zone{flex:0 0 auto!important;width:auto!important;max-width:none!important}
+  body .topbar .topbar-session{flex-wrap:nowrap!important;width:auto!important;max-width:none!important;min-width:0!important}
+  body .topbar .topbar-session .role-stack{position:static!important;width:auto!important}
+  body .topbar .topbar-session .role-select{position:static!important;transform:none!important}
+  body .topbar .topbar-actions{flex-wrap:nowrap!important;width:auto!important;max-width:none!important;min-width:0!important}
+  body .topbar .topbar-actions .top-tool{width:36px!important;min-width:36px!important;height:36px!important;min-height:36px!important;padding:0!important}
+  body .topbar .topbar-actions .top-tool>span{display:none!important}
+  body .topbar .topbar-actions .top-tool .ui-icon{width:18px!important;height:18px!important}
+  body .topbar .topbar-module-switch{width:auto!important;max-width:none!important}
+  body .topbar .zna-core-logo{height:34px!important;width:auto!important}
+}
+@media(min-width:1201px){body .topbar .topbar-module-switch .module-tab{flex:0 0 auto!important;min-width:max-content!important;width:auto!important;padding:6px 16px 6px 8px!important}body .topbar .module-tab>span:last-child{overflow:visible!important}}
+.vt-menu,#vacationToolsRow:not(.vacation-tools-collapsed),.employee-info-menu,.vacation-count-menu{background:rgba(255,255,255,.97)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+html[data-theme="dark"] .vt-menu,html[data-theme="dark"] #vacationToolsRow:not(.vacation-tools-collapsed),html[data-theme="dark"] .employee-info-menu,html[data-theme="dark"] .vacation-count-menu{background:rgba(24,38,36,.98)!important}
+
+/* Handy/Tablet: Werkzeugleiste als Zweierraster */
+@media(max-width:900px){
+  #vacationToolbar .controls-secondary.vt-bar{border-radius:20px!important;display:flex!important;flex-wrap:wrap!important;gap:8px!important;padding:10px!important}
+  #vacationToolbar .vt-bar .search.control-search{flex:1 0 100%!important;width:100%!important}
+  #vacationToolbar .vt-bar>.vt-menu-wrap,#vacationToolbar .vt-bar>.employee-info-control,#vacationToolbar .vt-bar>.vacation-count-control,#vacationToolbar .vt-bar>#discussionsBtn{flex:1 1 calc(50% - 8px)!important;min-width:0}
+  #vacationToolbar .vt-bar .view-tool-btn{width:100%!important;justify-content:center!important}
+  #vacationToolbar .vt-bar>:nth-child(odd):not(.search) .vt-menu,#vacationToolbar .vt-bar>:nth-child(odd) .employee-info-menu,#vacationToolbar .vt-bar>:nth-child(odd) .vacation-count-menu,#vacationToolbar .vt-bar>:nth-child(odd) #vacationToolsRow{left:auto!important;right:0!important}
+  .vt-menu,#vacationToolsRow:not(.vacation-tools-collapsed){min-width:0!important;width:min(340px,calc(100vw - 44px))!important}
+  #vacationToolsRow:not(.vacation-tools-collapsed){grid-template-columns:1fr!important}
+}
+@media(max-width:700px){
+  body .topbar{gap:8px!important;padding:10px!important}
+  body .topbar .zna-core-logo{height:30px!important;width:auto!important;max-width:60%!important}
+  body .topbar .topbar-actions{display:flex!important;justify-content:space-between!important;grid-template-columns:none!important;padding:3px!important}
+  body .topbar .topbar-actions .top-tool{width:40px!important;min-width:40px!important;height:40px!important;min-height:40px!important;flex:none!important;border-radius:50%!important;padding:0!important}
+  body .topbar .topbar-session{grid-template-columns:1fr 1fr!important;gap:6px!important}
+  body .topbar .topbar-session #syncPill{grid-column:1!important}
+  body .topbar .topbar-session .role-stack{grid-column:2!important;grid-row:1!important}
+  body .topbar .topbar-session #authUserPill{grid-column:1/-1!important;grid-row:2!important}
+}
+@media(min-width:1201px){
+  body .topbar{padding:5px 12px!important}
+  body .topbar .topbar-module-switch .module-tab{height:34px!important;padding-top:3px!important;padding-bottom:3px!important}
+  body .topbar .topbar-actions .top-tool{width:34px!important;min-width:34px!important;height:34px!important;min-height:34px!important}
+  body .topbar .role-select{height:32px!important}
+}
+body #vacationToolbar #vacationToolsRow:not(.vacation-tools-collapsed){background:rgba(255,255,255,.98)!important;backdrop-filter:none!important;box-shadow:0 24px 60px rgba(20,32,29,.22)!important;border:1px solid var(--tn-line)!important;z-index:80!important}
+html[data-theme="dark"] body #vacationToolbar #vacationToolsRow:not(.vacation-tools-collapsed){background:rgba(24,38,36,.99)!important}
+#vacationToolbar .vacation-count-toggle{background:var(--tn-field)!important;border-color:var(--tn-line)!important;color:var(--tn-ink)!important}
+#vacationToolbar .vacation-count-sigma{font-weight:800;color:var(--tn-accent)}
+#vacationToolbar:has(#yearViewBtn.active) .controls-primary .date-nav-block:first-of-type{display:none!important}

@@ -145,7 +145,7 @@ let conflictSort = 'type';
 let selectedConflictIds = new Set();
 let currentModule = localStorage.getItem('teamplan-module') || 'vacation';
 let employeeInfoPrefs = (()=>{try{return {...{work:false,vacation:true,xu:false},...JSON.parse(localStorage.getItem('teamplan-employee-info')||'{}')}}catch{return {work:false,vacation:true,xu:false}}})();
-let vacationToolsOpen = localStorage.getItem('teamplan-vacation-tools-open') === '1';
+let vacationToolsOpen = false;
 let vacationCrosshairEnabled = localStorage.getItem('teamplan-vacation-crosshair') === '1';
 let showExternalEmployees = localStorage.getItem('teamplan-show-external-employees') === '1';
 let projectShowExternal = localStorage.getItem('teamplan-project-show-external') !== '0';
