@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css?v=20261010-2" />
   <link rel="stylesheet" href="header.css?v=20261010-4" />
-  <link rel="stylesheet" href="training-neka.css?v=20261021-1" />
+  <link rel="stylesheet" href="neka.css?v=20261022-1" />
   <script src="config.js?v=20260930-3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -91,9 +91,10 @@
 
     <section id="vacationToolbar" class="toolbar glass planner-controls">
   <div class="controls-row controls-primary">
-    <div class="vacation-heading">
-      <span class="eyebrow">URLAUBSPLANER</span>
-      <div><strong>Urlaubsplanung</strong><span id="vacationHeadingSub">Teamübersicht</span></div>
+    <div class="vacation-heading tn-greeting">
+      <span id="vacationGreeting" class="tn-greeting-hello">Hallo,</span>
+      <strong id="vacationHeadingTitle">Urlaubsplanung.</strong>
+      <span id="vacationHeadingSub">Teamübersicht</span>
       <span id="monthLabel" class="hidden"></span><span id="yearLabel" class="hidden"></span>
     </div>
     <div class="date-nav-block">
@@ -220,7 +221,7 @@
       <strong>Bedienung:</strong> Zelle anklicken, mehrere Kürzel wählen und optional Priorität/Notiz setzen. Mitarbeitende links per Drag & Drop sortieren. Wochenenden und NRW-Feiertage werden automatisch hervorgehoben.
     </section>
 
-    <section id="trainingModule" class="training-module hidden">
+    <section id="trainingModule" class="training-module nk-module hidden">
      <div class="tn-shell">
       <aside class="tn-side" aria-label="Fortbildungsplaner Navigation">
         <div class="tn-side-brand"><span class="tn-side-logo"><svg class="ui-icon"><use href="#i-training"></use></svg></span><span><b>Fortbildungen</b><small>ZNA Core</small></span></div>
@@ -375,31 +376,43 @@
      </div>
     </section>
 
-    <section id="projectsModule" class="projects-module hidden">
-      <section class="toolbar glass projects-toolbar">
-        <div class="projects-heading">
-          <span class="eyebrow">PROJEKTMANAGEMENT</span>
-          <div><strong>TeamPlan Projekte</strong><span id="projectsHeadingSub">ZNA Management</span></div>
+    <section id="projectsModule" class="projects-module nk-module hidden">
+     <div class="tn-shell">
+      <aside class="tn-side" aria-label="Projektmanagement Navigation">
+        <div class="tn-side-brand"><span class="tn-side-logo"><svg class="ui-icon"><use href="#i-grid"></use></svg></span><span><b>Projekte</b><small>ZNA Core</small></span></div>
+        <nav class="tn-nav projects-view-switch" aria-label="Ansichten">
+          <button id="projectsOverviewBtn" class="segment tn-nav-item active" type="button"><svg class="ui-icon"><use href="#i-grid"></use></svg><span>Übersicht</span></button>
+          <button id="projectsMyBtn" class="segment tn-nav-item" type="button"><svg class="ui-icon"><use href="#i-check"></use></svg><span>Meine Aufgaben</span></button>
+          <button id="projectsRoadmapBtn" class="segment tn-nav-item" type="button"><svg class="ui-icon"><use href="#i-list"></use></svg><span>Roadmap</span></button>
+          <button id="projectsBoardBtn" class="segment tn-nav-item" type="button"><svg class="ui-icon"><use href="#i-table"></use></svg><span>Aufgaben</span></button>
+          <button id="projectsCalendarBtn" class="segment tn-nav-item" type="button"><svg class="ui-icon"><use href="#i-calendar"></use></svg><span>Kalender</span></button>
+          <button id="projectsTeamBtn" class="segment tn-nav-item" type="button"><svg class="ui-icon"><use href="#i-users"></use></svg><span>Team</span></button>
+          <button id="projectsNotesBtn" class="segment tn-nav-item" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>Notizen</span></button>
+        </nav>
+        <span class="tn-side-label">Werkzeuge</span>
+        <nav class="tn-nav tn-nav-tools" aria-label="Werkzeuge">
+          <button id="projectsTemplatesBtn" class="tn-nav-item project-manager-action" type="button"><svg class="ui-icon"><use href="#i-copy"></use></svg><span>Vorlagen</span></button>
+          <button id="addNoteBtn" class="tn-nav-item" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>Neue Notiz</span></button>
+          <button id="projectsSaveBtn" class="tn-nav-item" type="button" title="Projektmodul als Sicherungsdatei speichern"><svg class="ui-icon"><use href="#i-download"></use></svg><span>Sicherung</span></button>
+          <button id="projectsPdfBtn" class="tn-nav-item" type="button" title="Projektübersichten als PDF exportieren"><svg class="ui-icon"><use href="#i-file"></use></svg><span>PDF-Export</span></button>
+        </nav>
+        <div id="projectsSideCard" class="tn-side-card"></div>
+      </aside>
+
+      <div class="tn-main">
+      <section class="projects-toolbar tn-head">
+        <div class="projects-heading tn-greeting">
+          <span id="projectsGreeting" class="tn-greeting-hello">Hallo,</span>
+          <strong id="projectsHeadingTitle">Team.</strong>
+          <span id="projectsHeadingSub">ZNA Management</span>
         </div>
-        <div class="segmented projects-view-switch">
-          <button id="projectsOverviewBtn" class="segment active" type="button"><svg class="ui-icon"><use href="#i-grid"></use></svg><span>Übersicht</span></button>
-          <button id="projectsMyBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-check"></use></svg><span>Meine Aufgaben</span></button>
-          <button id="projectsRoadmapBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-list"></use></svg><span>Roadmap</span></button>
-          <button id="projectsBoardBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-table"></use></svg><span>Aufgaben</span></button>
-          <button id="projectsCalendarBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-calendar"></use></svg><span>Kalender</span></button>
-          <button id="projectsTeamBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-users"></use></svg><span>Team</span></button>
-          <button id="projectsNotesBtn" class="segment" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>Notizen</span></button>
+        <div class="tn-head-actions">
+          <button id="addProjectBtn" class="tn-pill-btn project-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-plus"></use></svg><span>Projekt</span></button>
+          <button id="addTaskBtn" class="tn-pill-btn primary project-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-plus"></use></svg><span>Aufgabe</span></button>
         </div>
-        <div class="controls-spacer"></div>
-        <button id="projectsSaveBtn" class="btn ghost icon-label-btn" type="button" title="Projektmodul als Sicherungsdatei speichern"><svg class="ui-icon"><use href="#i-download"></use></svg><span>Speichern</span></button>
-        <button id="projectsPdfBtn" class="btn ghost icon-label-btn" type="button" title="Projektübersichten als PDF exportieren"><svg class="ui-icon"><use href="#i-file"></use></svg><span>PDF</span></button>
-        <button id="projectsTemplatesBtn" class="btn ghost project-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-copy"></use></svg><span>Vorlagen</span></button>
-        <button id="addProjectBtn" class="btn ghost project-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-plus"></use></svg><span>Projekt</span></button>
-        <button id="addTaskBtn" class="btn primary project-manager-action icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-plus"></use></svg><span>Aufgabe</span></button>
-        <button id="addNoteBtn" class="btn ghost icon-label-btn" type="button"><svg class="ui-icon"><use href="#i-file"></use></svg><span>Notiz</span></button>
       </section>
 
-      <section class="projects-filter-shell glass">
+      <section class="projects-filter-shell tn-card">
         <button id="projectsFilterToggle" class="compact-drawer-toggle" type="button" aria-expanded="false">
           <svg class="ui-icon"><use href="#i-list"></use></svg>
           <span>Suche & Filter</span>
@@ -421,18 +434,21 @@
       </section>
 
       <section id="projectsOverviewView" class="projects-view">
-        <div id="projectsMetrics" class="projects-metrics"></div>
-        <div class="projects-overview-grid">
-          <section class="glass project-panel"><header><div><span class="eyebrow">AKTUELLE PROJEKTE</span><h2>Im Fokus</h2></div></header><div id="projectsFocusList" class="project-card-list"></div></section>
-          <section class="glass project-panel"><header><div><span class="eyebrow">MEINE / OFFENE AUFGABEN</span><h2>Als Nächstes</h2></div></header><div id="projectsNextTasks" class="project-task-list"></div></section>
-          <section class="glass project-panel project-attention-panel"><header><div><span class="eyebrow">HANDLUNGSBEDARF</span><h2>Aufmerksamkeit</h2></div><span id="projectsAttentionCount" class="project-chip">0</span></header><div id="projectsAttentionList" class="project-attention-list"></div></section>
-          <section class="glass project-panel project-activity-panel"><header><div><span class="eyebrow">FORTSCHRITT</span><h2>Letzte Änderungen</h2></div><span class="project-chip">Live</span></header><div id="projectsRecentActivity" class="project-recent-activity"></div></section>
+        <div class="tn-hero-grid">
+          <article id="projectsHero" class="tn-hero"></article>
+          <div id="projectsMetrics" class="projects-metrics tn-kpis"></div>
+        </div>
+        <div class="projects-overview-grid tn-lower">
+          <section class="glass project-panel"><header><div><h2>Im Fokus</h2><p>Aktuelle Projekte</p></div></header><div id="projectsFocusList" class="project-card-list"></div></section>
+          <section class="glass project-panel"><header><div><h2>Als Nächstes</h2><p>Meine und offene Aufgaben</p></div></header><div id="projectsNextTasks" class="project-task-list"></div></section>
+          <section class="glass project-panel project-attention-panel"><header><div><h2>Aufmerksamkeit</h2><p>Handlungsbedarf</p></div><span id="projectsAttentionCount" class="project-chip">0</span></header><div id="projectsAttentionList" class="project-attention-list"></div></section>
+          <section class="glass project-panel project-activity-panel"><header><div><h2>Letzte Änderungen</h2><p>Fortschritt im Team</p></div><span class="project-chip">Live</span></header><div id="projectsRecentActivity" class="project-recent-activity"></div></section>
         </div>
       </section>
 
       <section id="projectsMyView" class="projects-view hidden">
         <div class="glass project-panel projects-my-panel">
-          <header><div><span class="eyebrow">PERSÖNLICHER BEREICH</span><h2>Meine Aufgaben</h2></div><span id="projectsMyScope" class="project-chip"></span></header>
+          <header><div><h2>Meine Aufgaben</h2></div><span id="projectsMyScope" class="project-chip"></span></header>
           <div id="projectsMyTasks" class="projects-my-groups"></div>
         </div>
       </section>
@@ -467,9 +483,8 @@
         <div id="projectsNotesBoard" class="projects-notes-board"></div>
       </section>
 
-      <section class="hint glass projects-hint">
-        <strong>Projektmanagement:</strong> Projekte, Aufgaben, Teams und Termine zentral verwalten.
-      </section>
+      </div>
+     </div>
     </section>
 
   </main>

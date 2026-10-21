@@ -118,6 +118,7 @@ function render(){
   document.getElementById('yearLabel').textContent=viewDate.getFullYear();
   const vacationHeadingSub=document.getElementById('vacationHeadingSub');
   if(vacationHeadingSub)vacationHeadingSub.textContent='Teamübersicht · '+viewDate.getFullYear();
+  const vg=document.getElementById('vacationGreeting');if(vg&&typeof trainingGreeting==='function')vg.textContent=trainingGreeting();
   const filter=document.getElementById('searchInput').value.trim().toLowerCase();
   const plannerEmployees=showExternalEmployees?state.employees:teamEmployees();
   const employees=[...plannerEmployees].sort((a,b)=>a.order-b.order).filter(e=>!filter||[e.name,e.organization].filter(Boolean).join(' ').toLowerCase().includes(filter));

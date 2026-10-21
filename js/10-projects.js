@@ -245,14 +245,53 @@ function renderProjectDialogSummary(projectId){
   document.getElementById('projectSummaryOverdue').textContent=String(overdue);
   document.getElementById('projectSummaryOverdue').closest('article')?.classList.toggle('metric-alert',overdue>0);
 }
+function projectStats(){
+  const today=dateKey(new Date()),week=dateKey(addDays(new Date(),7));
+  const tasks=projectTasks,open=tasks.filter(t=>t.status!=='done');
+  const count=st=>tasks.filter(t=>t.status===st).length;
+  return {
+    active:projectProjects.filter(p=>p.status==='active').length,
+    open:open.length,done:count('done'),progress:count('progress'),waiting:count('waiting'),todo:count('open'),total:tasks.length,
+    unassigned:open.filter(t=>!t.assignee_employee_id).length,
+    overdue:open.filter(t=>t.due_date&&t.due_date<today).length,
+    soon:open.filter(t=>t.due_date&&t.due_date>=today&&t.due_date<=week).length,
+    quota:tasks.length?Math.round(count('done')/tasks.length*100):0
+  };
+}
 function renderProjectMetrics(){
   const box=document.getElementById('projectsMetrics');if(!box)return;
-  const active=projectProjects.filter(p=>p.status==='active').length,open=projectTasks.filter(t=>t.status!=='done').length,unassigned=projectTasks.filter(t=>t.status!=='done'&&!t.assignee_employee_id).length;
-  const today=dateKey(new Date()),overdue=projectTasks.filter(t=>t.status!=='done'&&t.due_date&&t.due_date<today).length;
-  box.innerHTML='<article><span>Aktive Projekte</span><strong>'+active+'</strong><small>derzeit in Arbeit</small></article><article><span>Offene Aufgaben</span><strong>'+open+'</strong><small>im Team</small></article><article class="'+(unassigned?'metric-warn':'')+'"><span>Ohne Verantwortlichen</span><strong>'+unassigned+'</strong><small>noch zuzuweisen</small></article><article class="'+(overdue?'metric-alert':'')+'"><span>Überfällig</span><strong>'+overdue+'</strong><small>Handlungsbedarf</small></article>';
+  const st=projectStats();
+  const tile=(tone,label,big,unit,chip,deco,left,right,view)=>'<article class="tn-kpi tone-'+tone+'"'+(view?' data-project-kpi-view="'+view+'" tabindex="0" role="button"':'')+'><header><span>'+label+'</span>'+trainingArrow()+'</header><div class="tn-kpi-body"><strong>'+big+'</strong><em>'+unit+'</em>'+(chip?'<b class="tn-kpi-chip">'+chip+'</b>':'')+'</div><div class="tn-kpi-deco">'+deco+'</div><footer><span>'+left+'</span><span>'+right+'</span></footer></article>';
+  const meter=(pct,cls='')=>'<div class="tn-meter '+cls+'"><i style="width:'+Math.min(100,pct)+'%"></i></div>';
+  box.innerHTML=
+    tile('violet','Aktive Projekte',st.active,st.active===1?'Projekt':'Projekte',st.active?'in Arbeit':'',trainingSparkSvg([0,1,1,2,2,Math.max(1,st.active),st.active],'#8b5cf6'),'Gesamt '+projectProjects.length,'','roadmap')+
+    tile('blue','Offene Aufgaben',st.open,'Aufgaben',st.waiting?st.waiting+' Rückfrage':'',trainingBarsSvg([st.todo,st.progress,st.waiting,st.done,0,0,0,0,0,0,0,0].slice(0,4).concat([0,0,0,0,0,0,0,0]),'#4f8ff0'),st.todo+' offen',st.progress+' in Arbeit','board')+
+    tile(st.unassigned?'amber':'mint','Ohne Verantwortlichen',st.unassigned,'zuzuweisen',st.unassigned?'Handlungsbedarf':'alles zugewiesen',meter(st.open?st.unassigned/st.open*100:0),st.open-st.unassigned+' zugewiesen',st.unassigned+' offen','board')+
+    tile(st.overdue?'rose':'peach','Überfällig',st.overdue,'Aufgaben',st.soon?st.soon+' diese Woche':'',trainingSparkSvg([0,1,0,2,1,Math.max(1,st.soon),st.overdue],st.overdue?'#d9505a':'#e0892c'),'bald '+st.soon,'überfällig '+st.overdue,'calendar')+
+    tile('mint','Erledigt',st.done,'Aufgaben',st.total?st.quota+' %':'',meter(st.quota),st.done+' erledigt','von '+st.total,'board')+
+    tile('sky','Diese Woche fällig',st.soon,'Aufgaben','',trainingSparkSvg([0,1,2,1,Math.max(1,st.soon)],'#2a7fa8'),'nächste 7 Tage','','calendar');
+  box.querySelectorAll('[data-project-kpi-view]').forEach(el=>{
+    const go=()=>setProjectView(el.dataset.projectKpiView);
+    el.addEventListener('click',go);el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}});
+  });
+}
+function renderProjectHero(){
+  const box=document.getElementById('projectsHero');if(!box)return;
+  const st=projectStats(),total=Math.max(st.total,1);
+  const call=(cls,label,value,sub)=>'<div class="tn-callout '+cls+'"><i></i><span>'+label+'</span><b>'+value+'</b><small>'+sub+'</small></div>';
+  box.innerHTML='<div class="tn-hero-ring"><svg viewBox="0 0 220 220" role="img" aria-label="Aufgabenfortschritt '+st.quota+' Prozent">'+
+    trainingArc(98,st.done/total,'#13a085',11)+trainingArc(78,st.progress/total,'#8b5cf6',11)+trainingArc(58,(st.todo+st.waiting)/total,'#4f8ff0',11)+
+    '</svg><div class="tn-hero-ring-center"><strong>'+st.quota+'<small>%</small></strong><span>erledigt</span></div></div>'+
+    call('c-a','Erledigt',st.done,'Aufgaben')+call('c-b','In Arbeit',st.progress,'laufend')+call('c-c','Offen',st.todo,'Aufgaben')+call('c-d','Rückfrage',st.waiting,'wartet');
+}
+function renderProjectSideCard(){
+  const box=document.getElementById('projectsSideCard');if(!box)return;
+  const st=projectStats(),n=st.overdue+st.unassigned;
+  box.innerHTML='<b>'+(n?n+' Punkt'+(n===1?'':'e')+' brauch'+(n===1?'t':'en')+' Aufmerksamkeit':'Alles im grünen Bereich')+'</b><small>'+(n?'Überfällige oder nicht zugewiesene Aufgaben prüfen.':'Keine überfälligen oder nicht zugewiesenen Aufgaben.')+'</small><button type="button" class="tn-side-card-btn">Aufgaben öffnen</button>';
+  box.querySelector('.tn-side-card-btn')?.addEventListener('click',()=>setProjectView('board'));
 }
 function renderProjectOverview(){
-  renderProjectMetrics();
+  renderProjectMetrics();renderProjectHero();
   const focus=document.getElementById('projectsFocusList'),next=document.getElementById('projectsNextTasks'),activity=document.getElementById('projectsRecentActivity');
   renderProjectAttention();
   const projects=filteredProjects().filter(p=>p.status!=='done').slice(0,8);
@@ -339,6 +378,10 @@ function renderProjectModule(){
   if(projectView==='calendar')renderProjectCalendar();
   if(projectView==='team')renderProjectTeam();
   if(projectView==='notes')renderProjectNotes();
+  document.getElementById('projectsGreeting').textContent=trainingGreeting();
+  const me=sessionRole==='employee'?state.employees.find(e=>e.id===sessionEmployeeId):null;
+  document.getElementById('projectsHeadingTitle').textContent=(me?me.name.split(' ')[0]:'Team')+'.';
+  renderProjectSideCard();
   const sub=document.getElementById('projectsHeadingSub');if(sub)sub.textContent=(sessionRole==='external'?'Externer Projektzugang':sessionRole==='employee'?'Meine Aufgaben':'ZNA Management')+' · '+projectProjects.length+' Projekte';
   bindProjectRenderedEvents();
 }
