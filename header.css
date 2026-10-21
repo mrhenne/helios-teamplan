@@ -304,7 +304,6 @@ body.dark-mode .topbar-right-zone .top-tool.primary-tool{
 
 @media(max-width:700px){
   .topbar{padding:9px!important}
-  .topbar-left-zone .zna-core-logo{width:200px!important}
   .topbar-left-zone .topbar-module-switch .module-tab small{display:none!important}
   .topbar-right-zone .topbar-user{
     min-width:0!important;
@@ -320,8 +319,6 @@ body.dark-mode .topbar-right-zone .top-tool.primary-tool{
 
 /* 2026-10-10: iPhone final override. Keep the header self-contained and touch friendly. */
 @media(max-width:700px){
-  .topbar{overflow:hidden!important}
-  .topbar-left-zone,.topbar-right-zone{min-width:0!important}
   .topbar-right-zone .topbar-session{flex-wrap:initial!important}
   .topbar-right-zone .topbar-actions{flex-wrap:initial!important}
 }
