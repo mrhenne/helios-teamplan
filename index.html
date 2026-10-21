@@ -1174,7 +1174,7 @@
   <div id="cellContextMenu" class="cell-context-menu hidden" role="menu" aria-label="Schnellaktionen"></div>
   <div id="toast" class="toast"></div>
   <script>
-    // Login fallback is intentionally independent from app.js.
+    // Login fallback is intentionally independent from the app scripts in js/.
     // It remains usable if another UI module throws during app startup.
     (() => {
       const form = document.getElementById('loginForm');
@@ -1224,6 +1224,17 @@
       }, true);
     })();
   </script>
-  <script src="app.js?v=20261010-2"></script>
+  <script src="js/01-core.js?v=20261021-1"></script>
+  <script src="js/02-chat.js?v=20261021-1"></script>
+  <script src="js/03-vacation-model.js?v=20261021-1"></script>
+  <script src="js/04-vacation-planner.js?v=20261021-1"></script>
+  <script src="js/05-admin.js?v=20261021-1"></script>
+  <script src="js/06-vacation-conflicts.js?v=20261021-1"></script>
+  <script src="js/07-vacation-export.js?v=20261021-1"></script>
+  <script src="js/08-auth.js?v=20261021-1"></script>
+  <script src="js/09-training.js?v=20261021-1"></script>
+  <script src="js/10-projects.js?v=20261021-1"></script>
+  <script src="js/11-sync.js?v=20261021-1"></script>
+  <script src="js/12-main.js?v=20261021-1"></script>
 </body>
 </html>

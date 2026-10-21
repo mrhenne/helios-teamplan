@@ -2,7 +2,10 @@ const fs = require('fs');
 
 const html = fs.readFileSync('index.html','utf8');
 const css = fs.readFileSync('styles.css','utf8');
-const js = fs.readFileSync('app.js','utf8');
+// Die App-Skripte teilen sich einen globalen Scope und werden in dieser Reihenfolge geladen.
+const jsFiles = [...html.matchAll(/<script src="(js\/[^"?]+)/g)].map(m=>m[1]);
+if(!jsFiles.length) throw new Error('Keine App-Skripte in index.html gefunden');
+const js = jsFiles.map(f=>fs.readFileSync(f,'utf8')).join('\n');
 const sql = fs.readFileSync('supabase.sql','utf8');
 
 function fail(msg){ throw new Error(msg); }
